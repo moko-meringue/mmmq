@@ -1,12 +1,5 @@
 package org.mmmq.gateway.dispatcher;
 
-import jakarta.annotation.PostConstruct;
-import org.mmmq.core.Host;
-import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Topic;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -14,6 +7,14 @@ import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
+import org.mmmq.core.Host;
+import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Topic;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import jakarta.annotation.PostConstruct;
 
 public class MessageDispatcher {
 
@@ -92,7 +93,7 @@ public class MessageDispatcher {
                 5,
                 40L,
                 TimeUnit.SECONDS,
-                new LinkedBlockingQueue<>(5)
+                new LinkedBlockingQueue<>()
         );
 
         static {

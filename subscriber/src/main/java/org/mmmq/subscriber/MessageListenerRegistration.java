@@ -2,49 +2,26 @@ package org.mmmq.subscriber;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
+import org.mmmq.core.message.Message;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationListener;
-import org.springframework.context.event.ApplicationEventMulticaster;
-import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 @Component
 class MessageListenerRegistration implements BeanPostProcessor {
 
-    static final ThreadPoolExecutor DEFAULT_THREAD_POOL_EXECUTOR = new ThreadPoolExecutor(
-        2,
-        5,
-        40L,
-        TimeUnit.SECONDS,
-        new LinkedBlockingQueue<>(5)
-    );
+    private static final Logger log = LoggerFactory.getLogger(MessageListenerRegistration.class);
+    final ObjectProvider<MessageListener> messageListenerProvider;
+    MessageListener messageListener = null;
 
-    final ApplicationContext applicationContext;
-    final ObjectMapper objectMapper = new ObjectMapper();
-
-    MessageListenerRegistration(ApplicationContext applicationContext) {
-        this.applicationContext = applicationContext;
-    }
-
-    private static void validateFormat(Object bean, Method method) {
-        if (method.getParameterCount() != 1) {
-            throw new InvalidMessageListenerException(
-                    "@MMMQListener method must have exactly one parameter: "
-                            + bean.getClass().getName() + "#"
-                            + method.getName()
-            );
-        }
+    MessageListenerRegistration(ObjectProvider<MessageListener> messageListenerProvider) {
+        this.messageListenerProvider = messageListenerProvider;
     }
 
     @Override
@@ -57,29 +34,40 @@ class MessageListenerRegistration implements BeanPostProcessor {
                 registerMessageListener(bean, method, annotation);
             }
         }
-
         return bean;
     }
 
     private void registerMessageListener(Object bean, Method method, MMMQListener annotation) {
-        ApplicationEventMulticaster multicaster = applicationContext.getBean(
-                AbstractApplicationContext.APPLICATION_EVENT_MULTICASTER_BEAN_NAME,
-                ApplicationEventMulticaster.class
-        );
+        if(this.messageListener == null) {
+            this.messageListener = messageListenerProvider.getObject();
+        }
+        // ApplicationEventMulticaster multicaster = applicationContext.getBean(
+        //         AbstractApplicationContext.APPLICATION_EVENT_MULTICASTER_BEAN_NAME,
+        //         ApplicationEventMulticaster.class
+        // );
         validateFormat(bean, method);
         method.setAccessible(true);
         Type genericParameterType = method.getGenericParameterTypes()[0];
-        JavaType cachedJavaType = objectMapper.constructType(genericParameterType);
+        // JavaType cachedJavaType = objectMapper.constructType(genericParameterType);
 
-        ApplicationListener<MMMQEvent> listener = new MessageListener(
-                annotation.topic(),
-                bean,
-                method,
-                cachedJavaType,
-                objectMapper,
-                DEFAULT_THREAD_POOL_EXECUTOR
-        );
+        // messageListener.addTopic(annotation.topic(), ...);
+        // multicaster.addApplicationListener(listener);
+    }
 
-        multicaster.addApplicationListener(listener);
+    private static void validateFormat(Object bean, Method method) {
+        if (method.getParameterCount() != 1) {
+            throw new InvalidMessageListenerException(
+                "@MMMQListener method must have exactly one parameter: "
+                    + bean.getClass().getName() + "#"
+                    + method.getName()
+            );
+        }
+        if (!method.getParameterTypes()[0].equals(Message.class)) {
+            throw new InvalidMessageListenerException(
+                "@MMMQListener method parameter must be of type Message: "
+                    + bean.getClass().getName() + "#"
+                    + method.getName()
+            );
+        }
     }
 }
