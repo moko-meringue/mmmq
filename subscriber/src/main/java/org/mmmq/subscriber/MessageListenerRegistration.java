@@ -1,7 +1,11 @@
 package org.mmmq.subscriber;
 
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
@@ -12,24 +16,22 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Type;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
 class MessageListenerRegistration implements BeanPostProcessor {
 
+    static final ThreadPoolExecutor DEFAULT_THREAD_POOL_EXECUTOR = new ThreadPoolExecutor(
+        2,
+        5,
+        40L,
+        TimeUnit.SECONDS,
+        new LinkedBlockingQueue<>(5)
+    );
+
     final ApplicationContext applicationContext;
     final ObjectMapper objectMapper = new ObjectMapper();
-    final ThreadPoolExecutor DEFAULT_THREAD_POOL_EXECUTOR = new ThreadPoolExecutor(
-            2,
-            5,
-            40L,
-            TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(5)
-    );
 
     MessageListenerRegistration(ApplicationContext applicationContext) {
         this.applicationContext = applicationContext;
