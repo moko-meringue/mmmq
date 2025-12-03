@@ -1,8 +1,6 @@
-package org.mmmq.gateway.dispatcher;
+package org.mmmq.core.acknowledgement;
 
-import org.mmmq.core.acknowledgement.Acknowledgement;
-
-public record DispatchResponse(
+public record SubscriberAcknowledgement(
         Acknowledgement acknowledgement
 ) {
 
