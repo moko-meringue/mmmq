@@ -7,7 +7,8 @@ public class MMMQEvent extends ApplicationEvent {
 
     public Message message;
 
-    public MMMQEvent(Object source) {
+    public MMMQEvent(Object source, Message message) {
         super(source);
+        this.message = message;
     }
 }
