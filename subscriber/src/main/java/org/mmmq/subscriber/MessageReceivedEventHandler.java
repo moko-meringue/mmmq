@@ -11,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 @Component
 class MessageReceivedEventHandler implements ApplicationListener<MessageReceivedEvent> {
 
-    final MessageHandlerContainer messageHandlerContainer = new MessageHandlerContainer();
     final ThreadPoolExecutor executor = new ThreadPoolExecutor(
             2,
             5,
@@ -19,6 +18,7 @@ class MessageReceivedEventHandler implements ApplicationListener<MessageReceived
             TimeUnit.SECONDS,
             new LinkedBlockingQueue<>()
     );
+    final MessageHandlerContainer messageHandlerContainer = new MessageHandlerContainer();
 
     void addMessageHandler(MessageHandler handler) {
         messageHandlerContainer.add(handler);

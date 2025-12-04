@@ -51,8 +51,9 @@ class MethodMessageHandlerRegistration implements BeanPostProcessor, SmartInitia
     public void afterSingletonsInstantiated() {
         try {
             messageReceivedEventHandlerProvider.ifAvailable(
-                    messageReceivedEventHandler -> messageHandlers.forEach(
-                            messageReceivedEventHandler::addMessageHandler));
+                    messageReceivedEventHandler ->
+                            messageHandlers.forEach(messageReceivedEventHandler::addMessageHandler)
+            );
             messageHandlers.clear();
         } catch (BeansException e) {
             throw new MessageHandlerRegistrationException("Failed to register message handlers.", e);
