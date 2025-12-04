@@ -4,14 +4,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
+import org.springframework.util.ClassUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 class MethodMessageHandlerRegistration implements BeanPostProcessor, SmartInitializingSingleton {
@@ -25,15 +27,12 @@ class MethodMessageHandlerRegistration implements BeanPostProcessor, SmartInitia
     }
 
     @Override
-    public Object postProcessAfterInitialization(Object bean, @NonNull String beanName) {
-        Method[] methods = ReflectionUtils.getAllDeclaredMethods(bean.getClass());
-
-        for (Method method : methods) {
-            MMMQListener annotation = AnnotationUtils.findAnnotation(method, MMMQListener.class);
-            if (annotation != null) {
-                registerMessageListener(bean, method, annotation);
-            }
-        }
+    public Object postProcessAfterInitialization(@NonNull Object bean, @NonNull String beanName) {
+        ReflectionUtils.doWithMethods(
+                ClassUtils.getUserClass(bean),
+                method -> Optional.ofNullable(AnnotatedElementUtils.findMergedAnnotation(method, MMMQListener.class))
+                        .ifPresent(annotation -> registerMessageListener(bean, method, annotation))
+        );
         return bean;
     }
 
