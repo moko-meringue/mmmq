@@ -1,14 +1,12 @@
 package org.mmmq.subscriber;
 
 import org.mmmq.core.message.Message;
-import org.springframework.context.ApplicationEvent;
 
-public class MessageReceivedEvent extends ApplicationEvent {
+public class MessageReceivedEvent {
 
     public Message message;
 
-    public MessageReceivedEvent(Object source, Message message) {
-        super(source);
+    public MessageReceivedEvent(Message message) {
         this.message = message;
     }
 

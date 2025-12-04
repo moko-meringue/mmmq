@@ -26,7 +26,7 @@ public class MessageReceiver {
     public ResponseEntity<SubscriberAcknowledgement> receiveMessage(@RequestBody Message message) {
         SubscriberAcknowledgement acknowledgement = new SubscriberAcknowledgement(Acknowledgement.ACK);
         try {
-            eventPublisher.publishEvent(new MessageReceivedEvent(this, message));
+            eventPublisher.publishEvent(new MessageReceivedEvent(message));
         } catch (Exception e) {
             log.warn("Failed to receive message: {}", message, e);
             acknowledgement = new SubscriberAcknowledgement(Acknowledgement.NACK);
