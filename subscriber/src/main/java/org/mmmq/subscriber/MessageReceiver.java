@@ -29,7 +29,7 @@ public class MessageReceiver {
             eventPublisher.publishEvent(new MessageReceivedEvent(this, message));
         } catch (Exception e) {
             log.warn("Failed to receive message: {}", message, e);
-            acknowledgement = new SubscriberAcknowledgement(Acknowledgement.NAK);
+            acknowledgement = new SubscriberAcknowledgement(Acknowledgement.NACK);
         }
         return ResponseEntity.ok(acknowledgement);
     }

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.core.acknowledgement.Acknowledgement;
+import org.mmmq.core.acknowledgement.SubscriberAcknowledgement;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 
@@ -77,7 +78,7 @@ class MessageDispatcherTest {
         messageDispatcher.startWorker();
         MessageSender messageSender = mock(MessageSender.class);
         Message message = new Message("test", Map.of("key", "value"));
-        when(messageSender.send(message)).thenReturn(new DispatchResponse(Acknowledgement.ACK));
+        when(messageSender.send(message)).thenReturn(new SubscriberAcknowledgement(Acknowledgement.ACK));
         Field filed = MessageDispatcher.class.getDeclaredField("messageSender");
         filed.setAccessible(true);
         filed.set(messageDispatcher, messageSender);
@@ -94,7 +95,7 @@ class MessageDispatcherTest {
         messageDispatcher.startWorker();
         MessageSender messageSender = mock(MessageSender.class);
         Message message = new Message("test", Map.of("key", "value"));
-        when(messageSender.send(message)).thenReturn(new DispatchResponse(Acknowledgement.NAK));
+        when(messageSender.send(message)).thenReturn(new SubscriberAcknowledgement(Acknowledgement.NACK));
         Field filed = MessageDispatcher.class.getDeclaredField("messageSender");
         filed.setAccessible(true);
         filed.set(messageDispatcher, messageSender);

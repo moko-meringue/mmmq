@@ -1,15 +1,5 @@
 package org.mmmq.publisher;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockConstruction;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.util.Map;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.core.Host;
@@ -17,6 +7,12 @@ import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.acknowledgement.GatewayAcknowledgement;
 import org.mmmq.core.message.Message;
 import org.mockito.MockedConstruction;
+
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.*;
 
 class PublisherTest {
 
@@ -48,8 +44,12 @@ class PublisherTest {
         Message message = new Message("test-topic", Map.of("key", "value"));
         GatewayAcknowledgement ackResponse = new GatewayAcknowledgement(Acknowledgement.ACK);
 
-        try (MockedConstruction<Gateway> mockedGateway = mockConstruction(Gateway.class,
-            (mock, context) -> when(mock.send(message)).thenReturn(ackResponse))) {
+        try (
+                MockedConstruction<Gateway> mockedGateway = mockConstruction(
+                        Gateway.class,
+                        (mock, context) -> when(mock.send(message)).thenReturn(ackResponse)
+                )
+        ) {
 
             Publisher publisher = new Publisher(host);
             publisher.publish(message);
@@ -64,14 +64,18 @@ class PublisherTest {
     void publishRetryUntilSuccess() {
         Host host = mock(Host.class);
         Message message = new Message("test-topic", Map.of("key", "value"));
-        GatewayAcknowledgement nakResponse = new GatewayAcknowledgement(Acknowledgement.NAK);
+        GatewayAcknowledgement nakResponse = new GatewayAcknowledgement(Acknowledgement.NACK);
         GatewayAcknowledgement ackResponse = new GatewayAcknowledgement(Acknowledgement.ACK);
 
-        try (MockedConstruction<Gateway> mockedGateway = mockConstruction(Gateway.class,
-            (mock, context) -> when(mock.send(message))
-                .thenReturn(nakResponse)
-                .thenReturn(nakResponse)
-                .thenReturn(ackResponse))) {
+        try (
+                MockedConstruction<Gateway> mockedGateway = mockConstruction(
+                        Gateway.class,
+                        (mock, context) -> when(mock.send(message))
+                                .thenReturn(nakResponse)
+                                .thenReturn(nakResponse)
+                                .thenReturn(ackResponse)
+                )
+        ) {
 
             Publisher publisher = new Publisher(host);
             publisher.publish(message);
@@ -86,11 +90,15 @@ class PublisherTest {
     void publishExceedMaxRetry() {
         Host host = mock(Host.class);
         Message message = new Message("test-topic", Map.of("key", "value"));
-        GatewayAcknowledgement nakResponse = new GatewayAcknowledgement(Acknowledgement.NAK);
+        GatewayAcknowledgement nakResponse = new GatewayAcknowledgement(Acknowledgement.NACK);
         int maxRetryCount = 2;
 
-        try (MockedConstruction<Gateway> mockedGateway = mockConstruction(Gateway.class,
-            (mock, context) -> when(mock.send(message)).thenReturn(nakResponse))) {
+        try (
+                MockedConstruction<Gateway> mockedGateway = mockConstruction(
+                        Gateway.class,
+                        (mock, context) -> when(mock.send(message)).thenReturn(nakResponse)
+                )
+        ) {
 
             Publisher publisher = new Publisher(host, maxRetryCount);
             publisher.publish(message);
@@ -107,15 +115,19 @@ class PublisherTest {
         Message message = new Message("test-topic", Map.of("key", "value"));
         RuntimeException gatewayException = new RuntimeException("Gateway error");
 
-        try (MockedConstruction<Gateway> mockedGateway = mockConstruction(Gateway.class,
-            (mock, context) -> when(mock.send(message)).thenThrow(gatewayException))) {
+        try (
+                MockedConstruction<Gateway> mockedGateway = mockConstruction(
+                        Gateway.class,
+                        (mock, context) -> when(mock.send(message)).thenThrow(gatewayException)
+                )
+        ) {
 
             Publisher publisher = new Publisher(host);
 
             assertThatThrownBy(() -> publisher.publish(message))
-                .isInstanceOf(MessagePublishException.class)
-                .hasMessage("Failed to publish message")
-                .hasCause(gatewayException);
+                    .isInstanceOf(MessagePublishException.class)
+                    .hasMessage("Failed to publish message")
+                    .hasCause(gatewayException);
         }
     }
 }

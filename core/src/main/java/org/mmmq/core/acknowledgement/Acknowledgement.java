@@ -2,7 +2,7 @@ package org.mmmq.core.acknowledgement;
 
 public enum Acknowledgement {
     ACK("ACK"),
-    NAK("NAK"),
+    NACK("NACK"),
     ;
 
     private final String code;

@@ -1,17 +1,13 @@
 package org.mmmq.gateway.dispatcher;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
-
-import java.util.Map;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.core.Host;
 import org.mmmq.core.acknowledgement.Acknowledgement;
+import org.mmmq.core.acknowledgement.SubscriberAcknowledgement;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.MessageDeliveryException;
 import org.mmmq.gateway.fixture.HostFixture;
@@ -22,8 +18,12 @@ import org.springframework.test.web.client.ExpectedCount;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class MessageSenderTest {
 
@@ -62,7 +62,7 @@ class MessageSenderTest {
         server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(
-                        objectMapper.writeValueAsString(new DispatchResponse(Acknowledgement.ACK)),
+                        objectMapper.writeValueAsString(new SubscriberAcknowledgement(Acknowledgement.ACK)),
                         MediaType.APPLICATION_JSON
                 ));
 
@@ -80,11 +80,12 @@ class MessageSenderTest {
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(
                         withSuccess()
-                                .body(objectMapper.writeValueAsBytes(new DispatchResponse(Acknowledgement.ACK)))
+                                .body(objectMapper.writeValueAsBytes(
+                                        new SubscriberAcknowledgement(Acknowledgement.ACK)))
                                 .contentType(MediaType.APPLICATION_JSON)
                 );
 
-        DispatchResponse response = messageSender.send(new Message("topic", Map.of("key", "value")));
+        SubscriberAcknowledgement response = messageSender.send(new Message("topic", Map.of("key", "value")));
 
         assertThat(response.acknowledgement()).isEqualTo(Acknowledgement.ACK);
     }
