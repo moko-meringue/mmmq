@@ -1,6 +1,7 @@
 package org.mmmq.subscriber;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -48,8 +49,15 @@ class MethodMessageHandlerRegistration implements BeanPostProcessor, SmartInitia
 
     @Override
     public void afterSingletonsInstantiated() {
-        messageReceivedEventHandlerProvider.ifAvailable(
-                messageReceivedEventHandler -> messageHandlers.forEach(messageReceivedEventHandler::addMessageHandler));
-        messageHandlers.clear();
+        try {
+            messageReceivedEventHandlerProvider.ifAvailable(
+                    messageReceivedEventHandler -> messageHandlers.forEach(
+                            messageReceivedEventHandler::addMessageHandler));
+            messageHandlers.clear();
+        } catch (BeansException e) {
+            throw new MessageHandlerRegistrationException("Failed to register message handlers.", e);
+        } catch (Exception e) {
+            throw new MessageHandlerRegistrationException("Unexpected error during message handler registration.", e);
+        }
     }
 }
