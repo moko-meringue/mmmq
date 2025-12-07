@@ -15,7 +15,7 @@ class MethodMessageHandler extends MessageHandler {
     final ObjectMapper objectMapper;
 
     MethodMessageHandler(String topic, Object bean, Method method, ObjectMapper objectMapper) {
-        super(bean.getClass().getCanonicalName() + "." + method.getName(), topic);
+        super(bean.getClass().getCanonicalName() + "#" + method.getName(), topic);
         method.setAccessible(true);
         this.bean = bean;
         this.method = method;
@@ -32,21 +32,8 @@ class MethodMessageHandler extends MessageHandler {
 
     @Override
     public void handle(Message message) {
-        invoke(getParameter(message));
-    }
+        Object parameter = getParameter(message);
 
-    private Object getParameter(Message message) {
-        try {
-            return objectMapper.convertValue(message.content(), parameterType);
-        } catch (IllegalArgumentException e) {
-            throw new MessageHandlerExecutionException(
-                    String.format("Failed to convert parameter for handler '%s': %s", name, e.getMessage()),
-                    e
-            );
-        }
-    }
-
-    private void invoke(Object parameter) {
         try {
             method.invoke(bean, parameter);
         } catch (InvocationTargetException e) {
@@ -57,6 +44,17 @@ class MethodMessageHandler extends MessageHandler {
         } catch (Exception e) {
             throw new MessageHandlerExecutionException(
                     String.format("Unexpected error occurred during execute handler %s: %s", name, e),
+                    e
+            );
+        }
+    }
+
+    private Object getParameter(Message message) {
+        try {
+            return objectMapper.convertValue(message.content(), parameterType);
+        } catch (IllegalArgumentException e) {
+            throw new MessageHandlerExecutionException(
+                    String.format("Failed to convert parameter for handler '%s': %s", name, e.getMessage()),
                     e
             );
         }
