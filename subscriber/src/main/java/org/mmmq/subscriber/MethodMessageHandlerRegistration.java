@@ -1,6 +1,10 @@
 package org.mmmq.subscriber;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
@@ -11,19 +15,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ReflectionUtils;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
 class MethodMessageHandlerRegistration implements BeanPostProcessor, SmartInitializingSingleton {
 
     final ObjectMapper objectMapper = new ObjectMapper();
     final List<MethodMessageHandler> messageHandlers = new ArrayList<>();
-    final ObjectProvider<MessageReceivedEventHandler> messageReceivedEventHandlerProvider;
+    final ObjectProvider<FrontMessageHandler> messageReceivedEventHandlerProvider;
 
-    MethodMessageHandlerRegistration(ObjectProvider<MessageReceivedEventHandler> messageReceivedEventHandlerProvider) {
+    MethodMessageHandlerRegistration(ObjectProvider<FrontMessageHandler> messageReceivedEventHandlerProvider) {
         this.messageReceivedEventHandlerProvider = messageReceivedEventHandlerProvider;
     }
 
@@ -51,8 +52,8 @@ class MethodMessageHandlerRegistration implements BeanPostProcessor, SmartInitia
     public void afterSingletonsInstantiated() {
         try {
             messageReceivedEventHandlerProvider.ifAvailable(
-                    messageReceivedEventHandler ->
-                            messageHandlers.forEach(messageReceivedEventHandler::addMessageHandler)
+                    frontMessageHandler ->
+                            messageHandlers.forEach(frontMessageHandler::addMessageHandler)
             );
             messageHandlers.clear();
         } catch (BeansException e) {
