@@ -32,22 +32,22 @@ public class MessageDispatcher {
             String name,
             Host host,
             Set<Topic> topics,
-            ThreadPoolExecutor threadPoolExecutor
+            ThreadPoolExecutor threadPool
     ) {
         this.name = name;
         this.host = host;
         this.topics = topics;
         this.messageQueue = new LinkedBlockingQueue<>();
-        this.threadPoolExecutor = threadPoolExecutor;
+        this.threadPoolExecutor = threadPool;
         this.messageSender = MessageSenderFactory.create(host);
         this.worker = new Thread(() -> {
-            while (!Thread.currentThread().isInterrupted() && !threadPoolExecutor.isShutdown()) {
+            while (!Thread.currentThread().isInterrupted() && !threadPool.isShutdown()) {
                 try {
                     Map.Entry<Message, Integer> messageEntry = messageQueue.take();
                     if (messageEntry.getValue() > MAX_RETRY_COUNT) {
                         continue;
                     }
-                    threadPoolExecutor.submit(() -> {
+                    threadPool.submit(() -> {
                         Message message = messageEntry.getKey();
                         if (!messageSender.send(message).isAck()) {
                             messageQueue.add(Map.entry(message, messageEntry.getValue() + 1));
@@ -103,7 +103,7 @@ public class MessageDispatcher {
         private final String name;
         private final Host host;
         private final Set<Topic> subscribed = new HashSet<>();
-        private ThreadPoolExecutor threadPoolExecutor = DEFAULT_THREAD_POOL_EXECUTOR;
+        private ThreadPoolExecutor threadPool = DEFAULT_THREAD_POOL_EXECUTOR;
 
         public Builder(String name, String webProtocol, String hostName, int port) {
             this.name = name;
@@ -117,8 +117,8 @@ public class MessageDispatcher {
             return this;
         }
 
-        public Builder threadPoolExecutor(ThreadPoolExecutor executor) {
-            this.threadPoolExecutor = executor;
+        public Builder threadPool(ThreadPoolExecutor executor) {
+            this.threadPool = executor;
             return this;
         }
 
@@ -127,7 +127,7 @@ public class MessageDispatcher {
                     name,
                     host,
                     subscribed,
-                    threadPoolExecutor
+                threadPool
             );
         }
     }
