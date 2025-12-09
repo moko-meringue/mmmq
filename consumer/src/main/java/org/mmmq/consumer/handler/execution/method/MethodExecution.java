@@ -1,14 +1,16 @@
 package org.mmmq.consumer.handler.execution.method;
 
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
 import org.mmmq.consumer.exception.HandlerExecutionException;
 import org.mmmq.consumer.exception.InvalidHandlerException;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Topic;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 class MethodExecution extends HandlerExecution {
 
@@ -17,7 +19,7 @@ class MethodExecution extends HandlerExecution {
     final JavaType parameterType;
     final ObjectMapper objectMapper;
 
-    MethodExecution(String topic, Object bean, Method method, ObjectMapper objectMapper) {
+    MethodExecution(Topic topic, Object bean, Method method, ObjectMapper objectMapper) {
         super(bean.getClass().getCanonicalName() + "#" + method.getName(), topic);
         method.setAccessible(true);
         this.bean = bean;

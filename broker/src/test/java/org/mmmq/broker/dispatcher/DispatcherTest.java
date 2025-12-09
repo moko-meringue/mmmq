@@ -34,7 +34,7 @@ class DispatcherTest {
     @Test
     @DisplayName("push 테스트")
     void pushTest() {
-        Message message = new Message("test", Map.of("key", "value"));
+        Message message = new Message(new Topic("test"), Map.of("key", "value"));
         dispatcher.push(message);
 
         assertThat(dispatcher.messageQueue).contains(Map.entry(message, 0));
@@ -55,7 +55,7 @@ class DispatcherTest {
                 try {
                     startLatch.await();
                     for (int j = 0; j < messagesPerThread; j++) {
-                        Message message = new Message("topic", Map.of("id", threadId, "msg", j));
+                        Message message = new Message(new Topic("topic"), Map.of("id", threadId, "msg", j));
                         dispatcher.push(message);
                     }
                 } catch (InterruptedException e) {
@@ -81,7 +81,7 @@ class DispatcherTest {
     void ackTest() throws Exception {
         dispatcher.startWorker();
         Sender sender = mock(Sender.class);
-        Message message = new Message("test", Map.of("key", "value"));
+        Message message = new Message(new Topic("test"), Map.of("key", "value"));
         when(sender.send(message)).thenReturn(new ConsumerAcknowledgement(Acknowledgement.ACK));
         Field filed = Dispatcher.class.getDeclaredField("sender");
         filed.setAccessible(true);
@@ -98,7 +98,7 @@ class DispatcherTest {
     void nakTest() throws Exception {
         dispatcher.startWorker();
         Sender sender = mock(Sender.class);
-        Message message = new Message("test", Map.of("key", "value"));
+        Message message = new Message(new Topic("test"), Map.of("key", "value"));
         when(sender.send(message)).thenReturn(new ConsumerAcknowledgement(Acknowledgement.NACK));
         Field filed = Dispatcher.class.getDeclaredField("sender");
         filed.setAccessible(true);
@@ -120,8 +120,8 @@ class DispatcherTest {
                 )
         );
 
-        assertThat(dispatcher.isSubscribing("topic1")).isTrue();
-        assertThat(dispatcher.isSubscribing("topic2")).isTrue();
-        assertThat(dispatcher.isSubscribing("topic3")).isFalse();
+        assertThat(dispatcher.isSubscribing(new Topic("topic1"))).isTrue();
+        assertThat(dispatcher.isSubscribing(new Topic("topic2"))).isTrue();
+        assertThat(dispatcher.isSubscribing(new Topic("topic3"))).isFalse();
     }
 }

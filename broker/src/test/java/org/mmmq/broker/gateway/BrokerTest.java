@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.mmmq.broker.Broker;
 import org.mmmq.broker.dispatcher.FrontDispatcher;
 import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Topic;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -42,7 +43,7 @@ class BrokerTest {
     @Test
     @DisplayName("Manager는 외부로부터 메시지를 받을 수 있다.")
     void receiveMessageTest() throws JsonProcessingException {
-        Message message = new Message("topic", Map.of("key", "value"));
+        Message message = new Message(new Topic("topic"), Map.of("key", "value"));
         RestAssured.given().log().all()
                 .body(objectMapper.writeValueAsString(message))
                 .contentType("application/json")
@@ -55,7 +56,7 @@ class BrokerTest {
     @Test
     @DisplayName("Manager는 전달받은 메시지를 브로커에게 전달할 수 있다.")
     void forwardToBrokerTest() {
-        Message message = new Message("topic", Map.of("key", "value"));
+        Message message = new Message(new Topic("topic"), Map.of("key", "value"));
         FrontDispatcher frontDispatcher = mock(FrontDispatcher.class);
         Broker Broker = new Broker(frontDispatcher);
 

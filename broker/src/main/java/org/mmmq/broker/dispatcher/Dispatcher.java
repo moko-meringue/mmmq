@@ -71,8 +71,8 @@ public class Dispatcher {
         messageQueue.add(Map.entry(message, 0));
     }
 
-    public boolean isSubscribing(String topic) {
-        return topics.contains(new Topic(topic));
+    public boolean isSubscribing(Topic topic) {
+        return topics.contains(topic);
     }
 
     @Override

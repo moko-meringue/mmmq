@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.mmmq.broker.dispatcher.Dispatcher;
 import org.mmmq.broker.dispatcher.FrontDispatcher;
 import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Topic;
 import org.mockito.Mockito;
 
 class FrontDispatcherTest {
@@ -20,9 +21,9 @@ class FrontDispatcherTest {
     void forwardMessageTest() {
         Dispatcher dispatcher = Mockito.mock(Dispatcher.class);
         FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher));
-        when(dispatcher.isSubscribing("topic1")).thenReturn(true);
+        when(dispatcher.isSubscribing(new Topic("topic1"))).thenReturn(true);
 
-        Message message = new Message("topic1", Map.of("key1", "value"));
+        Message message = new Message(new Topic("topic1"), Map.of("key1", "value"));
         frontDispatcher.push(message);
 
         verify(dispatcher).push(message);

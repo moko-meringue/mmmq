@@ -18,6 +18,7 @@ import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.acknowledgement.ConsumerAcknowledgement;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.MessageDeliveryException;
+import org.mmmq.core.message.Topic;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.ExpectedCount;
@@ -68,7 +69,7 @@ class SenderTest {
                         MediaType.APPLICATION_JSON
                 ));
 
-        sender.send(new Message("topic", Map.of("key", "value")));
+        sender.send(new Message(new Topic("topic"), Map.of("key", "value")));
 
         server.verify();
     }
@@ -87,7 +88,7 @@ class SenderTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                 );
 
-        ConsumerAcknowledgement response = sender.send(new Message("topic", Map.of("key", "value")));
+        ConsumerAcknowledgement response = sender.send(new Message(new Topic("topic"), Map.of("key", "value")));
 
         assertThat(response.acknowledgement()).isEqualTo(Acknowledgement.ACK);
     }

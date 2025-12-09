@@ -2,10 +2,9 @@ package org.mmmq.core.message;
 
 import java.util.Map;
 
-//TODO String -> Topic
 public record Message(
-        String topic,
-        Map<String, Object> content
+    Topic topic,
+    Map<String, Object> content
 ) {
 
     public Message {

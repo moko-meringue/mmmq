@@ -19,6 +19,7 @@ import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.acknowledgement.BrokerAcknowledgement;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.MessageDeliveryException;
+import org.mmmq.core.message.Topic;
 import org.springframework.boot.test.web.client.MockServerRestClientCustomizer;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -82,7 +83,7 @@ class GatewayTest {
     @DisplayName("메시지 전송 성공시 ACK 응답을 받는다")
     void successReturnsAck() throws JsonProcessingException {
         Gateway gateway = new Gateway(host);
-        Message message = new Message("test-topic", Map.of("key", "value"));
+        Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
         BrokerAcknowledgement expectedResponse = new BrokerAcknowledgement(Acknowledgement.ACK);
 
         server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
@@ -103,7 +104,7 @@ class GatewayTest {
     @DisplayName("4xx 에러 응답시 MessageDeliveryException을 던진다")
     void throwsExceptionOn4xxError() {
         Gateway gateway = new Gateway(host);
-        Message message = new Message("test-topic", Map.of("key", "value"));
+        Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
 
         server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
                 .andExpect(method(HttpMethod.POST))
@@ -121,7 +122,7 @@ class GatewayTest {
     @DisplayName("5xx 에러 응답시 MessageDeliveryException을 던진다")
     void throwsExceptionOn5xxError() {
         Gateway gateway = new Gateway(host);
-        Message message = new Message("test-topic", Map.of("key", "value"));
+        Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
 
         server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
                 .andExpect(method(HttpMethod.POST))

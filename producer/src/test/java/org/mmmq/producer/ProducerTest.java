@@ -16,6 +16,7 @@ import org.mmmq.core.Host;
 import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.acknowledgement.BrokerAcknowledgement;
 import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Topic;
 import org.mmmq.producer.exception.ProduceException;
 import org.mockito.MockedConstruction;
 
@@ -46,7 +47,7 @@ class ProducerTest {
     @DisplayName("메시지 발행이 성공하면 재시도 없이 완료된다")
     void publishSuccess_NoRetry() {
         Host host = mock(Host.class);
-        Message message = new Message("test-topic", Map.of("key", "value"));
+        Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
         BrokerAcknowledgement ackResponse = new BrokerAcknowledgement(Acknowledgement.ACK);
 
         try (
@@ -68,7 +69,7 @@ class ProducerTest {
     @DisplayName("메시지 발행이 NAK이면 재시도하고 결국 성공한다")
     void publishRetryUntilSuccess() {
         Host host = mock(Host.class);
-        Message message = new Message("test-topic", Map.of("key", "value"));
+        Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
         BrokerAcknowledgement nakResponse = new BrokerAcknowledgement(Acknowledgement.NACK);
         BrokerAcknowledgement ackResponse = new BrokerAcknowledgement(Acknowledgement.ACK);
 
@@ -94,7 +95,7 @@ class ProducerTest {
     @DisplayName("최대 재시도 횟수까지 NAK이면 재시도를 중단한다")
     void publishExceedMaxRetry() {
         Host host = mock(Host.class);
-        Message message = new Message("test-topic", Map.of("key", "value"));
+        Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
         BrokerAcknowledgement nakResponse = new BrokerAcknowledgement(Acknowledgement.NACK);
         int maxRetryCount = 2;
 
@@ -117,7 +118,7 @@ class ProducerTest {
     @DisplayName("Gateway에서 예외가 발생하면 MessagePublishException을 던진다")
     void publishThrowsException_WhenGatewayFails() {
         Host host = mock(Host.class);
-        Message message = new Message("test-topic", Map.of("key", "value"));
+        Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
         RuntimeException gatewayException = new RuntimeException("Gateway error");
 
         try (
