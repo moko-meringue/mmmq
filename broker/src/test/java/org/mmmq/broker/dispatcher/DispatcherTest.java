@@ -1,12 +1,10 @@
 package org.mmmq.broker.dispatcher;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.mmmq.core.acknowledgement.Acknowledgement;
-import org.mmmq.core.acknowledgement.SubscriberAcknowledgement;
-import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Topic;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -15,25 +13,31 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mmmq.broker.dispatcher.sender.Sender;
+import org.mmmq.core.acknowledgement.Acknowledgement;
+import org.mmmq.core.acknowledgement.ConsumerAcknowledgement;
+import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Topic;
 
-class MessageDispatcherTest {
+class DispatcherTest {
 
-    MessageDispatcher messageDispatcher;
+    Dispatcher dispatcher;
 
     @BeforeEach
     void setUp() {
-        messageDispatcher = new MessageDispatcher.Builder("name", "http", "localhost", 8080).build();
+        dispatcher = new Dispatcher.Builder("name", "http", "localhost", 8080).build();
     }
 
     @Test
     @DisplayName("push 테스트")
     void pushTest() {
         Message message = new Message("test", Map.of("key", "value"));
-        messageDispatcher.push(message);
+        dispatcher.push(message);
 
-        assertThat(messageDispatcher.messageQueue).contains(Map.entry(message, 0));
+        assertThat(dispatcher.messageQueue).contains(Map.entry(message, 0));
     }
 
     @Test
@@ -52,7 +56,7 @@ class MessageDispatcherTest {
                     startLatch.await();
                     for (int j = 0; j < messagesPerThread; j++) {
                         Message message = new Message("topic", Map.of("id", threadId, "msg", j));
-                        messageDispatcher.push(message);
+                        dispatcher.push(message);
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -67,7 +71,7 @@ class MessageDispatcherTest {
         executor.shutdown();
 
         int expectedCount = threadCount * messagesPerThread;
-        int actualCount = messageDispatcher.messageQueue.size();
+        int actualCount = dispatcher.messageQueue.size();
 
         assertThat(actualCount).isEqualTo(expectedCount);
     }
@@ -75,49 +79,49 @@ class MessageDispatcherTest {
     @Test
     @DisplayName("ACK가 오면 메시지를 재전송하지 않는다.")
     void ackTest() throws Exception {
-        messageDispatcher.startWorker();
-        MessageSender messageSender = mock(MessageSender.class);
+        dispatcher.startWorker();
+        Sender sender = mock(Sender.class);
         Message message = new Message("test", Map.of("key", "value"));
-        when(messageSender.send(message)).thenReturn(new SubscriberAcknowledgement(Acknowledgement.ACK));
-        Field filed = MessageDispatcher.class.getDeclaredField("messageSender");
+        when(sender.send(message)).thenReturn(new ConsumerAcknowledgement(Acknowledgement.ACK));
+        Field filed = Dispatcher.class.getDeclaredField("sender");
         filed.setAccessible(true);
-        filed.set(messageDispatcher, messageSender);
+        filed.set(dispatcher, sender);
 
-        messageDispatcher.push(message);
+        dispatcher.push(message);
 
         Thread.sleep(500L);
-        verify(messageSender, times(1)).send(message);
+        verify(sender, times(1)).send(message);
     }
 
     @Test
     @DisplayName("NAK가 오면 메시지를 3회 재전송한다.")
     void nakTest() throws Exception {
-        messageDispatcher.startWorker();
-        MessageSender messageSender = mock(MessageSender.class);
+        dispatcher.startWorker();
+        Sender sender = mock(Sender.class);
         Message message = new Message("test", Map.of("key", "value"));
-        when(messageSender.send(message)).thenReturn(new SubscriberAcknowledgement(Acknowledgement.NACK));
-        Field filed = MessageDispatcher.class.getDeclaredField("messageSender");
+        when(sender.send(message)).thenReturn(new ConsumerAcknowledgement(Acknowledgement.NACK));
+        Field filed = Dispatcher.class.getDeclaredField("sender");
         filed.setAccessible(true);
-        filed.set(messageDispatcher, messageSender);
+        filed.set(dispatcher, sender);
 
-        messageDispatcher.push(message);
+        dispatcher.push(message);
 
         Thread.sleep(1000L);
-        verify(messageSender, times(1 + MessageDispatcher.MAX_RETRY_COUNT)).send(message);
+        verify(sender, times(1 + Dispatcher.MAX_RETRY_COUNT)).send(message);
     }
 
     @Test
     @DisplayName("isSubscribing 테스트")
     void isSubscribingTest() {
-        messageDispatcher.topics.addAll(
+        dispatcher.topics.addAll(
                 Set.of(
                         new Topic("topic1"),
                         new Topic("topic2")
                 )
         );
 
-        assertThat(messageDispatcher.isSubscribing("topic1")).isTrue();
-        assertThat(messageDispatcher.isSubscribing("topic2")).isTrue();
-        assertThat(messageDispatcher.isSubscribing("topic3")).isFalse();
+        assertThat(dispatcher.isSubscribing("topic1")).isTrue();
+        assertThat(dispatcher.isSubscribing("topic2")).isTrue();
+        assertThat(dispatcher.isSubscribing("topic3")).isFalse();
     }
 }

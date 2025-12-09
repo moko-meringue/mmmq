@@ -1,7 +1,7 @@
 package org.mmmq.producer;
 
 import org.mmmq.core.Host;
-import org.mmmq.core.acknowledgement.GatewayAcknowledgement;
+import org.mmmq.core.acknowledgement.BrokerAcknowledgement;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.MessageDeliveryException;
 import org.springframework.http.MediaType;
@@ -32,13 +32,13 @@ class Gateway {
                 .build();
     }
 
-    public GatewayAcknowledgement send(Message message) {
+    public BrokerAcknowledgement send(Message message) {
         return restClient.post()
                 .uri("/messages")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(message)
                 .retrieve()
-                .toEntity(GatewayAcknowledgement.class)
+                .toEntity(BrokerAcknowledgement.class)
                 .getBody();
     }
 }

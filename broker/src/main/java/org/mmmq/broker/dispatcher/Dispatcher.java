@@ -1,12 +1,5 @@
 package org.mmmq.broker.dispatcher;
 
-import jakarta.annotation.PostConstruct;
-import org.mmmq.core.Host;
-import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Topic;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -15,19 +8,29 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-public class MessageDispatcher {
+import org.mmmq.broker.dispatcher.sender.Sender;
+import org.mmmq.broker.dispatcher.sender.SenderFactory;
+import org.mmmq.core.Host;
+import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Topic;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import jakarta.annotation.PostConstruct;
+
+public class Dispatcher {
 
     static final int MAX_RETRY_COUNT = 3;
-    private static final Logger log = LoggerFactory.getLogger(MessageDispatcher.class);
+    private static final Logger log = LoggerFactory.getLogger(Dispatcher.class);
     final String name;
     final Host host;
     final Set<Topic> topics;
     final LinkedBlockingQueue<Map.Entry<Message, Integer>> messageQueue;
-    final MessageSender messageSender;
+    final Sender sender;
     final ThreadPoolExecutor threadPoolExecutor;
     final Thread worker;
 
-    public MessageDispatcher(
+    public Dispatcher(
             String name,
             Host host,
             Set<Topic> topics,
@@ -38,7 +41,7 @@ public class MessageDispatcher {
         this.topics = topics;
         this.messageQueue = new LinkedBlockingQueue<>();
         this.threadPoolExecutor = threadPool;
-        this.messageSender = MessageSenderFactory.create(host);
+        this.sender = SenderFactory.create(host);
         this.worker = new Thread(() -> {
             while (!Thread.currentThread().isInterrupted() && !threadPool.isShutdown()) {
                 try {
@@ -48,7 +51,7 @@ public class MessageDispatcher {
                     }
                     threadPool.submit(() -> {
                         Message message = messageEntry.getKey();
-                        if (!messageSender.send(message).isAck()) {
+                        if (!sender.send(message).isAck()) {
                             messageQueue.add(Map.entry(message, messageEntry.getValue() + 1));
                         }
                     });
@@ -74,7 +77,7 @@ public class MessageDispatcher {
 
     @Override
     public boolean equals(Object o) {
-        if (!(o instanceof MessageDispatcher that)) {
+        if (!(o instanceof Dispatcher that)) {
             return false;
         }
         return Objects.equals(name, that.name) && Objects.equals(host, that.host);
@@ -121,8 +124,8 @@ public class MessageDispatcher {
             return this;
         }
 
-        public MessageDispatcher build() {
-            return new MessageDispatcher(
+        public Dispatcher build() {
+            return new Dispatcher(
                     name,
                     host,
                     subscribed,

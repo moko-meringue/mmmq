@@ -1,23 +1,23 @@
 package org.mmmq.broker.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.Map;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mmmq.broker.dispatcher.MessageDispatcher;
+import org.mmmq.broker.dispatcher.Dispatcher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.NONE,
-        classes = MessageDispatcherConfigurationTest.MessageDispatcherConfiguration.class
+        classes = DispatcherBrokerConfigurationTest.MessageDispatcherConfiguration.class
 )
-public class MessageDispatcherConfigurationTest {
+public class DispatcherBrokerConfigurationTest {
 
     @Autowired
     ApplicationContext applicationContext;
@@ -25,7 +25,7 @@ public class MessageDispatcherConfigurationTest {
     @Test
     @DisplayName("MessageDispatcher 빈이 정상적으로 생성된다.")
     void dispatcherBeanCreationTest() {
-        Map<String, MessageDispatcher> beans = applicationContext.getBeansOfType(MessageDispatcher.class);
+        Map<String, Dispatcher> beans = applicationContext.getBeansOfType(Dispatcher.class);
 
         assertThat(beans.keySet()).containsExactly("messageDispatcher");
     }
@@ -34,8 +34,8 @@ public class MessageDispatcherConfigurationTest {
     static class MessageDispatcherConfiguration {
 
         @Bean("messageDispatcher")
-        public MessageDispatcher messageDispatcher() {
-            return new MessageDispatcher.Builder("name", "http", "localhost", 8080)
+        public Dispatcher messageDispatcher() {
+            return new Dispatcher.Builder("name", "http", "localhost", 8080)
                     .withTopics("topic1", "topic2")
                     .build();
         }

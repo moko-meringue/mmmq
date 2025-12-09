@@ -1,12 +1,15 @@
-package org.mmmq.broker;
+package org.mmmq.broker.gateway;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.restassured.RestAssured;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
+import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mmmq.broker.broker.Broker;
+import org.mmmq.broker.Broker;
+import org.mmmq.broker.dispatcher.FrontDispatcher;
 import org.mmmq.core.message.Message;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -14,16 +17,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.Map;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import io.restassured.RestAssured;
 
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        classes = GatewayTest.TestConfiguration.class
+        classes = BrokerTest.TestConfiguration.class
 )
-class GatewayTest {
+class BrokerTest {
 
     @LocalServerPort
     int port;
@@ -53,12 +56,12 @@ class GatewayTest {
     @DisplayName("Manager는 전달받은 메시지를 브로커에게 전달할 수 있다.")
     void forwardToBrokerTest() {
         Message message = new Message("topic", Map.of("key", "value"));
-        Broker broker = mock(Broker.class);
-        Gateway Gateway = new Gateway(broker);
+        FrontDispatcher frontDispatcher = mock(FrontDispatcher.class);
+        Broker Broker = new Broker(frontDispatcher);
 
-        Gateway.postMessage(message);
+        Broker.postMessage(message);
 
-        verify(broker).push(message);
+        verify(frontDispatcher).push(message);
     }
 
     @Configuration

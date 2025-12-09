@@ -1,13 +1,22 @@
 package org.mmmq.producer;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withBadRequest;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+
+import java.net.InetAddress;
+import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.core.Host;
 import org.mmmq.core.acknowledgement.Acknowledgement;
-import org.mmmq.core.acknowledgement.GatewayAcknowledgement;
+import org.mmmq.core.acknowledgement.BrokerAcknowledgement;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.MessageDeliveryException;
 import org.springframework.boot.test.web.client.MockServerRestClientCustomizer;
@@ -17,14 +26,8 @@ import org.springframework.test.web.client.ExpectedCount;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
-import java.net.InetAddress;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 class GatewayTest {
 
@@ -80,7 +83,7 @@ class GatewayTest {
     void successReturnsAck() throws JsonProcessingException {
         Gateway gateway = new Gateway(host);
         Message message = new Message("test-topic", Map.of("key", "value"));
-        GatewayAcknowledgement expectedResponse = new GatewayAcknowledgement(Acknowledgement.ACK);
+        BrokerAcknowledgement expectedResponse = new BrokerAcknowledgement(Acknowledgement.ACK);
 
         server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
                 .andExpect(method(HttpMethod.POST))
@@ -90,7 +93,7 @@ class GatewayTest {
                 ));
 
         gateway.restClient = restClient;
-        GatewayAcknowledgement result = gateway.send(message);
+        BrokerAcknowledgement result = gateway.send(message);
 
         assertThat(result.isAck()).isTrue();
         server.verify();

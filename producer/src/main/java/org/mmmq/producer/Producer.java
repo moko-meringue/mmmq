@@ -2,26 +2,27 @@ package org.mmmq.producer;
 
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
+import org.mmmq.producer.exception.ProduceException;
 
-public class Publisher {
+public class Producer {
 
     static final int DEFAULT_MAX_RETRY_COUNT = 3;
 
     final Gateway gateway;
     final int maxRetryCount;
 
-    public Publisher(Host host) {
+    public Producer(Host host) {
         this.gateway = new Gateway(host);
         this.maxRetryCount = DEFAULT_MAX_RETRY_COUNT;
     }
 
-    public Publisher(Host host, int maxRetryCount) {
+    public Producer(Host host, int maxRetryCount) {
         this.gateway = new Gateway(host);
         this.maxRetryCount = maxRetryCount;
     }
 
-    public static PublisherBuilder builder(Host host) {
-        return new PublisherBuilder(host);
+    public static Builder builder(Host host) {
+        return new Builder(host);
     }
 
     public void publish(Message message) {
@@ -32,25 +33,25 @@ public class Publisher {
                 }
             }
         } catch (Exception e) {
-            throw new MessagePublishException("Failed to publish message", e);
+            throw new ProduceException("Failed to publish message", e);
         }
     }
 
-    public static class PublisherBuilder {
+    public static class Builder {
         private final Host host;
         private int maxRetryCount = DEFAULT_MAX_RETRY_COUNT;
 
-        public PublisherBuilder(Host host) {
+        public Builder(Host host) {
             this.host = host;
         }
 
-        public PublisherBuilder maxRetryCount(int maxRetryCount) {
+        public Builder maxRetryCount(int maxRetryCount) {
             this.maxRetryCount = maxRetryCount;
             return this;
         }
 
-        public Publisher build() {
-            return new Publisher(host, maxRetryCount);
+        public Producer build() {
+            return new Producer(host, maxRetryCount);
         }
     }
 }

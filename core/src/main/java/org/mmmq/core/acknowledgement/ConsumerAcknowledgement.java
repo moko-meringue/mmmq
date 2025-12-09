@@ -1,6 +1,6 @@
 package org.mmmq.core.acknowledgement;
 
-public record SubscriberAcknowledgement(
+public record ConsumerAcknowledgement(
         Acknowledgement acknowledgement
 ) {
 

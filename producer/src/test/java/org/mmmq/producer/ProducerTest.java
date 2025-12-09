@@ -1,29 +1,34 @@
 package org.mmmq.producer;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.Map;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.core.Host;
 import org.mmmq.core.acknowledgement.Acknowledgement;
-import org.mmmq.core.acknowledgement.GatewayAcknowledgement;
+import org.mmmq.core.acknowledgement.BrokerAcknowledgement;
 import org.mmmq.core.message.Message;
+import org.mmmq.producer.exception.ProduceException;
 import org.mockito.MockedConstruction;
 
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.*;
-
-class PublisherTest {
+class ProducerTest {
 
     @Test
     @DisplayName("기본 생성자는 기본 재시도 횟수를 설정한다")
     void constructorWithHostOnly() {
         Host host = mock(Host.class);
 
-        Publisher publisher = new Publisher(host);
+        Producer producer = new Producer(host);
 
-        assertThat(publisher.maxRetryCount).isEqualTo(Publisher.DEFAULT_MAX_RETRY_COUNT);
+        assertThat(producer.maxRetryCount).isEqualTo(Producer.DEFAULT_MAX_RETRY_COUNT);
     }
 
     @Test
@@ -32,9 +37,9 @@ class PublisherTest {
         Host host = mock(Host.class);
         int customRetryCount = 5;
 
-        Publisher publisher = new Publisher(host, customRetryCount);
+        Producer producer = new Producer(host, customRetryCount);
 
-        assertThat(publisher.maxRetryCount).isEqualTo(customRetryCount);
+        assertThat(producer.maxRetryCount).isEqualTo(customRetryCount);
     }
 
     @Test
@@ -42,7 +47,7 @@ class PublisherTest {
     void publishSuccess_NoRetry() {
         Host host = mock(Host.class);
         Message message = new Message("test-topic", Map.of("key", "value"));
-        GatewayAcknowledgement ackResponse = new GatewayAcknowledgement(Acknowledgement.ACK);
+        BrokerAcknowledgement ackResponse = new BrokerAcknowledgement(Acknowledgement.ACK);
 
         try (
                 MockedConstruction<Gateway> mockedGateway = mockConstruction(
@@ -51,8 +56,8 @@ class PublisherTest {
                 )
         ) {
 
-            Publisher publisher = new Publisher(host);
-            publisher.publish(message);
+            Producer producer = new Producer(host);
+            producer.publish(message);
 
             Gateway gateway = mockedGateway.constructed().get(0);
             verify(gateway, times(1)).send(message);
@@ -64,8 +69,8 @@ class PublisherTest {
     void publishRetryUntilSuccess() {
         Host host = mock(Host.class);
         Message message = new Message("test-topic", Map.of("key", "value"));
-        GatewayAcknowledgement nakResponse = new GatewayAcknowledgement(Acknowledgement.NACK);
-        GatewayAcknowledgement ackResponse = new GatewayAcknowledgement(Acknowledgement.ACK);
+        BrokerAcknowledgement nakResponse = new BrokerAcknowledgement(Acknowledgement.NACK);
+        BrokerAcknowledgement ackResponse = new BrokerAcknowledgement(Acknowledgement.ACK);
 
         try (
                 MockedConstruction<Gateway> mockedGateway = mockConstruction(
@@ -77,8 +82,8 @@ class PublisherTest {
                 )
         ) {
 
-            Publisher publisher = new Publisher(host);
-            publisher.publish(message);
+            Producer producer = new Producer(host);
+            producer.publish(message);
 
             Gateway gateway = mockedGateway.constructed().get(0);
             verify(gateway, times(3)).send(message);
@@ -90,7 +95,7 @@ class PublisherTest {
     void publishExceedMaxRetry() {
         Host host = mock(Host.class);
         Message message = new Message("test-topic", Map.of("key", "value"));
-        GatewayAcknowledgement nakResponse = new GatewayAcknowledgement(Acknowledgement.NACK);
+        BrokerAcknowledgement nakResponse = new BrokerAcknowledgement(Acknowledgement.NACK);
         int maxRetryCount = 2;
 
         try (
@@ -100,8 +105,8 @@ class PublisherTest {
                 )
         ) {
 
-            Publisher publisher = new Publisher(host, maxRetryCount);
-            publisher.publish(message);
+            Producer producer = new Producer(host, maxRetryCount);
+            producer.publish(message);
 
             Gateway gateway = mockedGateway.constructed().get(0);
             verify(gateway, times(maxRetryCount + 1)).send(message);
@@ -122,10 +127,10 @@ class PublisherTest {
                 )
         ) {
 
-            Publisher publisher = new Publisher(host);
+            Producer producer = new Producer(host);
 
-            assertThatThrownBy(() -> publisher.publish(message))
-                    .isInstanceOf(MessagePublishException.class)
+            assertThatThrownBy(() -> producer.publish(message))
+                    .isInstanceOf(ProduceException.class)
                     .hasMessage("Failed to publish message")
                     .hasCause(gatewayException);
         }

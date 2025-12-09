@@ -5,6 +5,6 @@ import org.springframework.context.annotation.ComponentScan;
 
 @AutoConfiguration
 @ComponentScan(basePackages = "org.mmmq.broker")
-public class MMMQAutoConfiguration {
+class BrokerConfiguration {
 
 }

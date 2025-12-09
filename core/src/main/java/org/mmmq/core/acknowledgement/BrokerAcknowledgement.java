@@ -1,6 +1,6 @@
 package org.mmmq.core.acknowledgement;
 
-public record GatewayAcknowledgement(
+public record BrokerAcknowledgement(
         Acknowledgement acknowledgement
 ) {
 
