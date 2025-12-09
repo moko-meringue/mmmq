@@ -1,10 +1,12 @@
-package org.mmmq.subscriber;
+package org.mmmq.subscriber.handler;
 
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.mmmq.core.message.Message;
+import org.mmmq.subscriber.handler.execution.HandlerExecution;
+import org.mmmq.subscriber.handler.execution.HandlerExecutions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -12,7 +14,7 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.PreDestroy;
 
 @Component
-public class FrontMessageHandler {
+public class FrontHandler {
 
     final Thread worker;
     final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(
@@ -22,11 +24,11 @@ public class FrontMessageHandler {
         TimeUnit.SECONDS,
         new LinkedBlockingQueue<>()
     );
-    final Logger log = LoggerFactory.getLogger(FrontMessageHandler.class);
-    final MessageHandlerContainer messageHandlerContainer = new MessageHandlerContainer();
+    final Logger log = LoggerFactory.getLogger(FrontHandler.class);
+    final HandlerExecutions handlerExecutions = new HandlerExecutions();
     final LinkedBlockingQueue<Message> queue = new LinkedBlockingQueue<>();
 
-    public FrontMessageHandler() {
+    public FrontHandler() {
         this.worker = new Thread(() -> {
             while (!Thread.currentThread().isInterrupted() && !threadPool.isShutdown()) {
                 try {
@@ -39,8 +41,8 @@ public class FrontMessageHandler {
         });
     }
 
-    void addMessageHandler(MessageHandler handler) {
-        messageHandlerContainer.add(handler);
+    public void addHandlerExecutions(HandlerExecution handlerExecution) {
+        handlerExecutions.add(handlerExecution);
     }
 
     public void handleMessage(Message message) {
@@ -48,10 +50,10 @@ public class FrontMessageHandler {
     }
 
     private void handle(Message message) {
-        messageHandlerContainer.getHandlers(message.topic())
-            .forEach(handler -> threadPool.execute(() -> {
+        handlerExecutions.getExecutions(message.topic())
+            .forEach(handlerExecution -> threadPool.execute(() -> {
                 try {
-                    handler.handle(message);
+                    handlerExecution.execute(message);
                 } catch (Exception e) {
                     log.warn("Failed to handle message: {}", message, e);
                 }

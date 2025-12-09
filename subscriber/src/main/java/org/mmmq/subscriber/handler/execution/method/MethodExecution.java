@@ -1,20 +1,24 @@
-package org.mmmq.subscriber;
-
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.mmmq.core.message.Message;
+package org.mmmq.subscriber.handler.execution.method;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-class MethodMessageHandler extends MessageHandler {
+import org.mmmq.core.message.Message;
+import org.mmmq.subscriber.exception.HandlerExecutionException;
+import org.mmmq.subscriber.exception.InvalidHandlerException;
+import org.mmmq.subscriber.handler.execution.HandlerExecution;
+
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+class MethodExecution extends HandlerExecution {
 
     final Object bean;
     final Method method;
     final JavaType parameterType;
     final ObjectMapper objectMapper;
 
-    MethodMessageHandler(String topic, Object bean, Method method, ObjectMapper objectMapper) {
+    MethodExecution(String topic, Object bean, Method method, ObjectMapper objectMapper) {
         super(bean.getClass().getCanonicalName() + "#" + method.getName(), topic);
         method.setAccessible(true);
         this.bean = bean;
@@ -25,25 +29,25 @@ class MethodMessageHandler extends MessageHandler {
 
     private JavaType getParameterType(Method method, ObjectMapper objectMapper) {
         if (method.getParameterCount() != 1) {
-            throw new InvalidMessageHandlerException("HandlerMethod must have exactly one parameter: " + name);
+            throw new InvalidHandlerException("MethodExecution must have exactly one parameter: " + name);
         }
         return objectMapper.constructType(method.getGenericParameterTypes()[0]);
     }
 
     @Override
-    public void handle(Message message) {
+    public void execute(Message message) {
         Object parameter = getParameter(message);
 
         try {
             method.invoke(bean, parameter);
         } catch (InvocationTargetException e) {
-            throw new MessageHandlerExecutionException(
-                    "Handler " + name + "threw an exception while processing.",
+            throw new HandlerExecutionException(
+                    "MethodExecution " + name + "threw an exception while processing.",
                     e.getCause()
             );
         } catch (Exception e) {
-            throw new MessageHandlerExecutionException(
-                    String.format("Unexpected error occurred during execute handler %s: %s", name, e),
+            throw new HandlerExecutionException(
+                    String.format("Unexpected error occurred during execute handler execution %s: %s", name, e),
                     e
             );
         }
@@ -53,8 +57,8 @@ class MethodMessageHandler extends MessageHandler {
         try {
             return objectMapper.convertValue(message.content(), parameterType);
         } catch (IllegalArgumentException e) {
-            throw new MessageHandlerExecutionException(
-                    String.format("Failed to convert parameter for handler '%s': %s", name, e.getMessage()),
+            throw new HandlerExecutionException(
+                    String.format("Failed to convert parameter for handler execution '%s': %s", name, e.getMessage()),
                     e
             );
         }

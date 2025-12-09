@@ -1,4 +1,4 @@
-package org.mmmq.subscriber;
+package org.mmmq.subscriber.handler.execution.method;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

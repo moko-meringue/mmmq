@@ -3,6 +3,7 @@ package org.mmmq.subscriber;
 import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.acknowledgement.SubscriberAcknowledgement;
 import org.mmmq.core.message.Message;
+import org.mmmq.subscriber.handler.FrontHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -15,17 +16,17 @@ public class MessageReceiver {
 
     private static final Logger log = LoggerFactory.getLogger(MessageReceiver.class);
 
-    final FrontMessageHandler frontMessageHandler;
+    final FrontHandler frontHandler;
 
-    public MessageReceiver(FrontMessageHandler frontMessageHandler) {
-        this.frontMessageHandler = frontMessageHandler;
+    public MessageReceiver(FrontHandler frontHandler) {
+        this.frontHandler = frontHandler;
     }
 
     @PostMapping("/messages")
     public ResponseEntity<SubscriberAcknowledgement> receiveMessage(@RequestBody Message message) {
         SubscriberAcknowledgement acknowledgement = new SubscriberAcknowledgement(Acknowledgement.ACK);
         try {
-            frontMessageHandler.handleMessage(message);
+            frontHandler.handleMessage(message);
         } catch (Exception e) {
             log.warn("Failed to receive message: {}", message, e);
             acknowledgement = new SubscriberAcknowledgement(Acknowledgement.NACK);

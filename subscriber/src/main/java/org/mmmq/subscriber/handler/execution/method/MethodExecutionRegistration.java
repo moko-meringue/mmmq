@@ -1,10 +1,12 @@
-package org.mmmq.subscriber;
+package org.mmmq.subscriber.handler.execution.method;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.mmmq.subscriber.exception.HandlerExecutionRegistrationException;
+import org.mmmq.subscriber.handler.FrontHandler;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
@@ -18,14 +20,14 @@ import org.springframework.util.ReflectionUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
-class MethodMessageHandlerRegistration implements BeanPostProcessor, SmartInitializingSingleton {
+class MethodExecutionRegistration implements BeanPostProcessor, SmartInitializingSingleton {
 
     final ObjectMapper objectMapper = new ObjectMapper();
-    final List<MethodMessageHandler> messageHandlers = new ArrayList<>();
-    final ObjectProvider<FrontMessageHandler> messageReceivedEventHandlerProvider;
+    final List<MethodExecution> methodExecutions = new ArrayList<>();
+    final ObjectProvider<FrontHandler> frontHandlerObjectProvider;
 
-    MethodMessageHandlerRegistration(ObjectProvider<FrontMessageHandler> messageReceivedEventHandlerProvider) {
-        this.messageReceivedEventHandlerProvider = messageReceivedEventHandlerProvider;
+    MethodExecutionRegistration(ObjectProvider<FrontHandler> frontHandlerObjectProvider) {
+        this.frontHandlerObjectProvider = frontHandlerObjectProvider;
     }
 
     @Override
@@ -39,27 +41,27 @@ class MethodMessageHandlerRegistration implements BeanPostProcessor, SmartInitia
     }
 
     private void registerMessageListener(Object bean, Method method, MMMQListener annotation) {
-        MethodMessageHandler messageHandler = new MethodMessageHandler(
+        MethodExecution methodExecution = new MethodExecution(
                 annotation.topic(),
                 bean,
                 method,
                 objectMapper
         );
-        messageHandlers.add(messageHandler);
+        methodExecutions.add(methodExecution);
     }
 
     @Override
     public void afterSingletonsInstantiated() {
         try {
-            messageReceivedEventHandlerProvider.ifAvailable(
-                    frontMessageHandler ->
-                            messageHandlers.forEach(frontMessageHandler::addMessageHandler)
+            frontHandlerObjectProvider.ifAvailable(
+                frontHandler -> methodExecutions.forEach(frontHandler::addHandlerExecutions)
             );
-            messageHandlers.clear();
+            methodExecutions.clear();
         } catch (BeansException e) {
-            throw new MessageHandlerRegistrationException("Failed to register message handlers.", e);
+            throw new HandlerExecutionRegistrationException("Failed to register HandlerExecution.", e);
         } catch (Exception e) {
-            throw new MessageHandlerRegistrationException("Unexpected error during message handler registration.", e);
+            throw new HandlerExecutionRegistrationException("Unexpected error during HandlerExecution registration.",
+                e);
         }
     }
 }
