@@ -1,6 +1,6 @@
 rootProject.name = 'mmmq'
 
 include 'core'
-include 'producer'
-include 'consumer'
-include 'broker'
+include 'publisher'
+include 'subscriber'
+include 'gateway'
