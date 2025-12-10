@@ -29,7 +29,7 @@ class DispatcherTest {
 
     @BeforeEach
     void setUp() {
-        dispatcher = new Dispatcher.Builder("name", "http", "localhost", 8080).build();
+        dispatcher = Dispatcher.builder("name", "http", "localhost", 8080).build();
     }
 
     @Test

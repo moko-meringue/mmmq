@@ -45,7 +45,7 @@ class ProducerTest {
 
     @Test
     @DisplayName("메시지 발행이 성공하면 재시도 없이 완료된다")
-    void publishSuccess_NoRetry() {
+    void produceSuccess_NoRetry() {
         Host host = mock(Host.class);
         Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
         BrokerAcknowledgement ackResponse = new BrokerAcknowledgement(Acknowledgement.ACK);
@@ -58,7 +58,7 @@ class ProducerTest {
         ) {
 
             Producer producer = new Producer(host);
-            producer.publish(message);
+            producer.produce(message);
 
             Gateway gateway = mockedGateway.constructed().get(0);
             verify(gateway, times(1)).send(message);
@@ -67,7 +67,7 @@ class ProducerTest {
 
     @Test
     @DisplayName("메시지 발행이 NAK이면 재시도하고 결국 성공한다")
-    void publishRetryUntilSuccess() {
+    void produceRetryUntilSuccess() {
         Host host = mock(Host.class);
         Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
         BrokerAcknowledgement nakResponse = new BrokerAcknowledgement(Acknowledgement.NACK);
@@ -84,7 +84,7 @@ class ProducerTest {
         ) {
 
             Producer producer = new Producer(host);
-            producer.publish(message);
+            producer.produce(message);
 
             Gateway gateway = mockedGateway.constructed().get(0);
             verify(gateway, times(3)).send(message);
@@ -93,7 +93,7 @@ class ProducerTest {
 
     @Test
     @DisplayName("최대 재시도 횟수까지 NAK이면 재시도를 중단한다")
-    void publishExceedMaxRetry() {
+    void produceExceedMaxRetry() {
         Host host = mock(Host.class);
         Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
         BrokerAcknowledgement nakResponse = new BrokerAcknowledgement(Acknowledgement.NACK);
@@ -107,7 +107,7 @@ class ProducerTest {
         ) {
 
             Producer producer = new Producer(host, maxRetryCount);
-            producer.publish(message);
+            producer.produce(message);
 
             Gateway gateway = mockedGateway.constructed().get(0);
             verify(gateway, times(maxRetryCount + 1)).send(message);
@@ -115,8 +115,8 @@ class ProducerTest {
     }
 
     @Test
-    @DisplayName("Gateway에서 예외가 발생하면 MessagePublishException을 던진다")
-    void publishThrowsException_WhenGatewayFails() {
+    @DisplayName("Gateway에서 예외가 발생하면 ProduceException을 던진다")
+    void produceThrowsException_WhenGatewayFails() {
         Host host = mock(Host.class);
         Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
         RuntimeException gatewayException = new RuntimeException("Gateway error");
@@ -127,12 +127,11 @@ class ProducerTest {
                         (mock, context) -> when(mock.send(message)).thenThrow(gatewayException)
                 )
         ) {
-
             Producer producer = new Producer(host);
 
-            assertThatThrownBy(() -> producer.publish(message))
+            assertThatThrownBy(() -> producer.produce(message))
                     .isInstanceOf(ProduceException.class)
-                    .hasMessage("Failed to publish message")
+                    .hasMessage("Failed to produce message")
                     .hasCause(gatewayException);
         }
     }

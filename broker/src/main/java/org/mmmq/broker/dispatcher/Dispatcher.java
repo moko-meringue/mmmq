@@ -67,6 +67,10 @@ public class Dispatcher {
         worker.start();
     }
 
+    public static Builder builder(String name, String webProtocol, String hostName, int port) {
+        return new Builder(name, webProtocol, hostName, port);
+    }
+
     public void push(Message message) {
         messageQueue.add(Map.entry(message, 0));
     }
@@ -107,7 +111,7 @@ public class Dispatcher {
         private final Set<Topic> subscribed = new HashSet<>();
         private ThreadPoolExecutor threadPool = DEFAULT_THREAD_POOL_EXECUTOR;
 
-        public Builder(String name, String webProtocol, String hostName, int port) {
+        private Builder(String name, String webProtocol, String hostName, int port) {
             this.name = name;
             this.host = new Host(webProtocol, hostName, port);
         }

@@ -35,7 +35,7 @@ public class DispatcherBrokerConfigurationTest {
 
         @Bean("messageDispatcher")
         public Dispatcher messageDispatcher() {
-            return new Dispatcher.Builder("name", "http", "localhost", 8080)
+            return Dispatcher.builder("name", "http", "localhost", 8080)
                     .withTopics("topic1", "topic2")
                     .build();
         }

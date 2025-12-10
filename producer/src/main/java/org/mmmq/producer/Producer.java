@@ -25,7 +25,7 @@ public class Producer {
         return new Builder(host);
     }
 
-    public void publish(Message message) {
+    public void produce(Message message) {
         try {
             for (int retryCount = 0; retryCount <= maxRetryCount; retryCount++) {
                 if (gateway.send(message).isAck()) {
@@ -33,7 +33,7 @@ public class Producer {
                 }
             }
         } catch (Exception e) {
-            throw new ProduceException("Failed to publish message", e);
+            throw new ProduceException("Failed to produce message", e);
         }
     }
 
@@ -41,7 +41,7 @@ public class Producer {
         private final Host host;
         private int maxRetryCount = DEFAULT_MAX_RETRY_COUNT;
 
-        public Builder(Host host) {
+        private Builder(Host host) {
             this.host = host;
         }
 
