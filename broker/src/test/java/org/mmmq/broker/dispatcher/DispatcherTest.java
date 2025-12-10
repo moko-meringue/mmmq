@@ -1,6 +1,7 @@
 package org.mmmq.broker.dispatcher;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -77,6 +78,24 @@ class DispatcherTest {
     }
 
     @Test
+    @DisplayName("메시지 실행 테스트")
+    void executeTest() {
+        dispatcher.startWorker();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        dispatcher.sender = new Sender(null) {
+            @Override
+            public ConsumerAcknowledgement send(Message message1) {
+                latch.countDown();
+                return new ConsumerAcknowledgement(Acknowledgement.ACK);
+            }
+        };
+        Message message = new Message(new Topic("test"), Map.of("key", "value"));
+        dispatcher.push(message);
+        assertThatCode(latch::await).doesNotThrowAnyException();
+    }
+
+    @Test
     @DisplayName("ACK가 오면 메시지를 재전송하지 않는다.")
     void ackTest() throws Exception {
         dispatcher.startWorker();
@@ -114,14 +133,29 @@ class DispatcherTest {
     @DisplayName("isSubscribing 테스트")
     void isSubscribingTest() {
         dispatcher.topics.addAll(
-                Set.of(
-                        new Topic("topic1"),
-                        new Topic("topic2")
-                )
+            Set.of(
+                new Topic("topic1"),
+                new Topic("topic2")
+            )
         );
 
         assertThat(dispatcher.isSubscribing(new Topic("topic1"))).isTrue();
         assertThat(dispatcher.isSubscribing(new Topic("topic2"))).isTrue();
         assertThat(dispatcher.isSubscribing(new Topic("topic3"))).isFalse();
+    }
+
+    class FakeSender extends Sender {
+
+        int sendCount = 0;
+
+        public FakeSender() {
+            super(null);
+        }
+
+        @Override
+        public ConsumerAcknowledgement send(Message message) {
+            sendCount++;
+            return new ConsumerAcknowledgement(Acknowledgement.ACK);
+        }
     }
 }

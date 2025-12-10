@@ -26,7 +26,7 @@ public class Consumer {
     public ResponseEntity<ConsumerAcknowledgement> receiveMessage(@RequestBody Message message) {
         ConsumerAcknowledgement acknowledgement = new ConsumerAcknowledgement(Acknowledgement.ACK);
         try {
-            frontHandler.handleMessage(message);
+            frontHandler.handle(message);
         } catch (Exception e) {
             log.warn("Failed to receive message: {}", message, e);
             acknowledgement = new ConsumerAcknowledgement(Acknowledgement.NACK);

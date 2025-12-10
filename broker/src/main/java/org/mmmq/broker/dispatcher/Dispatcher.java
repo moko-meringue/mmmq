@@ -26,7 +26,7 @@ public class Dispatcher {
     final Host host;
     final Set<Topic> topics;
     final LinkedBlockingQueue<Map.Entry<Message, Integer>> messageQueue;
-    final Sender sender;
+     Sender sender;
     final ThreadPoolExecutor threadPoolExecutor;
     final Thread worker;
 
@@ -64,7 +64,7 @@ public class Dispatcher {
 
     @PostConstruct
     public void startWorker() {
-        this.worker.start();
+        worker.start();
     }
 
     public void push(Message message) {
@@ -114,13 +114,13 @@ public class Dispatcher {
 
         public Builder withTopics(String... topics) {
             for (String topic : topics) {
-                this.subscribed.add(new Topic(topic));
+                subscribed.add(new Topic(topic));
             }
             return this;
         }
 
         public Builder threadPool(ThreadPoolExecutor executor) {
-            this.threadPool = executor;
+            threadPool = executor;
             return this;
         }
 
