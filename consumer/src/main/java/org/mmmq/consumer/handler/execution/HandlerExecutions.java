@@ -9,7 +9,7 @@ import org.mmmq.core.message.Topic;
 
 public class HandlerExecutions {
 
-    private final Map<Topic, List<HandlerExecution>> executions = new HashMap<>();
+    final Map<Topic, List<HandlerExecution>> executions = new HashMap<>();
 
     public void add(HandlerExecution execution) {
         executions.computeIfAbsent(execution.getTopic(), topic -> new ArrayList<>()).add(execution);
@@ -17,5 +17,9 @@ public class HandlerExecutions {
 
     public List<HandlerExecution> getExecutions(Topic topic) {
         return executions.getOrDefault(topic, new ArrayList<>());
+    }
+
+    public int size() {
+        return executions.size();
     }
 }
