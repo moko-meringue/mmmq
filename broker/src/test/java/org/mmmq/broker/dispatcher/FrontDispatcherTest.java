@@ -1,15 +1,13 @@
-package org.mmmq.broker;
+package org.mmmq.broker.dispatcher;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mmmq.broker.dispatcher.Dispatcher;
-import org.mmmq.broker.dispatcher.FrontDispatcher;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 import org.mockito.Mockito;
@@ -20,7 +18,8 @@ class FrontDispatcherTest {
     @DisplayName("Broker는 메시지를 받으면 적절한 MessageDispatcher에 전달할 수 있다.")
     void forwardMessageTest() {
         Dispatcher dispatcher = Mockito.mock(Dispatcher.class);
-        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher));
+        FrontDispatcher frontDispatcher = new FrontDispatcher(new DispatcherContainer(new ArrayList<>(), null));
+        frontDispatcher.dispatcherContainer.add(dispatcher);
         when(dispatcher.isSubscribing(new Topic("topic1"))).thenReturn(true);
 
         Message message = new Message(new Topic("topic1"), Map.of("key1", "value"));

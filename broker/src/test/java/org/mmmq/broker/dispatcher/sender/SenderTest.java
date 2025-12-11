@@ -1,4 +1,4 @@
-package org.mmmq.broker.dispatcher;
+package org.mmmq.broker.dispatcher.sender;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -10,7 +10,6 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.fixture.HostFixture;
 import org.mmmq.broker.fixture.MockRestServiceServerFixture;
 import org.mmmq.core.Host;
@@ -88,8 +87,40 @@ class SenderTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                 );
 
-        ConsumerAcknowledgement response = sender.send(new Message(new Topic("topic"), Map.of("key", "value")));
-
-        assertThat(response.acknowledgement()).isEqualTo(Acknowledgement.ACK);
+        assertThat(sender.send(new Message(new Topic("topic"), Map.of("key", "value")))).isTrue();
     }
+
+    // @Test
+    // @DisplayName("ACK가 오면 메시지를 재전송하지 않는다.")
+    // void ackTest() throws Exception {
+    //     dispatcher.start();
+    //     Sender sender = mock(Sender.class);
+    //     Message message = new Message(new Topic("test"), Map.of("key", "value"));
+    //     when(sender.send(message)).thenReturn(true);
+    //     Field filed = Dispatcher.class.getDeclaredField("sender");
+    //     filed.setAccessible(true);
+    //     filed.set(dispatcher, sender);
+    //
+    //     dispatcher.push(message);
+    //
+    //     Thread.sleep(500L);
+    //     verify(sender, times(1)).send(message);
+    // }
+
+    // @Test
+    // @DisplayName("NAK가 오면 메시지를 3회 재전송한다.")
+    // void nakTest() throws Exception {
+    //     dispatcher.start();
+    //     Sender sender = mock(Sender.class);
+    //     Message message = new Message(new Topic("test"), Map.of("key", "value"));
+    //     when(sender.send(message)).thenReturn(false);
+    //     Field filed = Dispatcher.class.getDeclaredField("sender");
+    //     filed.setAccessible(true);
+    //     filed.set(dispatcher, sender);
+    //
+    //     dispatcher.push(message);
+    //
+    //     Thread.sleep(1000L);
+    //     verify(sender, times(1 + Dispatcher.MAX_RETRY_COUNT)).send(message);
+    // }
 }

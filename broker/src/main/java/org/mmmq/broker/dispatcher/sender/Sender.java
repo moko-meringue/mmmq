@@ -13,13 +13,32 @@ public class Sender {
         this.restClient = restClient;
     }
 
-    public ConsumerAcknowledgement send(Message message) {
+    public boolean send(Message message, int maxRetryCount) {
+        for (int tryCount = 0; tryCount < maxRetryCount; tryCount++) {
+            try {
+                if (send(message)) {
+                    return true;
+                }
+            } catch (Exception e) {
+                if (tryCount == maxRetryCount - 1) {
+                    throw e;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean send(Message message) {
+        return post(message).isAck();
+    }
+
+    ConsumerAcknowledgement post(Message message) {
         return restClient.post()
-                .uri("/messages")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(message)
-                .retrieve()
-                .toEntity(ConsumerAcknowledgement.class)
-                .getBody();
+            .uri("/messages")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(message)
+            .retrieve()
+            .toEntity(ConsumerAcknowledgement.class)
+            .getBody();
     }
 }

@@ -1,4 +1,4 @@
-package org.mmmq.broker.gateway;
+package org.mmmq.broker;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -8,7 +8,6 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mmmq.broker.Broker;
 import org.mmmq.broker.dispatcher.FrontDispatcher;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;

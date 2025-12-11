@@ -62,9 +62,23 @@ class FrontHandlerTest {
 
     @Test
     @DisplayName("메시지 실행 테스트")
-    void executeTest() {
-        FakeHandlerExecution fakeHandlerExecutionA = new FakeHandlerExecution(new Topic("topic a"));
-        FakeHandlerExecution fakeHandlerExecutionB = new FakeHandlerExecution(new Topic("topic b"));
+    void executeTest() throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(3);
+        
+        FakeHandlerExecution fakeHandlerExecutionA = new FakeHandlerExecution(new Topic("topic a")) {
+            @Override
+            public void execute(Message message) {
+                super.execute(message);
+                latch.countDown();
+            }
+        };
+        FakeHandlerExecution fakeHandlerExecutionB = new FakeHandlerExecution(new Topic("topic b")) {
+            @Override
+            public void execute(Message message) {
+                super.execute(message);
+                latch.countDown();
+            }
+        };
 
         frontHandler.addHandlerExecutions(fakeHandlerExecutionA);
         frontHandler.addHandlerExecutions(fakeHandlerExecutionB);
@@ -75,6 +89,8 @@ class FrontHandlerTest {
         frontHandler.execute(messageA);
         frontHandler.execute(messageB);
         frontHandler.execute(messageB);
+
+        latch.await();
 
         assertThat(fakeHandlerExecutionA.executionCount).isEqualTo(1);
         assertThat(fakeHandlerExecutionB.executionCount).isEqualTo(2);

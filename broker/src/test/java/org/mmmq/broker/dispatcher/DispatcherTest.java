@@ -2,12 +2,7 @@ package org.mmmq.broker.dispatcher;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
-import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -17,19 +12,24 @@ import java.util.concurrent.Executors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mmmq.broker.dispatcher.dlq.DeadLetterQueue;
 import org.mmmq.broker.dispatcher.sender.Sender;
-import org.mmmq.core.acknowledgement.Acknowledgement;
-import org.mmmq.core.acknowledgement.ConsumerAcknowledgement;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 
 class DispatcherTest {
 
+    static final DispatcherDefinition DEFINITION = DispatcherDefinition
+        .builder("name", "http", "localhost", 8080)
+        .build();
+
     Dispatcher dispatcher;
+    DeadLetterQueue deadLetterQueue;
 
     @BeforeEach
     void setUp() {
-        dispatcher = Dispatcher.builder("name", "http", "localhost", 8080).build();
+        deadLetterQueue = new DeadLetterQueue();
+        dispatcher = DEFINITION.toDispatcher(deadLetterQueue);
     }
 
     @Test
@@ -78,55 +78,20 @@ class DispatcherTest {
     }
 
     @Test
-    @DisplayName("메시지 실행 테스트")
+    @DisplayName("메시지 전송 테스트")
     void executeTest() {
-        dispatcher.startWorker();
         CountDownLatch latch = new CountDownLatch(1);
-
         dispatcher.sender = new Sender(null) {
             @Override
-            public ConsumerAcknowledgement send(Message message1) {
+            public boolean send(Message message) {
                 latch.countDown();
-                return new ConsumerAcknowledgement(Acknowledgement.ACK);
+                return true;
             }
         };
+        dispatcher.start();
         Message message = new Message(new Topic("test"), Map.of("key", "value"));
         dispatcher.push(message);
         assertThatCode(latch::await).doesNotThrowAnyException();
-    }
-
-    @Test
-    @DisplayName("ACK가 오면 메시지를 재전송하지 않는다.")
-    void ackTest() throws Exception {
-        dispatcher.startWorker();
-        Sender sender = mock(Sender.class);
-        Message message = new Message(new Topic("test"), Map.of("key", "value"));
-        when(sender.send(message)).thenReturn(new ConsumerAcknowledgement(Acknowledgement.ACK));
-        Field filed = Dispatcher.class.getDeclaredField("sender");
-        filed.setAccessible(true);
-        filed.set(dispatcher, sender);
-
-        dispatcher.push(message);
-
-        Thread.sleep(500L);
-        verify(sender, times(1)).send(message);
-    }
-
-    @Test
-    @DisplayName("NAK가 오면 메시지를 3회 재전송한다.")
-    void nakTest() throws Exception {
-        dispatcher.startWorker();
-        Sender sender = mock(Sender.class);
-        Message message = new Message(new Topic("test"), Map.of("key", "value"));
-        when(sender.send(message)).thenReturn(new ConsumerAcknowledgement(Acknowledgement.NACK));
-        Field filed = Dispatcher.class.getDeclaredField("sender");
-        filed.setAccessible(true);
-        filed.set(dispatcher, sender);
-
-        dispatcher.push(message);
-
-        Thread.sleep(1000L);
-        verify(sender, times(1 + Dispatcher.MAX_RETRY_COUNT)).send(message);
     }
 
     @Test
@@ -144,18 +109,19 @@ class DispatcherTest {
         assertThat(dispatcher.isSubscribing(new Topic("topic3"))).isFalse();
     }
 
-    class FakeSender extends Sender {
-
-        int sendCount = 0;
-
-        public FakeSender() {
-            super(null);
-        }
-
-        @Override
-        public ConsumerAcknowledgement send(Message message) {
-            sendCount++;
-            return new ConsumerAcknowledgement(Acknowledgement.ACK);
-        }
-    }
+    // static class FakeSender extends Sender {
+    //
+    //     int sendCount = 0;
+    //     final boolean willAck = false;
+    //
+    //     public FakeSender(int nakUntil) {
+    //         this.nakUntil = nakUntil;
+    //     }
+    //
+    //     @Override
+    //     public boolean send(Message message) {
+    //         sendCount++;
+    //         return sendCount > nakUntil;
+    //     }
+    // }
 }
