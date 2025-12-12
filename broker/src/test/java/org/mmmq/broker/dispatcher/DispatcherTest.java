@@ -1,12 +1,7 @@
 package org.mmmq.broker.dispatcher;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.mmmq.broker.dispatcher.dlq.DeadLetterQueue;
-import org.mmmq.broker.dispatcher.sender.Sender;
-import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Topic;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.util.Map;
 import java.util.Set;
@@ -14,22 +9,24 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mmmq.broker.dispatcher.sender.Sender;
+import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Topic;
 
 class DispatcherTest {
 
     static final DispatcherDefinition DEFINITION = DispatcherDefinition
-            .builder("name", "http", "localhost", 8080)
-            .build();
+        .builder("name", "http", "localhost", 8080)
+        .build();
 
     Dispatcher dispatcher;
-    DeadLetterQueue deadLetterQueue;
 
     @BeforeEach
     void setUp() {
-        deadLetterQueue = new DeadLetterQueue();
-        dispatcher = DEFINITION.toDispatcher(deadLetterQueue);
+        dispatcher = DEFINITION.toDispatcher();
     }
 
     @Test
@@ -98,10 +95,10 @@ class DispatcherTest {
     @DisplayName("isSubscribing 테스트")
     void isSubscribingTest() {
         dispatcher.topics.addAll(
-                Set.of(
-                        new Topic("topic1"),
-                        new Topic("topic2")
-                )
+            Set.of(
+                new Topic("topic1"),
+                new Topic("topic2")
+            )
         );
 
         assertThat(dispatcher.isSubscribing(new Topic("topic1"))).isTrue();

@@ -1,5 +1,11 @@
 package org.mmmq.broker.dispatcher;
 
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 import org.mmmq.broker.dispatcher.dlq.DeadLetter;
 import org.mmmq.broker.dispatcher.dlq.DeadLetterQueue;
 import org.mmmq.broker.dispatcher.sender.Sender;
@@ -8,12 +14,6 @@ import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 public class Dispatcher {
 
@@ -30,11 +30,11 @@ public class Dispatcher {
     Sender sender;
 
     public Dispatcher(
-            String name,
-            Host host,
-            Set<Topic> topics,
-            ThreadPoolExecutor threadPool,
-            DeadLetterQueue deadLetterQueue
+        String name,
+        Host host,
+        Set<Topic> topics,
+        ThreadPoolExecutor threadPool,
+        DeadLetterQueue deadLetterQueue
     ) {
         this.name = name;
         this.host = host;

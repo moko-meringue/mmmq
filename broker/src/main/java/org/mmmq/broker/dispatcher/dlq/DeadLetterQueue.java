@@ -1,16 +1,29 @@
 package org.mmmq.broker.dispatcher.dlq;
 
-import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Component
-public class DeadLetterQueue {
+public abstract class DeadLetterQueue {
 
-    final Queue<DeadLetter> queue = new LinkedBlockingQueue<>();
+    private static final Logger log = LoggerFactory.getLogger(DeadLetterQueue.class);
+
+    protected final String name;
+    protected final BlockingQueue<DeadLetter> deadLetterQueue = new LinkedBlockingQueue<>();
+
+    public DeadLetterQueue(String name) {
+        this.name = name;
+    }
 
     public void add(DeadLetter deadLetter) {
-        queue.add(deadLetter);
+        deadLetterQueue.add(deadLetter);
+    }
+
+    void start() {
+    }
+
+    void stop() {
     }
 }
