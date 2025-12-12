@@ -1,6 +1,8 @@
 package org.mmmq.broker.dispatcher;
 
 import jakarta.annotation.Nullable;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.mmmq.broker.dispatcher.dlq.DeadLetter;
 import org.mmmq.broker.dispatcher.dlq.DeadLetterQueue;
 import org.mmmq.broker.dispatcher.sender.Sender;
@@ -24,7 +26,6 @@ public class Dispatcher {
     final Host host;
     final Set<Topic> topics;
     final LinkedBlockingQueue<Message> messageQueue;
-    @Nullable
     final DeadLetterQueue deadLetterQueue;
     final ThreadPoolExecutor threadPool;
     final Worker worker;
@@ -43,7 +44,7 @@ public class Dispatcher {
         this.host = host;
         this.topics = topics;
         this.messageQueue = messageQueue;
-        this.deadLetterQueue = deadLetterQueue;
+        this.deadLetterQueue = deadLetterQueue == null ? DeadLetterQueue.NO_OP : deadLetterQueue;
         this.worker = new Worker();
         this.threadPool = threadPool;
         this.sender = sender;
@@ -87,9 +88,7 @@ public class Dispatcher {
 
     void start() {
         worker.start();
-        if (deadLetterQueue != null) {
-            deadLetterQueue.start();
-        }
+        deadLetterQueue.start();
     }
 
     void stop() {
@@ -102,9 +101,8 @@ public class Dispatcher {
             threadPool.shutdownNow();
         }
         worker.stop();
-        if (deadLetterQueue != null) {
-            deadLetterQueue.stop();
-        }
+
+        deadLetterQueue.stop();
     }
 
     private class Worker {
@@ -157,9 +155,7 @@ public class Dispatcher {
 
             void handleFailure(DeadLetter deadLetter) {
                 log.warn("Failed to send message: {}", deadLetter);
-                if (deadLetterQueue != null) {
-                    deadLetterQueue.add(deadLetter);
-                }
+                deadLetterQueue.add(deadLetter);
             }
         }
     }

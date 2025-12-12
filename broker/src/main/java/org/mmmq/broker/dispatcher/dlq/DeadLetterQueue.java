@@ -1,13 +1,14 @@
 package org.mmmq.broker.dispatcher.dlq;
 
 import org.mmmq.broker.dispatcher.dlq.handler.DeadLetterHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public abstract class DeadLetterQueue {
 
-    private static final Logger log = LoggerFactory.getLogger(DeadLetterQueue.class);
-
+    public static final DeadLetterQueue NO_OP = new DeadLetterQueue(null, null) {
+        @Override
+        public void add(DeadLetter deadLetter) {
+        }
+    };
     protected final String name;
     protected final DeadLetterHandler handler;
 
