@@ -1,19 +1,19 @@
 package org.mmmq.consumer.handler;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
+
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 class FrontHandlerTest {
 
@@ -86,6 +86,8 @@ class FrontHandlerTest {
         Message messageA = new Message(new Topic("topic a"), Map.of("key", "value A"));
         Message messageB = new Message(new Topic("topic b"), Map.of("key", "value B"));
 
+        frontHandler.start();
+
         frontHandler.handle(messageA);
         frontHandler.handle(messageB);
         frontHandler.handle(messageB);
@@ -120,7 +122,7 @@ class FrontHandlerTest {
     }
 
     class FakeHandlerExecution extends HandlerExecution {
-        volatile int executionCount = 0;
+        int executionCount = 0;
 
         protected FakeHandlerExecution(Topic topic) {
             super("FakeHandlerExecution", topic);
@@ -128,7 +130,9 @@ class FrontHandlerTest {
 
         @Override
         public void execute(Message message) {
-            executionCount++;
+            synchronized (this) {
+                executionCount++;
+            }
         }
     }
 }
