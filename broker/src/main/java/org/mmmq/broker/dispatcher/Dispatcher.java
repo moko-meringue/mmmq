@@ -70,19 +70,6 @@ public class Dispatcher {
         worker.stop();
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof Dispatcher that)) {
-            return false;
-        }
-        return Objects.equals(name, that.name) && Objects.equals(host, that.host);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(name, host);
-    }
-
     private class Worker {
 
         final Thread thread;
