@@ -18,12 +18,13 @@ public class CounterDeadLetterQueue extends DeadLetterQueue {
     private static final Logger log = LoggerFactory.getLogger(CounterDeadLetterQueue.class);
     protected final BlockingQueue<DeadLetter> deadLetterQueue = new LinkedBlockingQueue<>();
     private final int capacity;
-    private final Worker worker = new Worker(name);// MOKO: super.name -> name
+    private final Worker worker;
     private final AtomicInteger counter = new AtomicInteger(0); // MOKO: 이거 필요없는거같은데..? size() 쓰면 안됨?
 
     public CounterDeadLetterQueue(String name, DeadLetterHandler handler, int capacity) {
         super(name, handler);
         this.capacity = capacity;
+        this.worker = new Worker();
     }
 
     @Override
@@ -55,7 +56,7 @@ public class CounterDeadLetterQueue extends DeadLetterQueue {
         final Lock lock = new ReentrantLock();
         final Condition condition = lock.newCondition();
 
-        Worker(String name) {
+        Worker() {
             this.thread = new Thread(
                     () -> {
                         while (!Thread.currentThread().isInterrupted()) {
