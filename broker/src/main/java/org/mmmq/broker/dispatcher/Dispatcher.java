@@ -94,6 +94,7 @@ public class Dispatcher {
 
     @PreDestroy
     void stop() {
+        worker.stop();
         threadPool.shutdown();
         try {
             if (!threadPool.awaitTermination(5, TimeUnit.SECONDS)) {
@@ -102,8 +103,6 @@ public class Dispatcher {
         } catch (InterruptedException e) {
             threadPool.shutdownNow();
         }
-        worker.stop();
-
         deadLetterQueue.stop();
     }
 
