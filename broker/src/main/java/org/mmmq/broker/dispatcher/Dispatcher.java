@@ -1,11 +1,6 @@
 package org.mmmq.broker.dispatcher;
 
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
+import jakarta.annotation.Nullable;
 import org.mmmq.broker.dispatcher.dlq.DeadLetter;
 import org.mmmq.broker.dispatcher.dlq.DeadLetterQueue;
 import org.mmmq.broker.dispatcher.sender.Sender;
@@ -14,6 +9,11 @@ import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Set;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class Dispatcher {
 
@@ -24,17 +24,18 @@ public class Dispatcher {
     final Host host;
     final Set<Topic> topics;
     final LinkedBlockingQueue<Message> messageQueue;
+    @Nullable
     final DeadLetterQueue deadLetterQueue;
     final Worker worker;
     final ThreadPoolExecutor threadPool;
     Sender sender;
 
     public Dispatcher(
-        String name,
-        Host host,
-        Set<Topic> topics,
-        ThreadPoolExecutor threadPool,
-        DeadLetterQueue deadLetterQueue
+            String name,
+            Host host,
+            Set<Topic> topics,
+            ThreadPoolExecutor threadPool,
+            @Nullable DeadLetterQueue deadLetterQueue
     ) {
         this.name = name;
         this.host = host;
@@ -56,6 +57,9 @@ public class Dispatcher {
 
     void start() {
         worker.start();
+        if (deadLetterQueue != null) {
+            deadLetterQueue.start();
+        }
     }
 
     void stop() {
@@ -68,6 +72,9 @@ public class Dispatcher {
             threadPool.shutdownNow();
         }
         worker.stop();
+        if (deadLetterQueue != null) {
+            deadLetterQueue.stop();
+        }
     }
 
     private class Worker {
@@ -120,7 +127,9 @@ public class Dispatcher {
 
             void handleFailure(DeadLetter deadLetter) {
                 log.warn("Failed to send message: {}", deadLetter);
-                deadLetterQueue.add(deadLetter);
+                if (deadLetterQueue != null) {
+                    deadLetterQueue.add(deadLetter);
+                }
             }
         }
     }
