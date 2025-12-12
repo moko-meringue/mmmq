@@ -95,10 +95,14 @@ public class CounterDeadLetterQueue extends DeadLetterQueue {
         }
 
         void handleDeadLetters() {
-            List<DeadLetter> deadLetters = new ArrayList<>();
-            deadLetterQueue.drainTo(deadLetters);
-            handler.handle(deadLetters);
-            counter.addAndGet(-deadLetters.size());
+            try {
+                List<DeadLetter> deadLetters = new ArrayList<>();
+                deadLetterQueue.drainTo(deadLetters);
+                handler.handle(deadLetters);
+                counter.addAndGet(-deadLetters.size());
+            } catch (Exception e) {
+                log.error("Failed to handle dead letters", e);
+            }
         }
 
         void start() {
@@ -112,6 +116,8 @@ public class CounterDeadLetterQueue extends DeadLetterQueue {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
+            log.info("Flushing remaining dead letters...");
+            handleDeadLetters();
         }
     }
 }
