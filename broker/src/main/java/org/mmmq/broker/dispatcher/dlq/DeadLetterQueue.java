@@ -1,8 +1,6 @@
 package org.mmmq.broker.dispatcher.dlq;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-
+import org.mmmq.broker.dispatcher.dlq.handler.DeadLetterHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,19 +9,18 @@ public abstract class DeadLetterQueue {
     private static final Logger log = LoggerFactory.getLogger(DeadLetterQueue.class);
 
     protected final String name;
-    protected final BlockingQueue<DeadLetter> deadLetterQueue = new LinkedBlockingQueue<>();
+    protected final DeadLetterHandler handler;
 
-    public DeadLetterQueue(String name) {
+    public DeadLetterQueue(String name, DeadLetterHandler handler) {
         this.name = name;
+        this.handler = handler;
     }
 
-    public void add(DeadLetter deadLetter) {
-        deadLetterQueue.add(deadLetter);
+    public abstract void add(DeadLetter deadLetter);
+
+    public void start() {
     }
 
-    void start() {
-    }
-
-    void stop() {
+    public void stop() {
     }
 }

@@ -1,40 +1,34 @@
 package org.mmmq.broker.dispatcher.dlq;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import org.mmmq.broker.dispatcher.dlq.handler.DeadLetterHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 public class CounterDeadLetterQueue extends DeadLetterQueue {
 
     private static final Logger log = LoggerFactory.getLogger(CounterDeadLetterQueue.class);
-
+    protected final BlockingQueue<DeadLetter> deadLetterQueue = new LinkedBlockingQueue<>();
     private final int capacity;
-    private final Worker worker = new Worker(super.name);
-    private final AtomicInteger counter = new AtomicInteger(0);
-    private final Path storagePath;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Worker worker = new Worker(name);// MOKO: super.name -> name
+    private final AtomicInteger counter = new AtomicInteger(0); // MOKO: 이거 필요없는거같은데..? size() 쓰면 안됨?
 
-    public CounterDeadLetterQueue(String name, int capacity, Path storagePath) {
-        super(name);
+    public CounterDeadLetterQueue(String name, DeadLetterHandler handler, int capacity) {
+        super(name, handler);
         this.capacity = capacity;
-        this.storagePath = storagePath;
     }
 
     @Override
     public void add(DeadLetter deadLetter) {
-        super.add(deadLetter);
+        deadLetterQueue.add(deadLetter);
         counter.incrementAndGet();
         if (canWrite()) {
             worker.write();
@@ -46,12 +40,12 @@ public class CounterDeadLetterQueue extends DeadLetterQueue {
     }
 
     @Override
-    void start() {
+    public void start() {
         worker.start();
     }
 
     @Override
-    void stop() {
+    public void stop() {
         worker.stop();
     }
 
@@ -62,12 +56,14 @@ public class CounterDeadLetterQueue extends DeadLetterQueue {
         final Condition condition = lock.newCondition();
 
         Worker(String name) {
-            this.thread = new Thread(() -> {
-                while (!Thread.currentThread().isInterrupted()) {
-                    await();
-                    writeDeadLettersToFile();
-                }
-            }, "mmmq-dlq" + "-" + name + "-worker");
+            this.thread = new Thread(
+                    () -> {
+                        while (!Thread.currentThread().isInterrupted()) {
+                            await();
+                            writeDeadLettersToFile();
+                        }
+                    }, "mmmq-dlq" + "-" + name + "-worker"
+            );
         }
 
         void await() {
@@ -98,29 +94,10 @@ public class CounterDeadLetterQueue extends DeadLetterQueue {
         }
 
         void writeDeadLettersToFile() {
-            try {
-                List<DeadLetter> deadLetters = new ArrayList<>();
-                deadLetterQueue.drainTo(deadLetters);
-                
-                if (!deadLetters.isEmpty()) {
-                    String fileName = generateFileName();
-                    Path filePath = storagePath.resolve(fileName);
-                    
-                    Files.createDirectories(storagePath);
-                    String jsonContent = objectMapper.writerWithDefaultPrettyPrinter()
-                            .writeValueAsString(deadLetters);
-                    
-                    Files.writeString(filePath, jsonContent, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-                    
-                    counter.addAndGet(-deadLetters.size());
-                }
-            } catch (IOException e) {
-                log.error("Failed to write dead letters to file", e);
-            }
-        }
-
-        private String generateFileName() {
-            return String.format("dead-letters-%s.json", name);
+            List<DeadLetter> deadLetters = new ArrayList<>();
+            deadLetterQueue.drainTo(deadLetters);
+            handler.handle(deadLetters);
+            counter.addAndGet(-deadLetters.size());
         }
 
         void start() {
