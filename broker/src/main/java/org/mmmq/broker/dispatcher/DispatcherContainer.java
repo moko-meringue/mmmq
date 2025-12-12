@@ -1,14 +1,13 @@
 package org.mmmq.broker.dispatcher;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.mmmq.broker.dispatcher.dlq.DeadLetterQueue;
 import org.mmmq.core.message.Topic;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class DispatcherContainer {
@@ -16,22 +15,18 @@ public class DispatcherContainer {
     final List<Dispatcher> dispatchers;
 
     public DispatcherContainer(
-        List<DispatcherDefinition> dispatcherDefinitions,
-        DeadLetterQueue deadLetterQueue
+            DeadLetterQueue deadLetterQueue,
+            List<DispatcherDefinition> dispatcherDefinitions
     ) {
         this.dispatchers = dispatcherDefinitions.stream()
-            .map(dispatcherDefinition -> dispatcherDefinition.toDispatcher(deadLetterQueue))
-            .collect(Collectors.toList());
+                .map(dispatcherDefinition -> dispatcherDefinition.toDispatcher(deadLetterQueue))
+                .collect(Collectors.toList());
     }
 
     public List<Dispatcher> getDispatchers(Topic topic) {
         return dispatchers.stream()
                 .filter(dispatcher -> dispatcher.isSubscribing(topic))
                 .toList();
-    }
-
-    void add(Dispatcher dispatcher) {
-        dispatchers.add(dispatcher);
     }
 
     @PostConstruct

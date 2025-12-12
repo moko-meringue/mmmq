@@ -1,14 +1,5 @@
 package org.mmmq.broker.dispatcher;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,11 +8,20 @@ import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+
 class DispatcherTest {
 
     static final DispatcherDefinition DEFINITION = DispatcherDefinition
-        .builder("name", "http", "localhost", 8080)
-        .build();
+            .builder("name", "http", "localhost", 8080)
+            .build();
 
     Dispatcher dispatcher;
     DeadLetterQueue deadLetterQueue;
@@ -34,16 +34,16 @@ class DispatcherTest {
 
     @Test
     @DisplayName("push 테스트")
-    void pushTest() {
+    void dispatchTest() {
         Message message = new Message(new Topic("test"), Map.of("key", "value"));
-        dispatcher.push(message);
+        dispatcher.dispatch(message);
 
-        assertThat(dispatcher.messageQueue).contains(Map.entry(message, 0));
+        assertThat(dispatcher.messageQueue).contains(message);
     }
 
     @Test
     @DisplayName("push 동시성 보장 테스트")
-    void pushConcurrencyTest() throws InterruptedException {
+    void dispatchConcurrencyTest() throws InterruptedException {
         int threadCount = 100;
         int messagesPerThread = 10;
         CountDownLatch startLatch = new CountDownLatch(1);
@@ -57,7 +57,7 @@ class DispatcherTest {
                     startLatch.await();
                     for (int j = 0; j < messagesPerThread; j++) {
                         Message message = new Message(new Topic("topic"), Map.of("id", threadId, "msg", j));
-                        dispatcher.push(message);
+                        dispatcher.dispatch(message);
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -90,7 +90,7 @@ class DispatcherTest {
         };
         dispatcher.start();
         Message message = new Message(new Topic("test"), Map.of("key", "value"));
-        dispatcher.push(message);
+        dispatcher.dispatch(message);
         assertThatCode(latch::await).doesNotThrowAnyException();
     }
 
@@ -98,10 +98,10 @@ class DispatcherTest {
     @DisplayName("isSubscribing 테스트")
     void isSubscribingTest() {
         dispatcher.topics.addAll(
-            Set.of(
-                new Topic("topic1"),
-                new Topic("topic2")
-            )
+                Set.of(
+                        new Topic("topic1"),
+                        new Topic("topic2")
+                )
         );
 
         assertThat(dispatcher.isSubscribing(new Topic("topic1"))).isTrue();

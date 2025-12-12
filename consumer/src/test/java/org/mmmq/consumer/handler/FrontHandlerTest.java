@@ -1,19 +1,19 @@
 package org.mmmq.consumer.handler;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
+
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 class FrontHandlerTest {
 
@@ -64,7 +64,7 @@ class FrontHandlerTest {
     @DisplayName("메시지 실행 테스트")
     void executeTest() throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(3);
-        
+
         FakeHandlerExecution fakeHandlerExecutionA = new FakeHandlerExecution(new Topic("topic a")) {
             @Override
             public void execute(Message message) {
@@ -99,7 +99,7 @@ class FrontHandlerTest {
     @Test
     @DisplayName("핸들 테스트")
     void handleTest() {
-        frontHandler.startWorker();
+        frontHandler.start();
         CountDownLatch latch = new CountDownLatch(1);
         frontHandler.addHandlerExecutions(new HandlerExecution("name", new Topic("topic")) {
             @Override
@@ -115,7 +115,7 @@ class FrontHandlerTest {
     @Test
     @DisplayName("소멸될 때 스레드풀을 종료한다.")
     void destructTest() {
-        frontHandler.destruct();
+        frontHandler.stop();
         assertThat(frontHandler.threadPool.isShutdown()).isTrue();
     }
 

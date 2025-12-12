@@ -1,21 +1,19 @@
 package org.mmmq.broker.dispatcher;
 
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
 import org.mmmq.broker.dispatcher.dlq.DeadLetter;
 import org.mmmq.broker.dispatcher.dlq.DeadLetterQueue;
 import org.mmmq.broker.dispatcher.sender.Sender;
-import org.mmmq.broker.dispatcher.sender.SenderFactory;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class Dispatcher {
 
@@ -25,18 +23,18 @@ public class Dispatcher {
     final String name;
     final Host host;
     final Set<Topic> topics;
-    final LinkedBlockingQueue<Map.Entry<Message, Integer>> messageQueue;
-    Sender sender;
-    final ThreadPoolExecutor threadPool;
-    final Thread worker;
+    final LinkedBlockingQueue<Message> messageQueue;
     final DeadLetterQueue deadLetterQueue;
+    final Worker worker;
+    final ThreadPoolExecutor threadPool;
+    Sender sender;
 
     public Dispatcher(
-        String name,
-        Host host,
-        Set<Topic> topics,
-        ThreadPoolExecutor threadPool,
-        DeadLetterQueue deadLetterQueue
+            String name,
+            Host host,
+            Set<Topic> topics,
+            ThreadPoolExecutor threadPool,
+            DeadLetterQueue deadLetterQueue
     ) {
         this.name = name;
         this.host = host;
@@ -44,33 +42,16 @@ public class Dispatcher {
         this.messageQueue = new LinkedBlockingQueue<>();
         this.threadPool = threadPool;
         this.deadLetterQueue = deadLetterQueue;
-        this.sender = SenderFactory.create(host);
-        this.worker = new Thread(() -> {
-            while (!Thread.currentThread().isInterrupted() && !threadPool.isShutdown()) {
-                try {
-                    Map.Entry<Message, Integer> messageEntry = messageQueue.take();
-                    if (messageEntry.getValue() > MAX_RETRY_COUNT) {
-                        continue;
-                    }
-                    threadPool.submit(() -> {
-                        Message message = messageEntry.getKey();
-                        try {
-                            if (!sender.send(message, MAX_RETRY_COUNT)) {
-                                DeadLetter deadLetter = DeadLetter.maxRetriesExceeded(message);
-                                log.warn("Failed to send message: {}", deadLetter);
-                                deadLetterQueue.add(deadLetter);
-                            }
-                        } catch (Exception e) {
-                            DeadLetter deadLetter = DeadLetter.processingFailed(message, e);
-                            log.warn("Failed to send message: {}", deadLetter);
-                            deadLetterQueue.add(deadLetter);
-                        }
-                    });
-                } catch (Exception e) {
-                    log.warn("Failed to dispatch message: {}", e.getMessage());
-                }
-            }
-        });
+        this.sender = Sender.from(host);
+        this.worker = new Worker();
+    }
+
+    public void dispatch(Message message) {
+        messageQueue.add(message);
+    }
+
+    public boolean isSubscribing(Topic topic) {
+        return topics.contains(topic);
     }
 
     void start() {
@@ -86,14 +67,7 @@ public class Dispatcher {
         } catch (InterruptedException e) {
             threadPool.shutdownNow();
         }
-    }
-
-    public void push(Message message) {
-        messageQueue.add(Map.entry(message, 0));
-    }
-
-    public boolean isSubscribing(Topic topic) {
-        return topics.contains(topic);
+        worker.stop();
     }
 
     @Override
@@ -107,5 +81,60 @@ public class Dispatcher {
     @Override
     public int hashCode() {
         return Objects.hash(name, host);
+    }
+
+    private class Worker {
+
+        final Thread thread;
+
+        Worker() {
+            this.thread = new Thread(new Job(), "mmmq-dispatcher" + "-" + name + "-worker");
+        }
+
+        void start() {
+            thread.start();
+        }
+
+        void stop() {
+            thread.interrupt();
+            try {
+                thread.join(5000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        private class Job implements Runnable {
+
+            @Override
+            public void run() {
+                while (!Thread.currentThread().isInterrupted() && !threadPool.isShutdown()) {
+                    try {
+                        Message message = messageQueue.take();
+                        threadPool.submit(() -> send(message));
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        log.info("DispatchWorker interrupted");
+                    } catch (Exception e) {
+                        log.warn("Failed to dispatch message: {}", e.getMessage());
+                    }
+                }
+            }
+
+            void send(Message message) {
+                try {
+                    if (!sender.send(message, MAX_RETRY_COUNT)) {
+                        handleFailure(DeadLetter.maxRetriesExceeded(message));
+                    }
+                } catch (Exception e) {
+                    handleFailure(DeadLetter.processingFailed(message, e));
+                }
+            }
+
+            void handleFailure(DeadLetter deadLetter) {
+                log.warn("Failed to send message: {}", deadLetter);
+                deadLetterQueue.add(deadLetter);
+            }
+        }
     }
 }

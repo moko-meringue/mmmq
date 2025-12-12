@@ -1,27 +1,27 @@
 package org.mmmq.broker.dispatcher;
 
+import org.mmmq.broker.dispatcher.dlq.DeadLetterQueue;
+import org.mmmq.core.Host;
+import org.mmmq.core.message.Topic;
+
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.mmmq.broker.dispatcher.dlq.DeadLetterQueue;
-import org.mmmq.core.Host;
-import org.mmmq.core.message.Topic;
-
 public class DispatcherDefinition {
 
-    String name;
-    Host host;
-    Set<Topic> topics;
-    ThreadPoolExecutor threadPool;
+    final String name;
+    final Host host;
+    final Set<Topic> topics;
+    final ThreadPoolExecutor threadPool;
 
     private DispatcherDefinition(
-        String name,
-        Host host,
-        Set<Topic> topics,
-        ThreadPoolExecutor threadPool
+            String name,
+            Host host,
+            Set<Topic> topics,
+            ThreadPoolExecutor threadPool
     ) {
         this.name = name;
         this.host = host;
@@ -40,16 +40,12 @@ public class DispatcherDefinition {
     public static class Builder {
 
         private static final ThreadPoolExecutor DEFAULT_THREAD_POOL = new ThreadPoolExecutor(
-            2,
-            5,
-            40L,
-            TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>()
+                2,
+                5,
+                40L,
+                TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>()
         );
-
-        static {
-            DEFAULT_THREAD_POOL.allowCoreThreadTimeOut(true);
-        }
 
         private final String name;
         private final Host host;
@@ -75,10 +71,10 @@ public class DispatcherDefinition {
 
         public DispatcherDefinition build() {
             return new DispatcherDefinition(
-                name,
-                host,
-                subscribed,
-                threadPool
+                    name,
+                    host,
+                    subscribed,
+                    threadPool
             );
         }
     }

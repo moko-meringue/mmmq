@@ -14,6 +14,6 @@ public class FrontDispatcher {
 
     public void push(Message message) {
         dispatcherContainer.getDispatchers(message.topic())
-            .forEach(messageDispatcher -> messageDispatcher.push(message));
+                .forEach(messageDispatcher -> messageDispatcher.dispatch(message));
     }
 }

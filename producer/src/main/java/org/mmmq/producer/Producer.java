@@ -38,6 +38,7 @@ public class Producer {
     }
 
     public static class Builder {
+
         private final Host host;
         private int maxRetryCount = DEFAULT_MAX_RETRY_COUNT;
 
