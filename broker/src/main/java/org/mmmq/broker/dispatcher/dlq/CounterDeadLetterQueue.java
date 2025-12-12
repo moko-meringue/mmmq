@@ -31,7 +31,7 @@ public class CounterDeadLetterQueue extends DeadLetterQueue {
         deadLetterQueue.add(deadLetter);
         counter.incrementAndGet();
         if (canWrite()) {
-            worker.write();
+            worker.work();
         }
     }
 
@@ -60,7 +60,7 @@ public class CounterDeadLetterQueue extends DeadLetterQueue {
                     () -> {
                         while (!Thread.currentThread().isInterrupted()) {
                             await();
-                            writeDeadLettersToFile();
+                            handleDeadLetters();
                         }
                     }, "mmmq-dlq" + "-" + name + "-worker"
             );
@@ -89,11 +89,11 @@ public class CounterDeadLetterQueue extends DeadLetterQueue {
             }
         }
 
-        void write() {
+        void work() {
             signal();
         }
 
-        void writeDeadLettersToFile() {
+        void handleDeadLetters() {
             List<DeadLetter> deadLetters = new ArrayList<>();
             deadLetterQueue.drainTo(deadLetters);
             handler.handle(deadLetters);

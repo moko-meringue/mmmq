@@ -36,7 +36,7 @@ public class DeadLetterFileWriter implements DeadLetterHandler {
     @Override
     public void handle(DeadLetter deadLetter) {
         try {
-            write(writeValueAsJson(deadLetter));
+            write(serialize(deadLetter));
         } catch (Exception e) {
             log.error("Failed to write dead letter to file", e);
         }
@@ -49,13 +49,20 @@ public class DeadLetterFileWriter implements DeadLetterHandler {
             return;
         }
         try {
-            String content = deadLetters.stream()
-                    .map(this::writeValueAsJson)
-                    .collect(Collectors.joining(System.lineSeparator()));
-            write(content);
+            write(serialize(deadLetters));
         } catch (Exception e) {
             log.error("Failed to write dead letters to file", e);
         }
+    }
+
+    protected String serialize(DeadLetter deadLetter) {
+        return writeValueAsJson(deadLetter);
+    }
+
+    protected String serialize(Collection<DeadLetter> deadLetters) {
+        return deadLetters.stream()
+                .map(this::writeValueAsJson)
+                .collect(Collectors.joining(System.lineSeparator()));
     }
 
     private String writeValueAsJson(Object object) {
