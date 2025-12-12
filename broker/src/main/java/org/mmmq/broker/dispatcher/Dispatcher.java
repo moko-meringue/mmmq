@@ -26,25 +26,55 @@ public class Dispatcher {
     final LinkedBlockingQueue<Message> messageQueue;
     @Nullable
     final DeadLetterQueue deadLetterQueue;
-    final Worker worker;
     final ThreadPoolExecutor threadPool;
+    final Worker worker;
     Sender sender;
+
+    Dispatcher(
+            String name,
+            Host host,
+            Set<Topic> topics,
+            LinkedBlockingQueue<Message> messageQueue,
+            @Nullable DeadLetterQueue deadLetterQueue,
+            ThreadPoolExecutor threadPool,
+            Sender sender
+    ) {
+        this.name = name;
+        this.host = host;
+        this.topics = topics;
+        this.messageQueue = messageQueue;
+        this.deadLetterQueue = deadLetterQueue;
+        this.worker = new Worker();
+        this.threadPool = threadPool;
+        this.sender = sender;
+    }
 
     public Dispatcher(
             String name,
             Host host,
             Set<Topic> topics,
-            ThreadPoolExecutor threadPool,
-            @Nullable DeadLetterQueue deadLetterQueue
+            @Nullable DeadLetterQueue deadLetterQueue,
+            ThreadPoolExecutor threadPool
     ) {
-        this.name = name;
-        this.host = host;
-        this.topics = topics;
-        this.messageQueue = new LinkedBlockingQueue<>();
-        this.threadPool = threadPool;
-        this.deadLetterQueue = deadLetterQueue;
-        this.sender = Sender.from(host);
-        this.worker = new Worker();
+        this(name, host, topics, new LinkedBlockingQueue<>(), deadLetterQueue, threadPool, Sender.from(host));
+    }
+
+    public Dispatcher(String name, Host host, Set<Topic> topics, @Nullable DeadLetterQueue deadLetterQueue) {
+        this(
+                name,
+                host,
+                topics,
+                new LinkedBlockingQueue<>(),
+                deadLetterQueue,
+                new ThreadPoolExecutor(
+                        2,
+                        5,
+                        40L,
+                        TimeUnit.SECONDS,
+                        new LinkedBlockingQueue<>()
+                ),
+                Sender.from(host)
+        );
     }
 
     public void dispatch(Message message) {

@@ -1,32 +1,31 @@
 package org.mmmq.broker.dispatcher;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mmmq.broker.dispatcher.sender.Sender;
+import org.mmmq.core.Host;
+import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Topic;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.mmmq.broker.dispatcher.sender.Sender;
-import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Topic;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 class DispatcherTest {
 
-    static final DispatcherDefinition DEFINITION = DispatcherDefinition
-        .builder("name", "http", "localhost", 8080)
-        .build();
-
+    Host host = new Host("http", "localhost", 8080);
     Dispatcher dispatcher;
 
     @BeforeEach
     void setUp() {
-        dispatcher = DEFINITION.toDispatcher();
+        dispatcher = new Dispatcher("name", host, new HashSet<>(), null);
     }
 
     @Test
@@ -95,30 +94,14 @@ class DispatcherTest {
     @DisplayName("isSubscribing 테스트")
     void isSubscribingTest() {
         dispatcher.topics.addAll(
-            Set.of(
-                new Topic("topic1"),
-                new Topic("topic2")
-            )
+                Set.of(
+                        new Topic("topic1"),
+                        new Topic("topic2")
+                )
         );
 
         assertThat(dispatcher.isSubscribing(new Topic("topic1"))).isTrue();
         assertThat(dispatcher.isSubscribing(new Topic("topic2"))).isTrue();
         assertThat(dispatcher.isSubscribing(new Topic("topic3"))).isFalse();
     }
-
-    // static class FakeSender extends Sender {
-    //
-    //     int sendCount = 0;
-    //     final boolean willAck = false;
-    //
-    //     public FakeSender(int nakUntil) {
-    //         this.nakUntil = nakUntil;
-    //     }
-    //
-    //     @Override
-    //     public boolean send(Message message) {
-    //         sendCount++;
-    //         return sendCount > nakUntil;
-    //     }
-    // }
 }
