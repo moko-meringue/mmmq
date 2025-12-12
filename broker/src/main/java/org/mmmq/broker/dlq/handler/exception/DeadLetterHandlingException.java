@@ -1,7 +1,7 @@
-package org.mmmq.broker.dispatcher.dlq.handler.exception;
+package org.mmmq.broker.dlq.handler.exception;
 
 public class DeadLetterHandlingException extends RuntimeException {
-    
+
     public DeadLetterHandlingException(String message, Exception exception) {
         super(message, exception);
     }

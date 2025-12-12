@@ -1,6 +1,6 @@
-package org.mmmq.broker.dispatcher.dlq.handler;
+package org.mmmq.broker.dlq.handler;
 
-import org.mmmq.broker.dispatcher.dlq.DeadLetter;
+import org.mmmq.broker.dlq.DeadLetter;
 
 import java.util.Collection;
 

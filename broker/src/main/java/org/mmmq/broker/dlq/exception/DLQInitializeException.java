@@ -1,4 +1,4 @@
-package org.mmmq.broker.dispatcher.dlq.exception;
+package org.mmmq.broker.dlq.exception;
 
 public class DLQInitializeException extends RuntimeException {
 

@@ -1,6 +1,6 @@
-package org.mmmq.broker.dispatcher.dlq;
+package org.mmmq.broker.dlq;
 
-import org.mmmq.broker.dispatcher.dlq.handler.DeadLetterHandler;
+import org.mmmq.broker.dlq.handler.DeadLetterHandler;
 
 public abstract class DeadLetterQueue {
 
@@ -9,6 +9,7 @@ public abstract class DeadLetterQueue {
         public void add(DeadLetter deadLetter) {
         }
     };
+
     protected final String name;
     protected final DeadLetterHandler handler;
 

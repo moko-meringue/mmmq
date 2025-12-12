@@ -1,6 +1,6 @@
-package org.mmmq.broker.dispatcher.dlq;
+package org.mmmq.broker.dlq;
 
-import org.mmmq.broker.dispatcher.dlq.handler.DeadLetterHandler;
+import org.mmmq.broker.dlq.handler.DeadLetterHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

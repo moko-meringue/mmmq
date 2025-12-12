@@ -1,10 +1,10 @@
-package org.mmmq.broker.dispatcher.dlq.handler;
+package org.mmmq.broker.dlq.handler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.mmmq.broker.dispatcher.dlq.DeadLetter;
-import org.mmmq.broker.dispatcher.dlq.exception.DLQInitializeException;
-import org.mmmq.broker.dispatcher.dlq.handler.exception.DeadLetterHandlingException;
+import org.mmmq.broker.dlq.DeadLetter;
+import org.mmmq.broker.dlq.exception.DLQInitializeException;
+import org.mmmq.broker.dlq.handler.exception.DeadLetterHandlingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
