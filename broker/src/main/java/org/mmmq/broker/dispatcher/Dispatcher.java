@@ -86,11 +86,13 @@ public class Dispatcher {
         return topics.contains(topic);
     }
 
+    @PostConstruct
     void start() {
         worker.start();
         deadLetterQueue.start();
     }
 
+    @PreDestroy
     void stop() {
         threadPool.shutdown();
         try {
