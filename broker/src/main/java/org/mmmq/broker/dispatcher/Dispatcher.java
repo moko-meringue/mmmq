@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +26,7 @@ public class Dispatcher {
     final String name;
     final Host host;
     final Set<Topic> topics;
-    final LinkedBlockingQueue<Message> messageQueue;
+    final BlockingQueue<Message> messageQueue;
     final DeadLetterQueue deadLetterQueue;
     final ThreadPoolExecutor threadPool;
     final Worker worker;
@@ -35,7 +36,7 @@ public class Dispatcher {
             String name,
             Host host,
             Set<Topic> topics,
-            LinkedBlockingQueue<Message> messageQueue,
+            BlockingQueue<Message> messageQueue,
             @Nullable DeadLetterQueue deadLetterQueue,
             ThreadPoolExecutor threadPool,
             Sender sender
@@ -48,6 +49,16 @@ public class Dispatcher {
         this.worker = new Worker();
         this.threadPool = threadPool;
         this.sender = sender;
+    }
+
+    public Dispatcher(
+            String name,
+            Host host,
+            Set<Topic> topics,
+            BlockingQueue<Message> messageQueue,
+            ThreadPoolExecutor threadPool
+    ) {
+        this(name, host, topics, new LinkedBlockingQueue<>(), null, threadPool, Sender.from(host));
     }
 
     public Dispatcher(
@@ -79,7 +90,12 @@ public class Dispatcher {
     }
 
     public void dispatch(Message message) {
-        messageQueue.add(message);
+        try {
+            messageQueue.put(message);
+        } catch (InterruptedException e) {
+         
+            log.warn("Failed to dispatch message, interrupted: {}", message);
+        }
     }
 
     public boolean isSubscribing(Topic topic) {
