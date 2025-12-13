@@ -36,8 +36,8 @@ public class TimerDeadLetterQueue extends DeadLetterQueue {
 
     private class Worker {
 
-        private final ScheduledExecutorService scheduler;
         private final int intervalMillis;
+        private final ScheduledExecutorService scheduler;
 
         Worker(int intervalMillis) {
             this.scheduler = Executors.newSingleThreadScheduledExecutor(
