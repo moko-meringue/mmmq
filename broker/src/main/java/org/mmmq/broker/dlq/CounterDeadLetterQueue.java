@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -19,7 +18,6 @@ public class CounterDeadLetterQueue extends DeadLetterQueue {
     protected final BlockingQueue<DeadLetter> deadLetterQueue = new LinkedBlockingQueue<>();
     private final int capacity;
     private final Worker worker;
-    private final AtomicInteger counter = new AtomicInteger(0); // MOKO: 이거 필요없는거같은데..? size() 쓰면 안됨?
 
     public CounterDeadLetterQueue(String name, DeadLetterHandler handler, int capacity) {
         super(name, handler);
@@ -30,14 +28,13 @@ public class CounterDeadLetterQueue extends DeadLetterQueue {
     @Override
     public void add(DeadLetter deadLetter) {
         deadLetterQueue.add(deadLetter);
-        counter.incrementAndGet();
         if (canWrite()) {
             worker.work();
         }
     }
 
     private boolean canWrite() {
-        return counter.get() >= capacity;
+        return deadLetterQueue.size() >= capacity;
     }
 
     @Override
@@ -99,7 +96,6 @@ public class CounterDeadLetterQueue extends DeadLetterQueue {
                 List<DeadLetter> deadLetters = new ArrayList<>();
                 deadLetterQueue.drainTo(deadLetters);
                 handler.handle(deadLetters);
-                counter.addAndGet(-deadLetters.size());
             } catch (Exception e) {
                 log.error("Failed to handle dead letters", e);
             }
