@@ -1,26 +1,23 @@
 package org.mmmq.consumer.handler.execution.method;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mmmq.consumer.config.ConsumerConfiguration;
 import org.mmmq.consumer.handler.FrontHandler;
 import org.mmmq.consumer.handler.FrontHandlerUtil;
 import org.mmmq.consumer.handler.execution.HandlerExecutions;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+
 @SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = {
-        MethodExecutionRegistrationTest.MethodExecutionRegistrationConfiguration.class,
-        ConsumerConfiguration.class
-    }
+        webEnvironment = SpringBootTest.WebEnvironment.NONE,
+        classes = MethodExecutorRegistrationTest.MethodExecutionRegistrationConfiguration.class
 )
-class MethodExecutionRegistrationTest {
+class MethodExecutorRegistrationTest {
 
     @Autowired
     FrontHandler frontHandler;
@@ -34,6 +31,18 @@ class MethodExecutionRegistrationTest {
 
     @Configuration
     static class MethodExecutionRegistrationConfiguration {
+
+        @Bean
+        FrontHandler frontHandler() {
+            return new FrontHandler();
+        }
+
+        @Bean
+        MethodExecutionRegistration methodExecutionRegistration(
+                ObjectProvider<FrontHandler> frontHandlerObjectProvider
+        ) {
+            return new MethodExecutionRegistration(frontHandlerObjectProvider);
+        }
 
         @Bean
         public Bean1 bean1() {
