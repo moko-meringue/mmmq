@@ -1,8 +1,11 @@
 package org.mmmq.broker.dispatcher;
 
-import jakarta.annotation.Nullable;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
+import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.dlq.DeadLetter;
 import org.mmmq.broker.dlq.DeadLetterQueue;
@@ -12,11 +15,9 @@ import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Set;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import jakarta.annotation.Nullable;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 
 public class Dispatcher {
 
@@ -33,13 +34,13 @@ public class Dispatcher {
     Sender sender;
 
     Dispatcher(
-            String name,
-            Host host,
-            Set<Topic> topics,
-            BlockingQueue<Message> messageQueue,
-            @Nullable DeadLetterQueue deadLetterQueue,
-            ThreadPoolExecutor threadPool,
-            Sender sender
+        String name,
+        Host host,
+        Set<Topic> topics,
+        BlockingQueue<Message> messageQueue,
+        @Nullable DeadLetterQueue deadLetterQueue,
+        ThreadPoolExecutor threadPool,
+        Sender sender
     ) {
         this.name = name;
         this.host = host;
@@ -52,40 +53,40 @@ public class Dispatcher {
     }
 
     public Dispatcher(
-            String name,
-            Host host,
-            Set<Topic> topics,
-            BlockingQueue<Message> messageQueue,
-            ThreadPoolExecutor threadPool
+        String name,
+        Host host,
+        Set<Topic> topics,
+        BlockingQueue<Message> messageQueue,
+        ThreadPoolExecutor threadPool
     ) {
-        this(name, host, topics, new LinkedBlockingQueue<>(), null, threadPool, Sender.from(host));
+        this(name, host, topics, new ArrayBlockingQueue<>(1000), null, threadPool, Sender.from(host));
     }
 
     public Dispatcher(
-            String name,
-            Host host,
-            Set<Topic> topics,
-            @Nullable DeadLetterQueue deadLetterQueue,
-            ThreadPoolExecutor threadPool
+        String name,
+        Host host,
+        Set<Topic> topics,
+        @Nullable DeadLetterQueue deadLetterQueue,
+        ThreadPoolExecutor threadPool
     ) {
-        this(name, host, topics, new LinkedBlockingQueue<>(), deadLetterQueue, threadPool, Sender.from(host));
+        this(name, host, topics, new ArrayBlockingQueue<>(1000), deadLetterQueue, threadPool, Sender.from(host));
     }
 
     public Dispatcher(String name, Host host, Set<Topic> topics, @Nullable DeadLetterQueue deadLetterQueue) {
         this(
-                name,
-                host,
-                topics,
-                new LinkedBlockingQueue<>(),
-                deadLetterQueue,
-                new ThreadPoolExecutor(
-                        2,
-                        5,
-                        40L,
-                        TimeUnit.SECONDS,
-                        new LinkedBlockingQueue<>()
-                ),
-                Sender.from(host)
+            name,
+            host,
+            topics,
+            new ArrayBlockingQueue<>(1000),
+            deadLetterQueue,
+            new ThreadPoolExecutor(
+                2,
+                5,
+                40L,
+                TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(100)
+            ),
+            Sender.from(host)
         );
     }
 
@@ -93,7 +94,7 @@ public class Dispatcher {
         try {
             messageQueue.put(message);
         } catch (InterruptedException e) {
-         
+
             log.warn("Failed to dispatch message, interrupted: {}", message);
         }
     }

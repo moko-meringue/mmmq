@@ -1,7 +1,10 @@
 package org.mmmq.consumer.handler;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.consumer.handler.execution.HandlerExecutions;
 import org.mmmq.core.message.Message;
@@ -9,9 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 
 @Component
 public class FrontHandler {
@@ -20,14 +22,14 @@ public class FrontHandler {
 
     final Worker worker;
     final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(
-            2,
-            5,
-            40L,
-            TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>()
+        2,
+        5,
+        40L,
+        TimeUnit.SECONDS,
+        new ArrayBlockingQueue<>(100)
     );
     final HandlerExecutions handlerExecutions = new HandlerExecutions();
-    final LinkedBlockingQueue<Message> queue = new LinkedBlockingQueue<>();
+    final BlockingQueue<Message> queue = new ArrayBlockingQueue<>(1000);
 
     public FrontHandler() {
         this.worker = new Worker();
@@ -95,13 +97,13 @@ public class FrontHandler {
 
             void handle(Message message) {
                 handlerExecutions.getExecutions(message.topic())
-                        .forEach(handlerExecution -> threadPool.execute(() -> {
-                            try {
-                                handlerExecution.execute(message);
-                            } catch (Exception e) {
-                                log.warn("Failed to handle message: {}", message, e);
-                            }
-                        }));
+                    .forEach(handlerExecution -> threadPool.execute(() -> {
+                        try {
+                            handlerExecution.execute(message);
+                        } catch (Exception e) {
+                            log.warn("Failed to handle message: {}", message, e);
+                        }
+                    }));
             }
         }
     }
