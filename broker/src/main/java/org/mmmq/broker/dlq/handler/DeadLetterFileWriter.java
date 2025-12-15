@@ -42,7 +42,6 @@ public class DeadLetterFileWriter implements DeadLetterHandler {
         }
     }
 
-    // MOKO: 쓰기 실패했을때 핸들링해야 함. 중간에 실패하면 쭈루룩 안써짐.
     @Override
     public void handle(Collection<DeadLetter> deadLetters) {
         if (deadLetters.isEmpty()) {
