@@ -46,6 +46,127 @@ Dead Letter Queue에 저장된 메시지는 디스크에 나중에 재처리하�
   
 `MMMQListener` 인터페이스를 구현하여 메시지 핸들러를 구현할 수도 있습니다. 컴파일 타임에 타입 안정성을 제공하며, 복잡한 메시지 처리 로직을 구현할 때 유용합니다.  
   
+
+# 🚀 시작하기
+
+## 최소 버전 요구사항
+
+- Java 17 이상
+- Spring Boot 3.2.0 이상
+- Spring Web (spring-boot-starter-web 의존성 포함)
+
+## 의존성 추가 (build.gradle)
+
+```
+repositories {
+    maven { url "https://jitpack.io" }
+    mavenCentral()
+}
+
+dependencies {
+    ...
+    
+    implementation 'com.github.moko-meringue.mmmq:{모듈}:{버전}'
+    
+    // Broker 모듈 의존성 추가
+    // implementation 'com.github.moko-meringue.mmmq:broker:{버전}'
+    
+    // Consumer 모듈 의존성 추가
+    // implementation 'com.github.moko-meringue.mmmq:consumer:{버전}'
+    
+    // Producer 모듈 의존성 추가
+    //implementation 'com.github.moko-meringue.mmmq:producer:{버전}'
+}
+```
+
+## 설정을 위한 빈 등록
+
+### Producer 설정
+
+Producer는 Broker에 메시지를 전송합니다. Producer Bean을 등록하고 Broker의 주소를 Host 객체로 전달해야 합니다.
+
+```java
+@Configuration
+public class ProducerConfig {
+
+    @Bean
+    public Producer orderProducer() {
+        Host brokerHost = new Host("http", "ip", 8080);
+        return new Producer(brokerHost);
+    }
+}
+```
+
+### Consumer 설정
+
+Consumer는 Broker로부터 메시지를 수신하여 처리합니다. `@MMMQListener` 어노테이션 또는 `MMMQHandler` 인터페이스를 사용하여 메시지 핸들러를 등록할 수 있습니다.
+
+#### 방법 1: 어노테이션(@MMMQListener) 사용
+메서드에 어노테이션을 붙여 간편하게 특정 토픽을 구독하는 핸들러를 만들 수 있습니다.
+
+```java
+@Service
+public class OrderService {
+    
+    // ...
+    
+    @MMMQListener(topic = "new-orders")
+    public void handleNewOrder(Order order) {
+        // Handle new order
+    }
+}
+```
+
+#### 방법 2: 인터페이스(MMMQListener) 구현
+
+`MMMQHandler` 인터페이스를 구현하여 클래스 단위로 핸들러를 정의할 수 있습니다.
+
+```java
+@Service
+public class OrderService implements MMMQListener<Order>{
+
+    // ...
+    
+    @Override
+    public String listens() {
+        return "new-orders";
+    }
+
+    @Override
+    public void handle(Order order) {
+        // Handle new order
+    }
+}
+```
+
+
+### Broker 설정
+
+Broker는 어떤 Consumer에게 메시지를 전달할지 알아야 합니다. Dispatcher Bean을 등록하여 Consumer의 주소와 구독할 토픽을 설정합니다.
+
+```java
+@Configuration
+public class DispatcherConfig {
+
+    @Bean
+    public Dispatcher orderDispatcher() {
+        return new Dispatcher(
+                "order-dispatcher",
+                new Host("http", "ip", 8080),
+                Set.of(new Topic("new-orders")),
+                new TimerDeadLetterQueue(
+                        "order-dead-letter-queue",
+                        new DeadLetterFileWriter(
+                                Path.of("/home/ubuntu/dead-letters"),
+                                "order-dead-letter-writer"
+                        ),
+                        60_000
+                )
+        );
+    }
+}
+```
+
 # 👥 참여자
 
 모든 코드는 모코와 머랭의 **페어 프로그래밍**으로 작성되었습니다.
