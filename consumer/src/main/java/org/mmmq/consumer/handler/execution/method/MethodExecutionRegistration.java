@@ -1,10 +1,6 @@
 package org.mmmq.consumer.handler.execution.method;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mmmq.consumer.exception.HandlerExecutionRegistrationException;
 import org.mmmq.consumer.handler.FrontHandler;
 import org.mmmq.core.message.Topic;
@@ -18,7 +14,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ReflectionUtils;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 @Component
 class MethodExecutionRegistration implements BeanPostProcessor, SmartInitializingSingleton {
@@ -36,12 +35,12 @@ class MethodExecutionRegistration implements BeanPostProcessor, SmartInitializin
         ReflectionUtils.doWithMethods(
                 ClassUtils.getUserClass(bean),
                 method -> Optional.ofNullable(AnnotatedElementUtils.findMergedAnnotation(method, MMMQListener.class))
-                        .ifPresent(annotation -> registerMessageListener(bean, method, annotation))
+                        .ifPresent(annotation -> register(bean, method, annotation))
         );
         return bean;
     }
 
-    private void registerMessageListener(Object bean, Method method, MMMQListener annotation) {
+    private void register(Object bean, Method method, MMMQListener annotation) {
         MethodExecution methodExecution = new MethodExecution(
                 new Topic(annotation.topic()),
                 bean,
@@ -55,7 +54,7 @@ class MethodExecutionRegistration implements BeanPostProcessor, SmartInitializin
     public void afterSingletonsInstantiated() {
         try {
             frontHandlerObjectProvider.ifAvailable(
-                    frontHandler -> methodExecutions.forEach(frontHandler::addHandlerExecutions)
+                    frontHandler -> methodExecutions.forEach(frontHandler::addHandlerExecution)
             );
             methodExecutions.clear();
         } catch (BeansException e) {

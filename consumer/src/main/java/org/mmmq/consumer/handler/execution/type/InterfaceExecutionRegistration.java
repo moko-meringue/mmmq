@@ -36,7 +36,7 @@ class InterfaceExecutionRegistration implements BeanPostProcessor, SmartInitiali
     public void afterSingletonsInstantiated() {
         try {
             frontHandlerObjectProvider.ifAvailable(
-                    frontHandler -> interfaceExecutions.forEach(frontHandler::addHandlerExecutions)
+                    frontHandler -> interfaceExecutions.forEach(frontHandler::addHandlerExecution)
             );
             interfaceExecutions.clear();
         } catch (BeansException e) {

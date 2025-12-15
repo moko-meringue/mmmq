@@ -80,8 +80,8 @@ class FrontHandlerTest {
             }
         };
 
-        frontHandler.addHandlerExecutions(fakeHandlerExecutionA);
-        frontHandler.addHandlerExecutions(fakeHandlerExecutionB);
+        frontHandler.addHandlerExecution(fakeHandlerExecutionA);
+        frontHandler.addHandlerExecution(fakeHandlerExecutionB);
 
         Message messageA = new Message(new Topic("topic a"), Map.of("key", "value A"));
         Message messageB = new Message(new Topic("topic b"), Map.of("key", "value B"));
@@ -103,7 +103,7 @@ class FrontHandlerTest {
     void handleTest() {
         frontHandler.start();
         CountDownLatch latch = new CountDownLatch(1);
-        frontHandler.addHandlerExecutions(new HandlerExecution("name", new Topic("topic")) {
+        frontHandler.addHandlerExecution(new HandlerExecution("name", new Topic("topic")) {
             @Override
             public void execute(Message message) {
                 latch.countDown();
