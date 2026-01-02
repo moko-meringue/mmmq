@@ -1,6 +1,6 @@
 package org.mmmq.broker.dispatcher;
 
-import java.util.Set;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -26,7 +26,7 @@ public class Dispatcher {
 
     final String name;
     final Host host;
-    final Set<Topic> topics;
+    final List<Binding> bindings;
     final BlockingQueue<Message> messageQueue;
     final DeadLetterQueue deadLetterQueue;
     final ThreadPoolExecutor threadPool;
@@ -36,7 +36,7 @@ public class Dispatcher {
     Dispatcher(
         String name,
         Host host,
-        Set<Topic> topics,
+        List<Binding> bindings,
         BlockingQueue<Message> messageQueue,
         @Nullable DeadLetterQueue deadLetterQueue,
         ThreadPoolExecutor threadPool,
@@ -44,7 +44,7 @@ public class Dispatcher {
     ) {
         this.name = name;
         this.host = host;
-        this.topics = topics;
+        this.bindings = bindings;
         this.messageQueue = messageQueue;
         this.deadLetterQueue = deadLetterQueue == null ? DeadLetterQueue.NO_OP : deadLetterQueue;
         this.worker = new Worker();
@@ -55,28 +55,28 @@ public class Dispatcher {
     public Dispatcher(
         String name,
         Host host,
-        Set<Topic> topics,
+        List<Binding> bindings,
         BlockingQueue<Message> messageQueue,
         ThreadPoolExecutor threadPool
     ) {
-        this(name, host, topics, new ArrayBlockingQueue<>(1000), null, threadPool, Sender.from(host));
+        this(name, host, bindings, new ArrayBlockingQueue<>(1000), null, threadPool, Sender.from(host));
     }
 
     public Dispatcher(
         String name,
         Host host,
-        Set<Topic> topics,
+        List<Binding> bindings,
         @Nullable DeadLetterQueue deadLetterQueue,
         ThreadPoolExecutor threadPool
     ) {
-        this(name, host, topics, new ArrayBlockingQueue<>(1000), deadLetterQueue, threadPool, Sender.from(host));
+        this(name, host, bindings, new ArrayBlockingQueue<>(1000), deadLetterQueue, threadPool, Sender.from(host));
     }
 
-    public Dispatcher(String name, Host host, Set<Topic> topics, @Nullable DeadLetterQueue deadLetterQueue) {
+    public Dispatcher(String name, Host host, List<Binding> bindings, @Nullable DeadLetterQueue deadLetterQueue) {
         this(
             name,
             host,
-            topics,
+            bindings,
             new ArrayBlockingQueue<>(1000),
             deadLetterQueue,
             new ThreadPoolExecutor(
@@ -90,6 +90,10 @@ public class Dispatcher {
         );
     }
 
+    public boolean isSubscribing(Topic topic) {
+        return bindings.stream().anyMatch(binding -> binding.matches(topic));
+    }
+
     public void dispatch(Message message) {
         try {
             messageQueue.put(message);
@@ -97,10 +101,6 @@ public class Dispatcher {
 
             log.warn("Failed to dispatch message, interrupted: {}", message);
         }
-    }
-
-    public boolean isSubscribing(Topic topic) {
-        return topics.contains(topic);
     }
 
     @PostConstruct

@@ -1,22 +1,25 @@
 package org.mmmq.broker.dispatcher;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
-
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 class DispatcherTest {
 
@@ -25,7 +28,7 @@ class DispatcherTest {
 
     @BeforeEach
     void setUp() {
-        dispatcher = new Dispatcher("name", host, new HashSet<>(), null);
+        dispatcher = new Dispatcher("name", host, new ArrayList<>(), null);
     }
 
     @Test
@@ -90,18 +93,23 @@ class DispatcherTest {
         assertThatCode(latch::await).doesNotThrowAnyException();
     }
 
-    @Test
+    @ParameterizedTest
     @DisplayName("isSubscribing 테스트")
-    void isSubscribingTest() {
-        dispatcher.topics.addAll(
-                Set.of(
-                        new Topic("topic1"),
-                        new Topic("topic2")
-                )
-        );
+    @MethodSource("isSubscribingTestSource")
+    void isSubscribingTest(String pattern, String topicName, boolean expected) {
+        dispatcher.bindings.add(new Binding(pattern));
+        Topic topic = new Topic(topicName);
+        assertThat(dispatcher.isSubscribing(topic)).isEqualTo(expected);
+    }
 
-        assertThat(dispatcher.isSubscribing(new Topic("topic1"))).isTrue();
-        assertThat(dispatcher.isSubscribing(new Topic("topic2"))).isTrue();
-        assertThat(dispatcher.isSubscribing(new Topic("topic3"))).isFalse();
+    static Stream<Arguments> isSubscribingTestSource() {
+        return Stream.of(
+            Arguments.of("sports.*", "sports.football", true),
+            Arguments.of("sports.*", "sports.basketball", true),
+            Arguments.of("sports.*", "news.politics", false),
+            Arguments.of("news.**", "news", true),
+            Arguments.of("news.**", "news.world.europe", true),
+            Arguments.of("news.**", "sports.football", false)
+        );
     }
 }
