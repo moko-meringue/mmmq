@@ -1,22 +1,30 @@
 package org.mmmq.consumer.handler.execution;
 
+import org.mmmq.core.message.Topic;
+
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.mmmq.core.message.Topic;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class HandlerExecutions {
 
-    final Map<Topic, List<HandlerExecution>> executions = new HashMap<>();
+    final List<HandlerExecution> executions = new ArrayList<>();
+    final Map<Topic, List<HandlerExecution>> patternCache = new ConcurrentHashMap<>();
 
     public void add(HandlerExecution execution) {
-        executions.computeIfAbsent(execution.getTopic(), topic -> new ArrayList<>()).add(execution);
+        executions.add(execution);
     }
 
     public List<HandlerExecution> getExecutions(Topic topic) {
-        return executions.getOrDefault(topic, new ArrayList<>());
+        if (patternCache.containsKey(topic)) {
+            return patternCache.get(topic);
+        }
+        List<HandlerExecution> matchedExecutions = executions.stream()
+                .filter(execution -> execution.supports(topic))
+                .toList();
+        patternCache.put(topic, matchedExecutions);
+        return matchedExecutions;
     }
 
     public int size() {

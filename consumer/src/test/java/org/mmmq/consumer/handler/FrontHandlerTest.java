@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
 
 import java.util.Map;
@@ -65,14 +66,14 @@ class FrontHandlerTest {
     void executeTest() throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(3);
 
-        FakeHandlerExecution fakeHandlerExecutionA = new FakeHandlerExecution(new Topic("topic a")) {
+        FakeHandlerExecution fakeHandlerExecutionA = new FakeHandlerExecution(new Pattern("topic a")) {
             @Override
             public void execute(Message message) {
                 super.execute(message);
                 latch.countDown();
             }
         };
-        FakeHandlerExecution fakeHandlerExecutionB = new FakeHandlerExecution(new Topic("topic b")) {
+        FakeHandlerExecution fakeHandlerExecutionB = new FakeHandlerExecution(new Pattern("topic b")) {
             @Override
             public void execute(Message message) {
                 super.execute(message);
@@ -103,7 +104,7 @@ class FrontHandlerTest {
     void handleTest() {
         frontHandler.start();
         CountDownLatch latch = new CountDownLatch(1);
-        frontHandler.addHandlerExecution(new HandlerExecution("name", new Topic("topic")) {
+        frontHandler.addHandlerExecution(new HandlerExecution("name", new Pattern("topic")) {
             @Override
             public void execute(Message message) {
                 latch.countDown();
@@ -124,8 +125,8 @@ class FrontHandlerTest {
     class FakeHandlerExecution extends HandlerExecution {
         int executionCount = 0;
 
-        protected FakeHandlerExecution(Topic topic) {
-            super("FakeHandlerExecution", topic);
+        protected FakeHandlerExecution(Pattern pattern) {
+            super("FakeHandlerExecution", pattern);
         }
 
         @Override

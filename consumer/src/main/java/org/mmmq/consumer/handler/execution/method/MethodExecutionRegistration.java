@@ -3,7 +3,7 @@ package org.mmmq.consumer.handler.execution.method;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mmmq.consumer.exception.HandlerExecutionRegistrationException;
 import org.mmmq.consumer.handler.FrontHandler;
-import org.mmmq.core.message.Topic;
+import org.mmmq.core.message.Pattern;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
@@ -42,7 +42,7 @@ class MethodExecutionRegistration implements BeanPostProcessor, SmartInitializin
 
     private void register(Object bean, Method method, MMMQListener annotation) {
         MethodExecution methodExecution = new MethodExecution(
-                new Topic(annotation.topic()),
+                new Pattern(annotation.pattern()),
                 bean,
                 method,
                 objectMapper
