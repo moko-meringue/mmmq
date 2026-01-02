@@ -31,6 +31,7 @@ public class Dispatcher {
     final DeadLetterQueue deadLetterQueue;
     final ThreadPoolExecutor threadPool;
     final Worker worker;
+    final BindingCache bindingCache;
     Sender sender;
 
     Dispatcher(
@@ -50,6 +51,7 @@ public class Dispatcher {
         this.worker = new Worker();
         this.threadPool = threadPool;
         this.sender = sender;
+        this.bindingCache = new BindingCache();
     }
 
     public Dispatcher(
@@ -91,7 +93,14 @@ public class Dispatcher {
     }
 
     public boolean isSubscribing(Topic topic) {
-        return bindings.stream().anyMatch(binding -> binding.matches(topic));
+        if (bindingCache.matches(topic)) {
+            return true;
+        }
+        if (bindings.stream().anyMatch(binding -> binding.matches(topic))) {
+            bindingCache.put(topic);
+            return true;
+        }
+        return false;
     }
 
     public void dispatch(Message message) {
