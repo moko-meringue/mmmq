@@ -1,7 +1,16 @@
 package org.mmmq.broker.dispatcher;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mmmq.broker.dispatcher.binding.Binding;
+import org.mmmq.broker.dispatcher.sender.Sender;
+import org.mmmq.core.Host;
+import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Topic;
 
 import java.util.ArrayList;
 import java.util.Map;
@@ -10,21 +19,24 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.mmmq.broker.dispatcher.sender.Sender;
-import org.mmmq.core.Host;
-import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Topic;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 class DispatcherTest {
 
     Host host = new Host("http", "localhost", 8080);
     Dispatcher dispatcher;
+
+    static Stream<Arguments> isSubscribingTestSource() {
+        return Stream.of(
+                Arguments.of("sports.*", "sports.football", true),
+                Arguments.of("sports.*", "sports.basketball", true),
+                Arguments.of("sports.*", "news.politics", false),
+                Arguments.of("news.**", "news", true),
+                Arguments.of("news.**", "news.world.europe", true),
+                Arguments.of("news.**", "sports.football", false)
+        );
+    }
 
     @BeforeEach
     void setUp() {
@@ -100,16 +112,5 @@ class DispatcherTest {
         dispatcher.bindings.add(new Binding(pattern));
         Topic topic = new Topic(topicName);
         assertThat(dispatcher.isSubscribing(topic)).isEqualTo(expected);
-    }
-
-    static Stream<Arguments> isSubscribingTestSource() {
-        return Stream.of(
-            Arguments.of("sports.*", "sports.football", true),
-            Arguments.of("sports.*", "sports.basketball", true),
-            Arguments.of("sports.*", "news.politics", false),
-            Arguments.of("news.**", "news", true),
-            Arguments.of("news.**", "news.world.europe", true),
-            Arguments.of("news.**", "sports.football", false)
-        );
     }
 }

@@ -1,10 +1,10 @@
-package org.mmmq.broker.dispatcher;
+package org.mmmq.broker.dispatcher.binding;
 
 import org.mmmq.core.message.Topic;
 import org.springframework.util.AntPathMatcher;
 
 public record Binding(
-    String pattern
+        String pattern
 ) {
 
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher(".");

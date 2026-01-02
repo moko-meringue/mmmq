@@ -1,11 +1,10 @@
 package org.mmmq.broker.dispatcher;
 
-import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
+import jakarta.annotation.Nullable;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import org.mmmq.broker.dispatcher.binding.Binding;
+import org.mmmq.broker.dispatcher.binding.BindingCache;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.dlq.DeadLetter;
 import org.mmmq.broker.dlq.DeadLetterQueue;
@@ -15,9 +14,11 @@ import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jakarta.annotation.Nullable;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class Dispatcher {
 
@@ -35,13 +36,13 @@ public class Dispatcher {
     Sender sender;
 
     Dispatcher(
-        String name,
-        Host host,
-        List<Binding> bindings,
-        BlockingQueue<Message> messageQueue,
-        @Nullable DeadLetterQueue deadLetterQueue,
-        ThreadPoolExecutor threadPool,
-        Sender sender
+            String name,
+            Host host,
+            List<Binding> bindings,
+            BlockingQueue<Message> messageQueue,
+            @Nullable DeadLetterQueue deadLetterQueue,
+            ThreadPoolExecutor threadPool,
+            Sender sender
     ) {
         this.name = name;
         this.host = host;
@@ -55,40 +56,40 @@ public class Dispatcher {
     }
 
     public Dispatcher(
-        String name,
-        Host host,
-        List<Binding> bindings,
-        BlockingQueue<Message> messageQueue,
-        ThreadPoolExecutor threadPool
+            String name,
+            Host host,
+            List<Binding> bindings,
+            BlockingQueue<Message> messageQueue,
+            ThreadPoolExecutor threadPool
     ) {
         this(name, host, bindings, new ArrayBlockingQueue<>(1000), null, threadPool, Sender.from(host));
     }
 
     public Dispatcher(
-        String name,
-        Host host,
-        List<Binding> bindings,
-        @Nullable DeadLetterQueue deadLetterQueue,
-        ThreadPoolExecutor threadPool
+            String name,
+            Host host,
+            List<Binding> bindings,
+            @Nullable DeadLetterQueue deadLetterQueue,
+            ThreadPoolExecutor threadPool
     ) {
         this(name, host, bindings, new ArrayBlockingQueue<>(1000), deadLetterQueue, threadPool, Sender.from(host));
     }
 
     public Dispatcher(String name, Host host, List<Binding> bindings, @Nullable DeadLetterQueue deadLetterQueue) {
         this(
-            name,
-            host,
-            bindings,
-            new ArrayBlockingQueue<>(1000),
-            deadLetterQueue,
-            new ThreadPoolExecutor(
-                2,
-                5,
-                40L,
-                TimeUnit.SECONDS,
-                new ArrayBlockingQueue<>(100)
-            ),
-            Sender.from(host)
+                name,
+                host,
+                bindings,
+                new ArrayBlockingQueue<>(1000),
+                deadLetterQueue,
+                new ThreadPoolExecutor(
+                        2,
+                        5,
+                        40L,
+                        TimeUnit.SECONDS,
+                        new ArrayBlockingQueue<>(100)
+                ),
+                Sender.from(host)
         );
     }
 

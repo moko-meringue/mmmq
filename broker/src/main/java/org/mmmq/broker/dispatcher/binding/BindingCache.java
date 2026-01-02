@@ -1,9 +1,9 @@
-package org.mmmq.broker.dispatcher;
+package org.mmmq.broker.dispatcher.binding;
+
+import org.mmmq.core.message.Topic;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-import org.mmmq.core.message.Topic;
 
 public class BindingCache {
 
