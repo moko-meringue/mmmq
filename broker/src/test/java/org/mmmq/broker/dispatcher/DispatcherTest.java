@@ -2,18 +2,23 @@ package org.mmmq.broker.dispatcher;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
 
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -23,9 +28,20 @@ class DispatcherTest {
     Host host = new Host("http", "localhost", 8080);
     Dispatcher dispatcher;
 
+    static Stream<Arguments> isSubscribingTestSource() {
+        return Stream.of(
+                Arguments.of(new Pattern("sports.*"), "sports.football", true),
+                Arguments.of(new Pattern("sports.*"), "sports.basketball", true),
+                Arguments.of(new Pattern("sports.*"), "news.politics", false),
+                Arguments.of(new Pattern("news.**"), "news", true),
+                Arguments.of(new Pattern("news.**"), "news.world.europe", true),
+                Arguments.of(new Pattern("news.**"), "sports.football", false)
+        );
+    }
+
     @BeforeEach
     void setUp() {
-        dispatcher = new Dispatcher("name", host, new HashSet<>(), null);
+        dispatcher = new Dispatcher("name", host, new ArrayList<>(), null);
     }
 
     @Test
@@ -90,18 +106,37 @@ class DispatcherTest {
         assertThatCode(latch::await).doesNotThrowAnyException();
     }
 
-    @Test
+    @ParameterizedTest
     @DisplayName("isSubscribing 테스트")
-    void isSubscribingTest() {
-        dispatcher.topics.addAll(
-                Set.of(
-                        new Topic("topic1"),
-                        new Topic("topic2")
-                )
-        );
+    @MethodSource("isSubscribingTestSource")
+    void isSubscribingTest(Pattern pattern, String topicName, boolean expected) {
+        dispatcher.patterns.add(pattern);
+        Topic topic = new Topic(topicName);
+        assertThat(dispatcher.isSubscribing(topic)).isEqualTo(expected);
+    }
 
-        assertThat(dispatcher.isSubscribing(new Topic("topic1"))).isTrue();
-        assertThat(dispatcher.isSubscribing(new Topic("topic2"))).isTrue();
-        assertThat(dispatcher.isSubscribing(new Topic("topic3"))).isFalse();
+    @Nested
+    @DisplayName("Binding 캐싱 테스트")
+    class BindingCacheTest {
+
+        @BeforeEach
+        void setUp() {
+            dispatcher.patternCache.clear();
+        }
+
+        @Test
+        @DisplayName("캐시에 데이터를 삽입할 수 있다")
+        void putTest() {
+            var topic = new Topic("test");
+            dispatcher.patternCache.add(topic);
+            assertThat(dispatcher.patternCache.contains(topic)).isTrue();
+        }
+
+        @Test
+        @DisplayName("캐시에 없는 데이터는 매칭되지 않는다")
+        void matchesTest() {
+            var topic = new Topic("test");
+            assertThat(dispatcher.patternCache.contains(topic)).isFalse();
+        }
     }
 }

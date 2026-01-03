@@ -1,23 +1,21 @@
 package org.mmmq.broker.dispatcher;
 
-import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
+import jakarta.annotation.Nullable;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.dlq.DeadLetter;
 import org.mmmq.broker.dlq.DeadLetterQueue;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jakarta.annotation.Nullable;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.*;
 
 public class Dispatcher {
 
@@ -26,7 +24,8 @@ public class Dispatcher {
 
     final String name;
     final Host host;
-    final Set<Topic> topics;
+    final List<Pattern> patterns;
+    final Set<Topic> patternCache;
     final BlockingQueue<Message> messageQueue;
     final DeadLetterQueue deadLetterQueue;
     final ThreadPoolExecutor threadPool;
@@ -34,17 +33,18 @@ public class Dispatcher {
     Sender sender;
 
     Dispatcher(
-        String name,
-        Host host,
-        Set<Topic> topics,
-        BlockingQueue<Message> messageQueue,
-        @Nullable DeadLetterQueue deadLetterQueue,
-        ThreadPoolExecutor threadPool,
-        Sender sender
+            String name,
+            Host host,
+            List<Pattern> patterns,
+            BlockingQueue<Message> messageQueue,
+            @Nullable DeadLetterQueue deadLetterQueue,
+            ThreadPoolExecutor threadPool,
+            Sender sender
     ) {
         this.name = name;
         this.host = host;
-        this.topics = topics;
+        this.patterns = patterns;
+        this.patternCache = ConcurrentHashMap.newKeySet();
         this.messageQueue = messageQueue;
         this.deadLetterQueue = deadLetterQueue == null ? DeadLetterQueue.NO_OP : deadLetterQueue;
         this.worker = new Worker();
@@ -53,54 +53,60 @@ public class Dispatcher {
     }
 
     public Dispatcher(
-        String name,
-        Host host,
-        Set<Topic> topics,
-        BlockingQueue<Message> messageQueue,
-        ThreadPoolExecutor threadPool
+            String name,
+            Host host,
+            List<Pattern> patterns,
+            BlockingQueue<Message> messageQueue,
+            ThreadPoolExecutor threadPool
     ) {
-        this(name, host, topics, new ArrayBlockingQueue<>(1000), null, threadPool, Sender.from(host));
+        this(name, host, patterns, new ArrayBlockingQueue<>(1000), null, threadPool, Sender.from(host));
     }
 
     public Dispatcher(
-        String name,
-        Host host,
-        Set<Topic> topics,
-        @Nullable DeadLetterQueue deadLetterQueue,
-        ThreadPoolExecutor threadPool
+            String name,
+            Host host,
+            List<Pattern> patterns,
+            @Nullable DeadLetterQueue deadLetterQueue,
+            ThreadPoolExecutor threadPool
     ) {
-        this(name, host, topics, new ArrayBlockingQueue<>(1000), deadLetterQueue, threadPool, Sender.from(host));
+        this(name, host, patterns, new ArrayBlockingQueue<>(1000), deadLetterQueue, threadPool, Sender.from(host));
     }
 
-    public Dispatcher(String name, Host host, Set<Topic> topics, @Nullable DeadLetterQueue deadLetterQueue) {
+    public Dispatcher(String name, Host host, List<Pattern> patterns, @Nullable DeadLetterQueue deadLetterQueue) {
         this(
-            name,
-            host,
-            topics,
-            new ArrayBlockingQueue<>(1000),
-            deadLetterQueue,
-            new ThreadPoolExecutor(
-                2,
-                5,
-                40L,
-                TimeUnit.SECONDS,
-                new ArrayBlockingQueue<>(100)
-            ),
-            Sender.from(host)
+                name,
+                host,
+                patterns,
+                new ArrayBlockingQueue<>(1000),
+                deadLetterQueue,
+                new ThreadPoolExecutor(
+                        2,
+                        5,
+                        40L,
+                        TimeUnit.SECONDS,
+                        new ArrayBlockingQueue<>(100)
+                ),
+                Sender.from(host)
         );
+    }
+
+    public boolean isSubscribing(Topic topic) {
+        if (patternCache.contains(topic)) {
+            return true;
+        }
+        if (patterns.stream().anyMatch(binding -> binding.matches(topic))) {
+            patternCache.add(topic);
+            return true;
+        }
+        return false;
     }
 
     public void dispatch(Message message) {
         try {
             messageQueue.put(message);
         } catch (InterruptedException e) {
-
             log.warn("Failed to dispatch message, interrupted: {}", message);
         }
-    }
-
-    public boolean isSubscribing(Topic topic) {
-        return topics.contains(topic);
     }
 
     @PostConstruct

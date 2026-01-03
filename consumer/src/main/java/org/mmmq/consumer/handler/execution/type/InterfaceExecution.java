@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mmmq.consumer.exception.HandlerExecutionException;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Topic;
 import org.springframework.core.GenericTypeResolver;
 import org.springframework.util.ClassUtils;
 
@@ -17,10 +16,7 @@ class InterfaceExecution extends HandlerExecution {
 
     @SuppressWarnings("unchecked")
     InterfaceExecution(MMMQListener<?> mmmqListener, ObjectMapper objectMapper) {
-        super(
-                ClassUtils.getUserClass(mmmqListener).getCanonicalName(),
-                new Topic(mmmqListener.listens())
-        );
+        super(ClassUtils.getUserClass(mmmqListener).getCanonicalName(), mmmqListener.listens());
         this.mmmqListener = (MMMQListener<Object>) mmmqListener;
         this.objectMapper = objectMapper;
         this.parameterType = resolveParameterType(mmmqListener, objectMapper);

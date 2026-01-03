@@ -62,21 +62,21 @@ class MethodExecutorRegistrationTest {
 
     static class Bean1 {
 
-        @MMMQListener(topic = "topic1")
+        @MMMQListener(pattern = "topic1")
         void handle1(String content) {
         }
     }
 
     static class Bean2 {
 
-        @MMMQListener(topic = "topic2")
+        @MMMQListener(pattern = "topic2")
         void handle2(String content) {
         }
     }
 
     static class Bean3 {
 
-        @MMMQListener(topic = "topic3")
+        @MMMQListener(pattern = "topic3")
         void handle3(String content) {
         }
     }

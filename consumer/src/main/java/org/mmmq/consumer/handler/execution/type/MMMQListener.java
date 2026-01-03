@@ -1,8 +1,10 @@
 package org.mmmq.consumer.handler.execution.type;
 
+import org.mmmq.core.message.Pattern;
+
 public interface MMMQListener<T> {
 
-    String listens();
+    Pattern listens();
 
     void handle(T content);
 }

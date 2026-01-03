@@ -6,6 +6,7 @@ import org.mmmq.consumer.handler.FrontHandler;
 import org.mmmq.consumer.handler.FrontHandlerUtil;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.consumer.handler.execution.HandlerExecutions;
+import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +35,7 @@ class InterfaceExecutionRegistrationTest {
         List<HandlerExecution> executions = handlerExecutions.getExecutions(new Topic("test-topic"));
         assertThat(executions.size()).isEqualTo(1);
         HandlerExecution execution = executions.get(0);
-        assertThat(execution.getTopic().name()).isEqualTo("test-topic");
+        assertThat(execution.getPattern().value()).isEqualTo("test-topic");
     }
 
     @Configuration
@@ -65,8 +66,8 @@ class InterfaceExecutionRegistrationTest {
     static class SampleListener implements MMMQListener<SampleDto> {
 
         @Override
-        public String listens() {
-            return "test-topic";
+        public Pattern listens() {
+            return new Pattern("test-topic");
         }
 
         @Override

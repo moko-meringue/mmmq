@@ -1,25 +1,30 @@
 package org.mmmq.consumer.handler.execution;
 
 import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
 
 public abstract class HandlerExecution {
 
     protected final String name;
-    protected final Topic topic;
+    protected final Pattern pattern;
 
-    protected HandlerExecution(String name, Topic topic) {
+    protected HandlerExecution(String name, Pattern pattern) {
         this.name = name;
-        this.topic = topic;
+        this.pattern = pattern;
     }
 
     public abstract void execute(Message message);
+
+    public final boolean supports(Topic topic) {
+        return pattern.matches(topic);
+    }
 
     public String getName() {
         return name;
     }
 
-    public Topic getTopic() {
-        return topic;
+    public Pattern getPattern() {
+        return pattern;
     }
 }
