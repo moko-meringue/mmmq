@@ -114,6 +114,7 @@ Consumer는 Broker로부터 메시지를 수신하여 처리합니다.
 
 #### 방법 1: 어노테이션(@MMMQListener) 사용
 메서드에 어노테이션을 붙여 간편하게 특정 토픽을 구독하는 핸들러를 만들 수 있습니다.
+값 생략 시, 모든 패턴을 핸들링합니다.
 
 ```java
 @Service
@@ -121,7 +122,7 @@ public class OrderService {
     
     // ...
     
-    @MMMQListener(pattern = "order.*") // order.* 토픽을 핸들링
+    @MMMQListener("order.*") // order.* 토픽을 핸들링
     public void handleAllOrders(Order order) {
         // Handle all orders
     }
