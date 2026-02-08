@@ -6,7 +6,5 @@ import java.util.Collection;
 
 public interface DeadLetterHandler {
 
-    void handle(DeadLetter deadLetter);
-
     void handle(Collection<DeadLetter> deadLetters);
 }
