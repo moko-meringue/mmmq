@@ -1,119 +1,55 @@
 package org.mmmq.broker.dlq;
 
+import jakarta.annotation.PreDestroy;
 import org.mmmq.broker.dlq.handler.DeadLetterHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class CounterDeadLetterQueue extends DeadLetterQueue {
 
     private static final Logger log = LoggerFactory.getLogger(CounterDeadLetterQueue.class);
-    protected final BlockingQueue<DeadLetter> deadLetterQueue = new LinkedBlockingQueue<>();
+
     private final int capacity;
-    private final Worker worker;
+    private final ThreadPoolExecutor executor = new ThreadPoolExecutor(
+            1, 1, 100L, TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(1),
+            new ThreadPoolExecutor.DiscardPolicy()
+    );
 
     public CounterDeadLetterQueue(String name, DeadLetterHandler handler, int capacity) {
         super(name, handler);
         this.capacity = capacity;
-        this.worker = new Worker();
+    }
+
+    @PreDestroy
+    public void stop() {
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+        }
     }
 
     @Override
     public void add(DeadLetter deadLetter) {
-        deadLetterQueue.add(deadLetter);
-        if (canWrite()) {
-            worker.work();
-        }
-    }
-
-    private boolean canWrite() {
-        return deadLetterQueue.size() >= capacity;
-    }
-
-    @Override
-    public void start() {
-        worker.start();
-    }
-
-    @Override
-    public void stop() {
-        worker.stop();
-    }
-
-    private class Worker {
-
-        final Thread thread;
-        final Lock lock = new ReentrantLock();
-        final Condition condition = lock.newCondition();
-
-        Worker() {
-            this.thread = new Thread(
-                    () -> {
-                        while (!Thread.currentThread().isInterrupted()) {
-                            await();
-                            handleDeadLetters();
-                        }
-                    }, "mmmq-dlq" + "-" + name + "-worker"
-            );
-        }
-
-        void await() {
-            lock.lock();
-            try {
-                while (!canWrite()) {
-                    condition.await();
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.info("CounterDeadLetterQueueWorker interrupted");
-            } finally {
-                lock.unlock();
-            }
-        }
-
-        void signal() {
-            lock.lock();
-            try {
-                condition.signalAll();
-            } finally {
-                lock.unlock();
-            }
-        }
-
-        void work() {
-            signal();
-        }
-
-        void handleDeadLetters() {
-            try {
-                List<DeadLetter> deadLetters = new ArrayList<>();
-                deadLetterQueue.drainTo(deadLetters);
-                handler.handle(deadLetters);
-            } catch (Exception e) {
-                log.error("Failed to handle dead letters", e);
-            }
-        }
-
-        void start() {
-            thread.start();
-        }
-
-        void stop() {
-            thread.interrupt();
-            try {
-                thread.join(5000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            log.info("Flushing remaining dead letters...");
+        super.add(deadLetter);
+        if (queue.size() >= capacity) {
             handleDeadLetters();
+        }
+    }
+
+    void handleDeadLetters() {
+        try {
+            executor.submit(() -> handler.handle(drainAll()));
+        } catch (Exception e) {
+            log.error("Failed to handle dead letters in {}", name, e);
         }
     }
 }

@@ -21,7 +21,7 @@ import org.springframework.web.client.RestClient;
 
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
@@ -43,8 +43,7 @@ class SenderTest {
                         status -> status.is4xxClientError() || status.is5xxServerError(),
                         (request, response) -> {
                             throw new MessageDeliveryException(
-                                    "Failed to send message to consumer: " + response.getStatusCode().value(),
-                                    response.getStatusCode().value()
+                                    "Failed to send message to consumer: " + response.getStatusCode().value()
                             );
                         }
                 )
@@ -67,7 +66,7 @@ class SenderTest {
                         MediaType.APPLICATION_JSON
                 ));
 
-        sender.send(new Message(new Topic("topic"), Map.of("key", "value")));
+        sender.send(new Message(new Topic("topic"), Map.of("key", "value")), 1);
 
         server.verify();
     }
@@ -86,6 +85,7 @@ class SenderTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                 );
 
-        assertThat(sender.send(new Message(new Topic("topic"), Map.of("key", "value")))).isTrue();
+        assertThatCode(() -> sender.send(new Message(new Topic("topic"), Map.of("key", "value")), 1))
+                .doesNotThrowAnyException();
     }
 }

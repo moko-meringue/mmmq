@@ -1,28 +1,46 @@
 package org.mmmq.broker.dlq;
 
 import org.mmmq.broker.dlq.handler.DeadLetterHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public abstract class DeadLetterQueue {
 
-    public static final DeadLetterQueue NO_OP = new DeadLetterQueue(null, null) {
-        @Override
-        public void add(DeadLetter deadLetter) {
-        }
-    };
+    private static final Logger log = LoggerFactory.getLogger(DeadLetterQueue.class);
 
-    protected final String name;
-    protected final DeadLetterHandler handler;
+    final String name;
+    final BlockingQueue<DeadLetter> queue;
+    final DeadLetterHandler handler;
 
-    public DeadLetterQueue(String name, DeadLetterHandler handler) {
+    DeadLetterQueue(String name, BlockingQueue<DeadLetter> queue, DeadLetterHandler handler) {
         this.name = name;
+        this.queue = queue;
         this.handler = handler;
     }
 
-    public abstract void add(DeadLetter deadLetter);
-
-    public void start() {
+    protected DeadLetterQueue(String name, DeadLetterHandler handler) {
+        this.name = name;
+        this.queue = new LinkedBlockingQueue<>();
+        this.handler = handler;
     }
 
-    public void stop() {
+    public void add(DeadLetter deadLetter) {
+        try {
+            queue.add(deadLetter);
+        } catch (Exception e) {
+            log.warn("Failed to add dead letter", e);
+        }
+    }
+
+    protected final List<DeadLetter> drainAll() {
+        int currentSize = queue.size();
+        List<DeadLetter> drained = new ArrayList<>(currentSize);
+        queue.drainTo(drained);
+        return drained;
     }
 }

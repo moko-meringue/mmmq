@@ -2,19 +2,15 @@ package org.mmmq.core.message;
 
 public class MessageDeliveryException extends RuntimeException {
 
-    private final int statusCode;
-
-    public MessageDeliveryException(String message, int statusCode) {
+    public MessageDeliveryException(String message) {
         super(message);
-        this.statusCode = statusCode;
     }
 
-    public MessageDeliveryException(String message, int statusCode, Throwable cause) {
+    public MessageDeliveryException(Throwable cause) {
+        super(cause);
+    }
+
+    public MessageDeliveryException(String message, Throwable cause) {
         super(message, cause);
-        this.statusCode = statusCode;
-    }
-
-    public int getStatusCode() {
-        return statusCode;
     }
 }

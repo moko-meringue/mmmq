@@ -1,17 +1,18 @@
 package org.mmmq.broker.dlq;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.mmmq.broker.dlq.handler.DeadLetterHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class TimerDeadLetterQueue extends DeadLetterQueue {
 
     private static final Logger log = LoggerFactory.getLogger(TimerDeadLetterQueue.class);
-    protected final BlockingQueue<DeadLetter> deadLetterQueue = new LinkedBlockingQueue<>();
     private final Worker worker;
 
     public TimerDeadLetterQueue(String name, DeadLetterHandler handler, int intervalMillis) {
@@ -19,17 +20,12 @@ public class TimerDeadLetterQueue extends DeadLetterQueue {
         this.worker = new Worker(intervalMillis);
     }
 
-    @Override
-    public void add(DeadLetter deadLetter) {
-        deadLetterQueue.add(deadLetter);
-    }
-
-    @Override
+    @PostConstruct
     public void start() {
         worker.start();
     }
 
-    @Override
+    @PreDestroy
     public void stop() {
         worker.stop();
     }
@@ -68,13 +64,9 @@ public class TimerDeadLetterQueue extends DeadLetterQueue {
 
         void handleDeadLetters() {
             try {
-                List<DeadLetter> deadLetters = new ArrayList<>();
-                deadLetterQueue.drainTo(deadLetters);
-                if (!deadLetters.isEmpty()) {
-                    handler.handle(deadLetters);
-                }
+                handler.handle(drainAll());
             } catch (Exception e) {
-                log.error("Failed to handle dead letters", e);
+                log.error("Failed to handle dead letters in {}", name, e);
             }
         }
     }

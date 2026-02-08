@@ -20,7 +20,7 @@ public class Broker {
 
     @PostMapping("/messages")
     public ResponseEntity<BrokerAcknowledgement> postMessage(@RequestBody Message message) {
-        frontDispatcher.push(message);
+        frontDispatcher.dispatch(message);
         return ResponseEntity.ok(new BrokerAcknowledgement(Acknowledgement.ACK));
     }
 }

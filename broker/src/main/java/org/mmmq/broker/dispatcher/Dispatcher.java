@@ -1,11 +1,8 @@
 package org.mmmq.broker.dispatcher;
 
-import jakarta.annotation.Nullable;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.mmmq.broker.dispatcher.sender.Sender;
-import org.mmmq.broker.dlq.DeadLetter;
-import org.mmmq.broker.dlq.DeadLetterQueue;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Pattern;
@@ -26,8 +23,7 @@ public class Dispatcher {
     final Host host;
     final List<Pattern> patterns;
     final Set<Topic> patternCache;
-    final BlockingQueue<Message> messageQueue;
-    final DeadLetterQueue deadLetterQueue;
+    final BlockingQueue<MessageEnvelope> messageQueue;
     final ThreadPoolExecutor threadPool;
     final Worker worker;
     Sender sender;
@@ -36,8 +32,7 @@ public class Dispatcher {
             String name,
             Host host,
             List<Pattern> patterns,
-            BlockingQueue<Message> messageQueue,
-            @Nullable DeadLetterQueue deadLetterQueue,
+            BlockingQueue<MessageEnvelope> messageQueue,
             ThreadPoolExecutor threadPool,
             Sender sender
     ) {
@@ -46,39 +41,21 @@ public class Dispatcher {
         this.patterns = patterns;
         this.patternCache = ConcurrentHashMap.newKeySet();
         this.messageQueue = messageQueue;
-        this.deadLetterQueue = deadLetterQueue == null ? DeadLetterQueue.NO_OP : deadLetterQueue;
         this.worker = new Worker();
         this.threadPool = threadPool;
         this.sender = sender;
     }
 
-    public Dispatcher(
-            String name,
-            Host host,
-            List<Pattern> patterns,
-            BlockingQueue<Message> messageQueue,
-            ThreadPoolExecutor threadPool
-    ) {
-        this(name, host, patterns, new ArrayBlockingQueue<>(1000), null, threadPool, Sender.from(host));
+    public Dispatcher(String name, Host host, List<Pattern> patterns, ThreadPoolExecutor threadPool) {
+        this(name, host, patterns, new ArrayBlockingQueue<>(1000), threadPool, Sender.from(host));
     }
 
-    public Dispatcher(
-            String name,
-            Host host,
-            List<Pattern> patterns,
-            @Nullable DeadLetterQueue deadLetterQueue,
-            ThreadPoolExecutor threadPool
-    ) {
-        this(name, host, patterns, new ArrayBlockingQueue<>(1000), deadLetterQueue, threadPool, Sender.from(host));
-    }
-
-    public Dispatcher(String name, Host host, List<Pattern> patterns, @Nullable DeadLetterQueue deadLetterQueue) {
+    public Dispatcher(String name, Host host, List<Pattern> patterns) {
         this(
                 name,
                 host,
                 patterns,
                 new ArrayBlockingQueue<>(1000),
-                deadLetterQueue,
                 new ThreadPoolExecutor(
                         2,
                         5,
@@ -101,18 +78,17 @@ public class Dispatcher {
         return false;
     }
 
-    public void dispatch(Message message) {
+    public void dispatch(MessageEnvelope messageEnvelope) {
         try {
-            messageQueue.put(message);
+            messageQueue.put(messageEnvelope);
         } catch (InterruptedException e) {
-            log.warn("Failed to dispatch message, interrupted: {}", message);
+            log.warn("Failed to dispatch message, interrupted: {}", messageEnvelope.getMessage());
         }
     }
 
     @PostConstruct
     void start() {
         worker.start();
-        deadLetterQueue.start();
     }
 
     @PreDestroy
@@ -126,7 +102,6 @@ public class Dispatcher {
         } catch (InterruptedException e) {
             threadPool.shutdownNow();
         }
-        deadLetterQueue.stop();
     }
 
     private class Worker {
@@ -156,8 +131,8 @@ public class Dispatcher {
             public void run() {
                 while (!Thread.currentThread().isInterrupted() && !threadPool.isShutdown()) {
                     try {
-                        Message message = messageQueue.take();
-                        threadPool.submit(() -> send(message));
+                        MessageEnvelope envelope = messageQueue.take();
+                        threadPool.submit(() -> send(envelope));
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         log.info("DispatchWorker interrupted");
@@ -167,19 +142,13 @@ public class Dispatcher {
                 }
             }
 
-            void send(Message message) {
+            void send(MessageEnvelope messageEnvelope) {
                 try {
-                    if (!sender.send(message, MAX_RETRY_COUNT)) {
-                        handleFailure(DeadLetter.maxRetriesExceeded(message));
-                    }
+                    Message message = messageEnvelope.getMessage();
+                    sender.send(message, MAX_RETRY_COUNT);
                 } catch (Exception e) {
-                    handleFailure(DeadLetter.processingFailed(message, e));
+                    messageEnvelope.handleFailure(e);
                 }
-            }
-
-            void handleFailure(DeadLetter deadLetter) {
-                log.warn("Failed to send message: {}", deadLetter);
-                deadLetterQueue.add(deadLetter);
             }
         }
     }

@@ -34,28 +34,14 @@ public class DeadLetterFileWriter implements DeadLetterHandler {
     }
 
     @Override
-    public void handle(DeadLetter deadLetter) {
-        try {
-            write(serialize(deadLetter));
-        } catch (Exception e) {
-            log.error("Failed to write dead letter to file", e);
-        }
-    }
-
-    @Override
     public void handle(Collection<DeadLetter> deadLetters) {
-        if (deadLetters.isEmpty()) {
-            return;
-        }
         try {
-            write(serialize(deadLetters));
+            if (!deadLetters.isEmpty()) {
+                write(serialize(deadLetters));
+            }
         } catch (Exception e) {
             log.error("Failed to write dead letters to file", e);
         }
-    }
-
-    protected String serialize(DeadLetter deadLetter) {
-        return writeValueAsJson(deadLetter);
     }
 
     protected String serialize(Collection<DeadLetter> deadLetters) {

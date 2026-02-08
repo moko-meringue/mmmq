@@ -21,33 +21,26 @@ public class Sender {
                 .defaultStatusHandler(
                         status -> status.is4xxClientError() || status.is5xxServerError(),
                         (request, response) -> {
-                            throw new MessageDeliveryException(
-                                    "Failed to send message to consumer: " + response.getStatusCode().value(),
-                                    response.getStatusCode().value()
-                            );
+                            throw new MessageDeliveryException("Failed to send message: " + response.getStatusText());
                         }
                 )
                 .build();
         return new Sender(restClient);
     }
 
-    public boolean send(Message message, int maxRetryCount) {
-        for (int tryCount = 0; tryCount < maxRetryCount; tryCount++) {
+    public void send(Message message, int maxRetryCount) {
+        for (int attempt = 1; attempt <= maxRetryCount; attempt++) {
             try {
-                if (send(message)) {
-                    return true;
+                if (post(message).isAck()) {
+                    return;
                 }
             } catch (Exception e) {
-                if (tryCount == maxRetryCount - 1) {
-                    throw e;
+                if (attempt == maxRetryCount) {
+                    throw new MessageDeliveryException("Failed to send message: " + message, e);
                 }
             }
         }
-        return false;
-    }
-
-    public boolean send(Message message) {
-        return post(message).isAck();
+        throw new MessageDeliveryException("Max retry count exceeded for message: " + message);
     }
 
     ConsumerAcknowledgement post(Message message) {

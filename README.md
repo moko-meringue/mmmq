@@ -30,18 +30,21 @@ Dead Letter Queue에 저장된 메시지는 디스크에 나중에 재처리하�
 
 `Broker`는 Producer로부터 메시지를 받아 Consumer에게 전달합니다. 메시지 수신을 위한 엔드포인트를 제공하며, `FrontDispatcher`를 통해 메시지를 적절한 `Dispatcher`에게 전달합니다.  
   
-`FrontDispatcher`는 Broker로 들어온 메시지의 토픽을 분석하여 해당 토픽을 구독 중인 모든 `Dispatcher`에게 메시지를 분배합니다.  
+`FrontDispatcher`는 Broker로 들어온 메시지의 토픽을 분석하여 해당 토픽과 매칭되는 모든 `Dispatcher`에게 메시지를 분배합니다.  
   
 `Dispatcher`는 메시지 큐를 관리하고 Consumer에게 메시지를 전달합니다. 각 Consumer마다 별도의 `Dispatcher`가 할당되며, 내부적으로 `BlockingQueue`를 사용하여 메시지를 관리합니다. 각 `Dispatcher`는 독립된 스레드 풀을 소유하여 특정 Consumer의 느린 메시지 소비가 다른 Consumer에게 영향을 미치는 **느린 소비자 문제**를 해결합니다.
-
 `Dispatcher`는 `Pattern` 객체를 사용하여 토픽과 바인딩됩니다. `Pattern`은 Ant 기반의 경로 패턴 매칭을 지원하여 유연한 토픽 구독이 가능합니다. 와일드카드(*)를 사용하여 유연한 토픽 구독이 가능합니다.
 
 > 예: `Pattern("order.*")` 을 소유한 `Dispatcher`는 `order.new`도 핸들링할 수 있습니다.
 
 `Dispatcher`는 메시지 전송에 실패한 경우 3번 재전송을 수행하며, 최종적으로 실패할 경우 `DeadLetterQueue`로 메시지를 전달합니다.
   
-`DeadLetterQueue`는 메시지 전송에 최종적으로 실패했을 때 해당 메시지를 처리합니다. 전송 실패 원인과 함께 메시지를 `DeadLetter`로 포장하여 저장함으로써, 추후 분석 및 복구를 지원합니다. 재시도 횟수 초과, 처리 불가 예외 발생 등 다양한 실패 상황에 대응합니다.  
-  
+`DeadLetterQueue`는 메시지 전송에 최종적으로 실패했을 때 해당 메시지를 처리합니다. 전송 실패 원인과 함께 메시지를 `DeadLetter`로 포장하여 저장함으로써, 추후 분석 및 복구를 지원합니다. 재시도 횟수 초과, 처리 불가 예외 발생 등 다양한 실패 상황에 대응합니다.
+- Counter-Based(갯수 기반) DLQ: DeadLetter가 지정된 개수에 도달하면 핸들링합니다.
+- Timer-Based(타이머 기반) DLQ: 지정된 주기 간격으로 DeadLetter를 핸들링합니다.
+
+`DeadLetterHandler`는 `DeadLetterQueue`의 `DeadLetter`를 실제로 처리하는 역할을 합니다. 현재는 DeadLetter를 json으로 직렬화하여 파일에 저장하는 `DeadLetterFileWriter`만 제공하지만, 필요에 따라 다양한 핸들러를 구현할 수 있습니다.
+
 ### Consumer
 
 `FrontHandler`는 수신한 메시지의 토픽을 분석하여 해당 토픽을 구독 중인 모든 `HandlerExecution`들을 찾아 실행합니다.  
@@ -110,10 +113,13 @@ public class ProducerConfig {
 ### Consumer 설정
 
 Consumer는 Broker로부터 메시지를 수신하여 처리합니다.
+
 `@MMMQListener` 어노테이션 또는 `MMMQHandler` 인터페이스를 사용하여 메시지 핸들러를 등록할 수 있습니다.
 
 #### 방법 1: 어노테이션(@MMMQListener) 사용
-메서드에 어노테이션을 붙여 간편하게 특정 토픽을 구독하는 핸들러를 만들 수 있습니다.
+
+메서드에 어노테이션을 붙여 간편하게 특정 패턴을 구독하는 핸들러를 만들 수 있습니다.
+
 값 생략 시, 모든 패턴을 핸들링합니다.
 
 ```java
@@ -122,7 +128,7 @@ public class OrderService {
     
     // ...
     
-    @MMMQListener("order.*") // order.* 토픽을 핸들링
+    @MMMQListener("order.*") // order.* 패턴을 핸들링
     public void handleAllOrders(Order order) {
         // Handle all orders
     }
@@ -141,7 +147,7 @@ public class OrderService implements MMMQListener<Order>{
     
     @Override
     public Pattern listens() {
-        return new Pattern("order.*"); // order.* 토픽을 핸들링
+        return new Pattern("order.*"); // order.* 패턴을 핸들링
     }
 
     @Override
@@ -154,8 +160,11 @@ public class OrderService implements MMMQListener<Order>{
 
 ### Broker 설정
 
+#### Dispatcher 선언
+
 Broker는 어떤 Consumer에게 메시지를 전달할지 알아야 합니다.
-Dispatcher Bean을 등록하여 Consumer의 주소와 바인딩할 토픽의 패턴을 설정합니다.
+
+Dispatcher Bean 들을 등록하여 Consumer의 주소와 바인딩할 토픽의 패턴을 설정합니다.
 
 ```java
 @Configuration
@@ -166,19 +175,52 @@ public class DispatcherConfig {
         return new Dispatcher(
                 "order-dispatcher", // Dispatcher 이름
                 new Host("http", "ip", 8080), // Consumer의 호스트 정보
-                List.of(new Pattern("order.*"), new Pattern("payment.kakao.*")), // 바인딩할 토픽 패턴 리스트
-                new TimerDeadLetterQueue( // Dead Letter Queue 설정
-                        "order-dead-letter-queue", // Dead Letter Queue 이름
-                        new DeadLetterFileWriter( // Dead Letter Writer 설정
-                                Path.of("/home/ubuntu/dead-letters"), // 파일 저장 경로
-                                "order-dead-letter-writer" // Dead Letter Writer 이름
-                        ),
-                        60_000 // Dead Letter Write 주기 (밀리초 단위)
-                )
+                List.of(new Pattern("order.*"), new Pattern("payment.kakao.*")) // 바인딩할 토픽 패턴 리스트
         );
     }
 }
 ```
+
+#### DeadLetterQueue 선언 (선택 사항)
+
+전송에 최종적으로 실패한 메시지를 처리할 DeadLetterQueue Bean을 등록할 수 있습니다.
+
+DeadLetterQueue는 여러 개 등록할 수 있으며, 메시지 전송 실패 시 모든 DeadLetterQueue에 메시지가 전달됩니다.
+
+DeadLetter를 처리하는 DeadLetterHandler도 함께 등록해야 합니다.
+
+```java
+@Configuration
+public class DeadLetterQueueConfig {
+
+    @Bean
+    public DeadLetterQueue counterDeadLetterQueue() {
+        return new CounterDeadLetterQueue(
+                "counter-dead-letter-queue", // DeadLetterQueue 이름
+                deadLetterFileWriter(), // DeadLetterHandler 구현체
+                50 // 메시지 카운트 임계값
+        );
+    }
+
+    @Bean
+    public DeadLetterQueue timerDeadLetterQueue() {
+        return new TimerDeadLetterQueue(
+                "counter-dead-letter-queue", // DeadLetterQueue 이름
+                deadLetterFileWriter(), // DeadLetterHandler 구현체
+                10000 // 메시지 작성 주기(밀리초 단위)
+        );
+    }
+
+    @Bean
+    public DeadLetterHandler deadLetterFileWriter() {
+        return new DeadLetterFileWriter( // DeadLetterHandler 구현체
+                Path.of("/home/ubuntu/broker/dead-letters"), // 파일 저장 경로
+                "dead-letter-writer" // DeadLetterHandler 이름
+        );
+    }
+}
+```
+
 
 # 👥 참여자
 
