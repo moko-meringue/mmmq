@@ -24,8 +24,7 @@ class Gateway {
                         status -> status.is4xxClientError() || status.is5xxServerError(),
                         (request, response) -> {
                             throw new MessageDeliveryException(
-                                    "Failed to send message to gateway: " + response.getStatusCode().value(),
-                                    response.getStatusCode().value()
+                                    "Failed to send message to gateway: " + response.getStatusCode().value(), null
                             );
                         }
                 )

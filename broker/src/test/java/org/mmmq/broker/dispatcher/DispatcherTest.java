@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,16 +42,23 @@ class DispatcherTest {
 
     @BeforeEach
     void setUp() {
-        dispatcher = new Dispatcher("name", host, new ArrayList<>(), null);
+        dispatcher = new Dispatcher("name", host, new ArrayList<>());
     }
 
     @Test
     @DisplayName("push 테스트")
     void dispatchTest() {
-        Message message = new Message(new Topic("test"), Map.of("key", "value"));
-        dispatcher.dispatch(message);
+        Message message1 = new Message(new Topic("test1"), Map.of("key", "value"));
+        Message message2 = new Message(new Topic("test2"), Map.of("key", "value"));
+        Consumer<Throwable> onFailure1 = null;
+        Consumer<Throwable> onFailure2 = null;
+        MessageEnvelope messageEnvelope1 = new MessageEnvelope(message1, onFailure1);
+        MessageEnvelope messageEnvelope2 = new MessageEnvelope(message2, onFailure2);
 
-        assertThat(dispatcher.messageQueue).contains(message);
+        dispatcher.dispatch(messageEnvelope1);
+        dispatcher.dispatch(messageEnvelope2);
+
+        assertThat(dispatcher.messageQueue).containsExactlyInAnyOrder(messageEnvelope1, messageEnvelope2);
     }
 
     @Test
@@ -69,7 +77,8 @@ class DispatcherTest {
                     startLatch.await();
                     for (int j = 0; j < messagesPerThread; j++) {
                         Message message = new Message(new Topic("topic"), Map.of("id", threadId, "msg", j));
-                        dispatcher.dispatch(message);
+                        MessageEnvelope messageEnvelope = new MessageEnvelope(message, null);
+                        dispatcher.dispatch(messageEnvelope);
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -95,14 +104,14 @@ class DispatcherTest {
         CountDownLatch latch = new CountDownLatch(1);
         dispatcher.sender = new Sender(null) {
             @Override
-            public boolean send(Message message) {
+            public void send(Message message, int retryCount) {
                 latch.countDown();
-                return true;
             }
         };
         dispatcher.start();
         Message message = new Message(new Topic("test"), Map.of("key", "value"));
-        dispatcher.dispatch(message);
+        MessageEnvelope messageEnvelope = new MessageEnvelope(message, null);
+        dispatcher.dispatch(messageEnvelope);
         assertThatCode(latch::await).doesNotThrowAnyException();
     }
 
