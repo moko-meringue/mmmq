@@ -28,19 +28,13 @@ public class Sender {
         return new Sender(restClient);
     }
 
-    public void send(Message message, int maxRetryCount) {
+    public boolean send(Message message, int maxRetryCount) {
         for (int attempt = 1; attempt <= maxRetryCount; attempt++) {
-            try {
-                if (post(message).isAck()) {
-                    return;
-                }
-            } catch (Exception e) {
-                if (attempt == maxRetryCount) {
-                    throw new MessageDeliveryException("Failed to send message: " + message, e);
-                }
+            if (post(message).isAck()) {
+                return true;
             }
         }
-        throw new MessageDeliveryException("Max retry count exceeded for message: " + message);
+        return false;
     }
 
     ConsumerAcknowledgement post(Message message) {

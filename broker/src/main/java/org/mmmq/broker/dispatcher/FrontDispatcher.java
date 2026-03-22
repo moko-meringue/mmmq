@@ -9,7 +9,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 @Component
 public class FrontDispatcher {
@@ -30,9 +29,9 @@ public class FrontDispatcher {
     }
 
     private void push(Dispatcher dispatcher, Message message) {
-        Consumer<Throwable> onFailure = cause -> {
-            log.warn("Dispatching failed for message: {}", message, cause);
-            DeadLetter deadLetter = new DeadLetter(message, cause);
+        Runnable onFailure = () -> {
+            log.warn("Dispatching failed for message: {}", message);
+            DeadLetter deadLetter = new DeadLetter(message);
             deadLetterQueueProvider.stream()
                     .forEach(deadLetterQueue -> deadLetterQueue.add(deadLetter));
         };

@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,8 +49,8 @@ class DispatcherTest {
     void dispatchTest() {
         Message message1 = new Message(new Topic("test1"), Map.of("key", "value"));
         Message message2 = new Message(new Topic("test2"), Map.of("key", "value"));
-        Consumer<Throwable> onFailure1 = (e) -> {};
-        Consumer<Throwable> onFailure2 = (e) -> {};
+        Runnable onFailure1 = () -> {};
+        Runnable onFailure2 = () -> {};
 
         dispatcher.dispatch(message1, onFailure1);
         dispatcher.dispatch(message2, onFailure2);
@@ -79,7 +78,7 @@ class DispatcherTest {
                     startLatch.await();
                     for (int j = 0; j < messagesPerThread; j++) {
                         Message message = new Message(new Topic("topic"), Map.of("id", threadId, "msg", j));
-                        dispatcher.dispatch(message, (e) -> {});
+                        dispatcher.dispatch(message, () -> {});
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -105,13 +104,14 @@ class DispatcherTest {
         CountDownLatch latch = new CountDownLatch(1);
         dispatcher.sender = new Sender(null) {
             @Override
-            public void send(Message message, int retryCount) {
+            public boolean send(Message message, int retryCount) {
                 latch.countDown();
+                return true;
             }
         };
         dispatcher.start();
         Message message = new Message(new Topic("test"), Map.of("key", "value"));
-        dispatcher.dispatch(message, (e) -> {});
+        dispatcher.dispatch(message, () -> {});
         assertThatCode(latch::await).doesNotThrowAnyException();
     }
 

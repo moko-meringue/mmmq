@@ -6,7 +6,6 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
@@ -17,7 +16,11 @@ import org.slf4j.LoggerFactory;
 
 public class Dispatcher {
 
-    static final int MAX_RETRY_COUNT = 3;
+    static final int MAX_NACK_RETRY_COUNT = 3;
+    static final long INITIAL_BACKOFF_DELAY_MS = 1000;
+    static final long MAX_BACKOFF_DELAY_MS = 60000;
+    static final int BACKOFF_MULTIPLIER = 2;
+
     private static final Logger log = LoggerFactory.getLogger(Dispatcher.class);
 
     final String name;
@@ -65,13 +68,12 @@ public class Dispatcher {
         return false;
     }
 
-    public void dispatch(Message message, Consumer<Throwable> onFailure) {
+    public void dispatch(Message message, Runnable onFailure) {
         Message messageWithPattern = message.withPattern(pattern);
         try {
             messageQueue.put(new MessageEnvelope(messageWithPattern, onFailure));
         } catch (InterruptedException e) {
             log.warn("Failed to dispatch message, interrupted: {}", messageWithPattern);
-            onFailure.accept(e);
         }
     }
 
@@ -124,11 +126,29 @@ public class Dispatcher {
             }
 
             void send(MessageEnvelope messageEnvelope) {
-                try {
+                long currentBackoffDelay = INITIAL_BACKOFF_DELAY_MS;
+                int communicationRetryCount = 0;
+
+                while (!Thread.currentThread().isInterrupted()) {
                     Message message = messageEnvelope.message();
-                    sender.send(message, MAX_RETRY_COUNT);
-                } catch (Exception e) {
-                    messageEnvelope.handleFailure(e);
+                    try {
+                        if (!sender.send(message, MAX_NACK_RETRY_COUNT)) {
+                            messageEnvelope.handleFailure();
+                        }
+                        return;
+                    } catch (Exception e) {
+                        communicationRetryCount++;
+                        log.warn("Communication failure (attempt {}). Backing off for {}ms. Error: {}",
+                                communicationRetryCount, currentBackoffDelay, e.getMessage());
+                        try {
+                            Thread.sleep(currentBackoffDelay);
+                        } catch (InterruptedException interruptedException) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+
+                        currentBackoffDelay = Math.min(currentBackoffDelay * BACKOFF_MULTIPLIER, MAX_BACKOFF_DELAY_MS);
+                    }
                 }
             }
         }
