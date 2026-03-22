@@ -84,8 +84,8 @@ class FrontHandlerTest {
         frontHandler.addHandlerExecution(fakeHandlerExecutionA);
         frontHandler.addHandlerExecution(fakeHandlerExecutionB);
 
-        Message messageA = new Message(new Topic("topic a"), Map.of("key", "value A"));
-        Message messageB = new Message(new Topic("topic b"), Map.of("key", "value B"));
+        Message messageA = new Message(new Topic("topic a"), Map.of("key", "value A"), new Pattern("topic a"));
+        Message messageB = new Message(new Topic("topic b"), Map.of("key", "value B"), new Pattern("topic b"));
 
         frontHandler.start();
 
@@ -110,7 +110,7 @@ class FrontHandlerTest {
                 latch.countDown();
             }
         });
-        Message message = new Message(new Topic("topic"), Map.of("key", "value"));
+        Message message = new Message(new Topic("topic"), Map.of("key", "value"), new Pattern("topic"));
         frontHandler.handle(message);
         assertThatCode(latch::await).doesNotThrowAnyException();
     }

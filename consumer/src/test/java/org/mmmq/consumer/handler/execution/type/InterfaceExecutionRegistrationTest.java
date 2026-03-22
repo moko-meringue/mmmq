@@ -6,6 +6,7 @@ import org.mmmq.consumer.handler.FrontHandler;
 import org.mmmq.consumer.handler.FrontHandlerUtil;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.consumer.handler.execution.HandlerExecutions;
+import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
 import org.springframework.beans.factory.ObjectProvider;
@@ -32,7 +33,9 @@ class InterfaceExecutionRegistrationTest {
     void interfaceExecutionRegistrationTest() {
         HandlerExecutions handlerExecutions = FrontHandlerUtil.getHandlerExecutions(frontHandler);
 
-        List<HandlerExecution> executions = handlerExecutions.getExecutions(new Topic("test-topic"));
+        List<HandlerExecution> executions = handlerExecutions.getExecutions(
+                new Message(new Topic("test-topic"), java.util.Map.of(), new Pattern("test-topic"))
+        );
         assertThat(executions.size()).isEqualTo(1);
         HandlerExecution execution = executions.get(0);
         assertThat(execution.getPattern().value()).isEqualTo("test-topic");

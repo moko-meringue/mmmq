@@ -37,6 +37,6 @@ public class FrontDispatcher {
                     .forEach(deadLetterQueue -> deadLetterQueue.add(deadLetter));
         };
 
-        dispatcher.dispatch(new MessageEnvelope(message, onFailure));
+        dispatcher.dispatch(message, onFailure);
     }
 }

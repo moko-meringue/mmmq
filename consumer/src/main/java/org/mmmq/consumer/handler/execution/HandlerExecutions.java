@@ -1,6 +1,7 @@
 package org.mmmq.consumer.handler.execution;
 
-import org.mmmq.core.message.Topic;
+import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Pattern;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,20 +11,24 @@ import java.util.concurrent.ConcurrentHashMap;
 public class HandlerExecutions {
 
     final List<HandlerExecution> executions = new ArrayList<>();
-    final Map<Topic, List<HandlerExecution>> patternCache = new ConcurrentHashMap<>();
+    final Map<Pattern, List<HandlerExecution>> patternCache = new ConcurrentHashMap<>();
 
     public void add(HandlerExecution execution) {
         executions.add(execution);
     }
 
-    public List<HandlerExecution> getExecutions(Topic topic) {
-        if (patternCache.containsKey(topic)) {
-            return patternCache.get(topic);
+    public List<HandlerExecution> getExecutions(Message message) {
+        Pattern pattern = message.pattern();
+        if (pattern == null) {
+            return List.of();
+        }
+        if (patternCache.containsKey(pattern)) {
+            return patternCache.get(pattern);
         }
         List<HandlerExecution> matchedExecutions = executions.stream()
-                .filter(execution -> execution.supports(topic))
+                .filter(execution -> execution.supports(message))
                 .toList();
-        patternCache.put(topic, matchedExecutions);
+        patternCache.put(pattern, matchedExecutions);
         return matchedExecutions;
     }
 

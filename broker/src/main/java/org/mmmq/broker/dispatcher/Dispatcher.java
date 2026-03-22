@@ -2,6 +2,13 @@ package org.mmmq.broker.dispatcher;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
@@ -10,10 +17,6 @@ import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.*;
-
 public class Dispatcher {
 
     static final int MAX_RETRY_COUNT = 3;
@@ -21,7 +24,7 @@ public class Dispatcher {
 
     final String name;
     final Host host;
-    final List<Pattern> patterns;
+    final Pattern pattern;
     final Set<Topic> patternCache;
     final BlockingQueue<MessageEnvelope> messageQueue;
     final ThreadPoolExecutor threadPool;
@@ -31,14 +34,14 @@ public class Dispatcher {
     Dispatcher(
             String name,
             Host host,
-            List<Pattern> patterns,
+            Pattern pattern,
             BlockingQueue<MessageEnvelope> messageQueue,
             ThreadPoolExecutor threadPool,
             Sender sender
     ) {
         this.name = name;
         this.host = host;
-        this.patterns = patterns;
+        this.pattern = pattern;
         this.patternCache = ConcurrentHashMap.newKeySet();
         this.messageQueue = messageQueue;
         this.worker = new Worker();
@@ -46,15 +49,15 @@ public class Dispatcher {
         this.sender = sender;
     }
 
-    public Dispatcher(String name, Host host, List<Pattern> patterns, ThreadPoolExecutor threadPool) {
-        this(name, host, patterns, new ArrayBlockingQueue<>(1000), threadPool, Sender.from(host));
+    public Dispatcher(String name, Host host, Pattern pattern, ThreadPoolExecutor threadPool) {
+        this(name, host, pattern, new ArrayBlockingQueue<>(1000), threadPool, Sender.from(host));
     }
 
-    public Dispatcher(String name, Host host, List<Pattern> patterns) {
+    public Dispatcher(String name, Host host, Pattern pattern) {
         this(
                 name,
                 host,
-                patterns,
+                pattern,
                 new ArrayBlockingQueue<>(1000),
                 new ThreadPoolExecutor(
                         2,
@@ -71,18 +74,20 @@ public class Dispatcher {
         if (patternCache.contains(topic)) {
             return true;
         }
-        if (patterns.stream().anyMatch(binding -> binding.matches(topic))) {
+        if (pattern.matches(topic)) {
             patternCache.add(topic);
             return true;
         }
         return false;
     }
 
-    public void dispatch(MessageEnvelope messageEnvelope) {
+    public void dispatch(Message message, Consumer<Throwable> onFailure) {
+        Message messageWithPattern = message.withPattern(pattern);
         try {
-            messageQueue.put(messageEnvelope);
+            messageQueue.put(new MessageEnvelope(messageWithPattern, onFailure));
         } catch (InterruptedException e) {
-            log.warn("Failed to dispatch message, interrupted: {}", messageEnvelope.getMessage());
+            log.warn("Failed to dispatch message, interrupted: {}", messageWithPattern);
+            onFailure.accept(e);
         }
     }
 

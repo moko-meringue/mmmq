@@ -95,7 +95,7 @@ public class FrontHandler {
             }
 
             void handle(Message message) {
-                handlerExecutions.getExecutions(message.topic())
+                handlerExecutions.getExecutions(message)
                         .forEach(handlerExecution -> threadPool.execute(() -> {
                             try {
                                 handlerExecution.execute(message);
