@@ -6,8 +6,6 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.core.Host;
@@ -27,7 +25,6 @@ public class Dispatcher {
     final Pattern pattern;
     final Set<Topic> patternCache;
     final BlockingQueue<MessageEnvelope> messageQueue;
-    final ThreadPoolExecutor threadPool;
     final Worker worker;
     Sender sender;
 
@@ -36,7 +33,6 @@ public class Dispatcher {
             Host host,
             Pattern pattern,
             BlockingQueue<MessageEnvelope> messageQueue,
-            ThreadPoolExecutor threadPool,
             Sender sender
     ) {
         this.name = name;
@@ -45,12 +41,7 @@ public class Dispatcher {
         this.patternCache = ConcurrentHashMap.newKeySet();
         this.messageQueue = messageQueue;
         this.worker = new Worker();
-        this.threadPool = threadPool;
         this.sender = sender;
-    }
-
-    public Dispatcher(String name, Host host, Pattern pattern, ThreadPoolExecutor threadPool) {
-        this(name, host, pattern, new ArrayBlockingQueue<>(1000), threadPool, Sender.from(host));
     }
 
     public Dispatcher(String name, Host host, Pattern pattern) {
@@ -59,13 +50,6 @@ public class Dispatcher {
                 host,
                 pattern,
                 new ArrayBlockingQueue<>(1000),
-                new ThreadPoolExecutor(
-                        2,
-                        5,
-                        40L,
-                        TimeUnit.SECONDS,
-                        new ArrayBlockingQueue<>(100)
-                ),
                 Sender.from(host)
         );
     }
@@ -99,14 +83,6 @@ public class Dispatcher {
     @PreDestroy
     void stop() {
         worker.stop();
-        threadPool.shutdown();
-        try {
-            if (!threadPool.awaitTermination(5, TimeUnit.SECONDS)) {
-                threadPool.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            threadPool.shutdownNow();
-        }
     }
 
     private class Worker {
@@ -134,10 +110,10 @@ public class Dispatcher {
 
             @Override
             public void run() {
-                while (!Thread.currentThread().isInterrupted() && !threadPool.isShutdown()) {
+                while (!Thread.currentThread().isInterrupted()) {
                     try {
                         MessageEnvelope envelope = messageQueue.take();
-                        threadPool.submit(() -> send(envelope));
+                        send(envelope);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         log.info("DispatchWorker interrupted");
