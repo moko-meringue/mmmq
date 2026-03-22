@@ -149,7 +149,7 @@ public class Dispatcher {
 
             void send(MessageEnvelope messageEnvelope) {
                 try {
-                    Message message = messageEnvelope.getMessage();
+                    Message message = messageEnvelope.message();
                     sender.send(message, MAX_RETRY_COUNT);
                 } catch (Exception e) {
                     messageEnvelope.handleFailure(e);

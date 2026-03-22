@@ -56,7 +56,7 @@ class DispatcherTest {
         dispatcher.dispatch(message1, onFailure1);
         dispatcher.dispatch(message2, onFailure2);
 
-        assertThat(dispatcher.messageQueue.stream().map(MessageEnvelope::getMessage).toList())
+        assertThat(dispatcher.messageQueue.stream().map(MessageEnvelope::message).toList())
                 .containsExactlyInAnyOrder(
                         message1.withPattern(new Pattern("**")),
                         message2.withPattern(new Pattern("**"))
