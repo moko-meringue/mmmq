@@ -2,6 +2,10 @@ package org.mmmq.broker.dispatcher;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
@@ -10,59 +14,45 @@ import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.*;
-
 public class Dispatcher {
 
-    static final int MAX_RETRY_COUNT = 3;
+    static final int MAX_NACK_RETRY_COUNT = 3;
+    static final long INITIAL_BACKOFF_DELAY_MS = 1000;
+    static final long MAX_BACKOFF_DELAY_MS = 60000;
+    static final int BACKOFF_MULTIPLIER = 2;
+
     private static final Logger log = LoggerFactory.getLogger(Dispatcher.class);
 
     final String name;
     final Host host;
-    final List<Pattern> patterns;
+    final Pattern pattern;
     final Set<Topic> patternCache;
     final BlockingQueue<MessageEnvelope> messageQueue;
-    final ThreadPoolExecutor threadPool;
     final Worker worker;
     Sender sender;
 
     Dispatcher(
             String name,
             Host host,
-            List<Pattern> patterns,
+            Pattern pattern,
             BlockingQueue<MessageEnvelope> messageQueue,
-            ThreadPoolExecutor threadPool,
             Sender sender
     ) {
         this.name = name;
         this.host = host;
-        this.patterns = patterns;
+        this.pattern = pattern;
         this.patternCache = ConcurrentHashMap.newKeySet();
         this.messageQueue = messageQueue;
         this.worker = new Worker();
-        this.threadPool = threadPool;
         this.sender = sender;
     }
 
-    public Dispatcher(String name, Host host, List<Pattern> patterns, ThreadPoolExecutor threadPool) {
-        this(name, host, patterns, new ArrayBlockingQueue<>(1000), threadPool, Sender.from(host));
-    }
-
-    public Dispatcher(String name, Host host, List<Pattern> patterns) {
+    public Dispatcher(String name, Host host, Pattern pattern) {
         this(
                 name,
                 host,
-                patterns,
+                pattern,
                 new ArrayBlockingQueue<>(1000),
-                new ThreadPoolExecutor(
-                        2,
-                        5,
-                        40L,
-                        TimeUnit.SECONDS,
-                        new ArrayBlockingQueue<>(100)
-                ),
                 Sender.from(host)
         );
     }
@@ -71,18 +61,19 @@ public class Dispatcher {
         if (patternCache.contains(topic)) {
             return true;
         }
-        if (patterns.stream().anyMatch(binding -> binding.matches(topic))) {
+        if (pattern.matches(topic)) {
             patternCache.add(topic);
             return true;
         }
         return false;
     }
 
-    public void dispatch(MessageEnvelope messageEnvelope) {
+    public void dispatch(Message message, Runnable onFailure) {
+        Message messageWithPattern = message.withPattern(pattern);
         try {
-            messageQueue.put(messageEnvelope);
+            messageQueue.put(new MessageEnvelope(messageWithPattern, onFailure));
         } catch (InterruptedException e) {
-            log.warn("Failed to dispatch message, interrupted: {}", messageEnvelope.getMessage());
+            log.warn("Failed to dispatch message, interrupted: {}", messageWithPattern);
         }
     }
 
@@ -94,14 +85,6 @@ public class Dispatcher {
     @PreDestroy
     void stop() {
         worker.stop();
-        threadPool.shutdown();
-        try {
-            if (!threadPool.awaitTermination(5, TimeUnit.SECONDS)) {
-                threadPool.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            threadPool.shutdownNow();
-        }
     }
 
     private class Worker {
@@ -129,10 +112,10 @@ public class Dispatcher {
 
             @Override
             public void run() {
-                while (!Thread.currentThread().isInterrupted() && !threadPool.isShutdown()) {
+                while (!Thread.currentThread().isInterrupted()) {
                     try {
                         MessageEnvelope envelope = messageQueue.take();
-                        threadPool.submit(() -> send(envelope));
+                        send(envelope);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         log.info("DispatchWorker interrupted");
@@ -143,11 +126,29 @@ public class Dispatcher {
             }
 
             void send(MessageEnvelope messageEnvelope) {
-                try {
-                    Message message = messageEnvelope.getMessage();
-                    sender.send(message, MAX_RETRY_COUNT);
-                } catch (Exception e) {
-                    messageEnvelope.handleFailure(e);
+                long currentBackoffDelay = INITIAL_BACKOFF_DELAY_MS;
+                int communicationRetryCount = 0;
+
+                while (!Thread.currentThread().isInterrupted()) {
+                    Message message = messageEnvelope.message();
+                    try {
+                        if (!sender.send(message, MAX_NACK_RETRY_COUNT)) {
+                            messageEnvelope.handleFailure();
+                        }
+                        return;
+                    } catch (Exception e) {
+                        communicationRetryCount++;
+                        log.warn("Communication failure (attempt {}). Backing off for {}ms. Error: {}",
+                                communicationRetryCount, currentBackoffDelay, e.getMessage());
+                        try {
+                            Thread.sleep(currentBackoffDelay);
+                        } catch (InterruptedException interruptedException) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+
+                        currentBackoffDelay = Math.min(currentBackoffDelay * BACKOFF_MULTIPLIER, MAX_BACKOFF_DELAY_MS);
+                    }
                 }
             }
         }

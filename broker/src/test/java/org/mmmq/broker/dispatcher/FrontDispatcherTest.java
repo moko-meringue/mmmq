@@ -17,6 +17,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -46,7 +47,7 @@ class FrontDispatcherTest {
     ObjectProvider<DeadLetterQueue> deadLetterQueueProvider;
 
     @Test
-    @DisplayName("Broker는 메시지를 받으면 Envelope으로 감싸서 적절한 MessageDispatcher에 전달한다.")
+    @DisplayName("Broker는 메시지를 받으면 적절한 MessageDispatcher에 전달한다.")
     void forwardMessageTest() {
         Dispatcher dispatcher = Mockito.mock(Dispatcher.class);
         FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), deadLetterQueueProvider);
@@ -54,10 +55,7 @@ class FrontDispatcherTest {
         Message message = new Message(new Topic("topic1"), Map.of("key1", "value"));
 
         frontDispatcher.dispatch(message);
-        ArgumentCaptor<MessageEnvelope> envelopeCaptor = ArgumentCaptor.forClass(MessageEnvelope.class);
 
-        verify(dispatcher).dispatch(envelopeCaptor.capture());
-        MessageEnvelope capturedEnvelope = envelopeCaptor.getValue();
-        assertThat(capturedEnvelope.getMessage()).isEqualTo(message);
+        verify(dispatcher).dispatch(eq(message), any());
     }
 }

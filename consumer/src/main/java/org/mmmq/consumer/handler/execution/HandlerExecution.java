@@ -16,8 +16,8 @@ public abstract class HandlerExecution {
 
     public abstract void execute(Message message);
 
-    public final boolean supports(Topic topic) {
-        return pattern.matches(topic);
+    public final boolean supports(Message message) {
+        return pattern.equals(message.pattern());
     }
 
     public String getName() {
