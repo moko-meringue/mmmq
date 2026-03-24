@@ -2,105 +2,36 @@ package org.mmmq.broker.dispatcher;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
+import org.springframework.beans.factory.ObjectProvider;
 
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.mock;
 
 class DispatcherTest {
 
     Host host = new Host("http", "localhost", 8080);
+    TopicQueueRegistry registry;
     Dispatcher dispatcher;
-
-    static Stream<Arguments> isSubscribingTestSource() {
-        return Stream.of(
-                Arguments.of(new Pattern("sports.*"), "sports.football", true),
-                Arguments.of(new Pattern("sports.*"), "sports.basketball", true),
-                Arguments.of(new Pattern("sports.*"), "news.politics", false),
-                Arguments.of(new Pattern("news.**"), "news", true),
-                Arguments.of(new Pattern("news.**"), "news.world.europe", true),
-                Arguments.of(new Pattern("news.**"), "sports.football", false)
-        );
-    }
 
     @BeforeEach
     void setUp() {
-        dispatcher = new Dispatcher("name", host, new Pattern("**"));
+        registry = new TopicQueueRegistry();
+        dispatcher = new Dispatcher("test-dispatcher", host);
+        dispatcher.initialize(registry, mock(ObjectProvider.class));
     }
 
     @Test
-    @DisplayName("push 테스트")
-    void dispatchTest() {
-        Message message1 = new Message(new Topic("test1"), Map.of("key", "value"));
-        Message message2 = new Message(new Topic("test2"), Map.of("key", "value"));
-        Runnable onFailure1 = () -> {};
-        Runnable onFailure2 = () -> {};
-
-        dispatcher.dispatch(message1, onFailure1);
-        dispatcher.dispatch(message2, onFailure2);
-
-        assertThat(dispatcher.messageQueue.stream().map(MessageEnvelope::message).toList())
-                .containsExactlyInAnyOrder(
-                        message1.withPattern(new Pattern("**")),
-                        message2.withPattern(new Pattern("**"))
-                );
-    }
-
-    @Test
-    @DisplayName("push 동시성 보장 테스트")
-    void dispatchConcurrencyTest() throws InterruptedException {
-        int threadCount = 100;
-        int messagesPerThread = 10;
-        CountDownLatch startLatch = new CountDownLatch(1);
-        CountDownLatch endLatch = new CountDownLatch(threadCount);
-        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-
-        for (int i = 0; i < threadCount; i++) {
-            int threadId = i;
-            executor.submit(() -> {
-                try {
-                    startLatch.await();
-                    for (int j = 0; j < messagesPerThread; j++) {
-                        Message message = new Message(new Topic("topic"), Map.of("id", threadId, "msg", j));
-                        dispatcher.dispatch(message, () -> {});
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                } finally {
-                    endLatch.countDown();
-                }
-            });
-        }
-
-        startLatch.countDown();
-        endLatch.await();
-        executor.shutdown();
-
-        int expectedCount = threadCount * messagesPerThread;
-        int actualCount = dispatcher.messageQueue.size();
-
-        assertThat(actualCount).isEqualTo(expectedCount);
-    }
-
-    @Test
-    @DisplayName("메시지 전송 테스트")
-    void executeTest() {
+    @DisplayName("토픽 큐에서 메시지를 읽어 전송한다")
+    void consumeFromTopicQueueTest() throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(1);
         dispatcher.sender = new Sender(null) {
             @Override
@@ -110,42 +41,57 @@ class DispatcherTest {
             }
         };
         dispatcher.start();
+
         Message message = new Message(new Topic("test"), Map.of("key", "value"));
-        dispatcher.dispatch(message, () -> {});
+        registry.add(new Topic("test"), message);
+
         assertThatCode(latch::await).doesNotThrowAnyException();
+        dispatcher.stop();
     }
 
-    @ParameterizedTest
-    @DisplayName("isSubscribing 테스트")
-    @MethodSource("isSubscribingTestSource")
-    void isSubscribingTest(Pattern pattern, String topicName, boolean expected) {
-        dispatcher = new Dispatcher("name", host, pattern);
-        Topic topic = new Topic(topicName);
-        assertThat(dispatcher.isSubscribing(topic)).isEqualTo(expected);
+    @Test
+    @DisplayName("여러 토픽을 동시에 구독한다")
+    void consumeMultipleTopicsTest() throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(2);
+        dispatcher.sender = new Sender(null) {
+            @Override
+            public boolean send(Message message, int retryCount) {
+                latch.countDown();
+                return true;
+            }
+        };
+        dispatcher.start();
+
+        registry.add(new Topic("order.new"), new Message(new Topic("order.new"), Map.of("id", 1)));
+        registry.add(new Topic("payment.kakao"), new Message(new Topic("payment.kakao"), Map.of("id", 2)));
+
+        assertThatCode(latch::await).doesNotThrowAnyException();
+        dispatcher.stop();
     }
 
-    @Nested
-    @DisplayName("Binding 캐싱 테스트")
-    class BindingCacheTest {
+    @Test
+    @DisplayName("토픽별 오프셋을 독립적으로 관리한다")
+    void offsetPerTopicTest() throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(3);
+        dispatcher.sender = new Sender(null) {
+            @Override
+            public boolean send(Message message, int retryCount) {
+                latch.countDown();
+                return true;
+            }
+        };
 
-        @BeforeEach
-        void setUp() {
-            dispatcher.patternCache.clear();
-        }
+        Topic topicA = new Topic("topic.a");
+        Topic topicB = new Topic("topic.b");
+        registry.add(topicA, new Message(topicA, Map.of("seq", 1)));
+        registry.add(topicA, new Message(topicA, Map.of("seq", 2)));
+        registry.add(topicB, new Message(topicB, Map.of("seq", 1)));
 
-        @Test
-        @DisplayName("캐시에 데이터를 삽입할 수 있다")
-        void putTest() {
-            var topic = new Topic("test");
-            dispatcher.patternCache.add(topic);
-            assertThat(dispatcher.patternCache.contains(topic)).isTrue();
-        }
+        dispatcher.start();
 
-        @Test
-        @DisplayName("캐시에 없는 데이터는 매칭되지 않는다")
-        void matchesTest() {
-            var topic = new Topic("test");
-            assertThat(dispatcher.patternCache.contains(topic)).isFalse();
-        }
+        assertThatCode(latch::await).doesNotThrowAnyException();
+        assertThat(dispatcher.offsets.get(topicA).get()).isEqualTo(2);
+        assertThat(dispatcher.offsets.get(topicB).get()).isEqualTo(1);
+        dispatcher.stop();
     }
 }

@@ -34,7 +34,7 @@ class InterfaceExecutionRegistrationTest {
         HandlerExecutions handlerExecutions = FrontHandlerUtil.getHandlerExecutions(frontHandler);
 
         List<HandlerExecution> executions = handlerExecutions.getExecutions(
-                new Message(new Topic("test-topic"), java.util.Map.of(), new Pattern("test-topic"))
+                new Message(new Topic("test-topic"), java.util.Map.of())
         );
         assertThat(executions.size()).isEqualTo(1);
         HandlerExecution execution = executions.get(0);

@@ -6,9 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mmmq.broker.dlq.DeadLetterQueue;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 
@@ -16,46 +14,35 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
-//@ExtendWith(MockitoExtension.class)
-//class FrontDispatcherTest {
-//
-//    @Mock
-//    ObjectProvider<DeadLetterQueue> deadLetterQueueProvider;
-//
-//    @Test
-//    @DisplayName("Broker는 메시지를 받으면 적절한 MessageDispatcher에 전달할 수 있다.")
-//    void forwardMessageTest() {
-//        Dispatcher dispatcher = Mockito.mock(Dispatcher.class);
-//        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), deadLetterQueueProvider);
-//        when(dispatcher.isSubscribing(new Topic("topic1"))).thenReturn(true);
-//
-//        Message message = new Message(new Topic("topic1"), Map.of("key1", "value"));
-//        frontDispatcher.dispatch(message);
-//
-//        verify(dispatcher).dispatch(eq(message), any());
-//    }
-//}
 @ExtendWith(MockitoExtension.class)
 class FrontDispatcherTest {
 
     @Mock
-    ObjectProvider<DeadLetterQueue> deadLetterQueueProvider;
+    ObjectProvider<DeadLetterQueue> dlqProvider;
 
     @Test
-    @DisplayName("Broker는 메시지를 받으면 적절한 MessageDispatcher에 전달한다.")
-    void forwardMessageTest() {
-        Dispatcher dispatcher = Mockito.mock(Dispatcher.class);
-        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), deadLetterQueueProvider);
-        when(dispatcher.isSubscribing(any())).thenReturn(true);
-        Message message = new Message(new Topic("topic1"), Map.of("key1", "value"));
+    @DisplayName("메시지를 받으면 해당 토픽의 TopicQueue에 추가한다")
+    void dispatchAddsMessageToTopicQueue() {
+        TopicQueueRegistry registry = new TopicQueueRegistry();
+        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(), registry, dlqProvider);
 
+        Message message = new Message(new Topic("order.new"), Map.of("id", 1));
         frontDispatcher.dispatch(message);
 
-        verify(dispatcher).dispatch(eq(message), any());
+        assertThat(registry.getAll()).hasSize(1);
+        assertThat(registry.getAll().iterator().next().get(0)).contains(message);
+    }
+
+    @Test
+    @DisplayName("서로 다른 토픽의 메시지는 각각의 TopicQueue에 저장된다")
+    void dispatchCreatesTopicQueuePerTopic() {
+        TopicQueueRegistry registry = new TopicQueueRegistry();
+        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(), registry, dlqProvider);
+
+        frontDispatcher.dispatch(new Message(new Topic("order.new"), Map.of("id", 1)));
+        frontDispatcher.dispatch(new Message(new Topic("payment.kakao"), Map.of("id", 2)));
+
+        assertThat(registry.getAll()).hasSize(2);
     }
 }

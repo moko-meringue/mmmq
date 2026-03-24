@@ -1,18 +1,17 @@
 package org.mmmq.broker.dispatcher;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
-import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
+import org.mmmq.broker.dlq.DeadLetter;
+import org.mmmq.broker.dlq.DeadLetterQueue;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class Dispatcher {
 
@@ -25,64 +24,28 @@ public class Dispatcher {
 
     final String name;
     final Host host;
-    final Pattern pattern;
-    final Set<Topic> patternCache;
-    final BlockingQueue<MessageEnvelope> messageQueue;
+    final ConcurrentHashMap<Topic, AtomicLong> offsets = new ConcurrentHashMap<>();
     final Worker worker;
     Sender sender;
+    TopicQueueRegistry registry;
+    ObjectProvider<DeadLetterQueue> dlqProvider;
 
-    Dispatcher(
-            String name,
-            Host host,
-            Pattern pattern,
-            BlockingQueue<MessageEnvelope> messageQueue,
-            Sender sender
-    ) {
+    public Dispatcher(String name, Host host) {
         this.name = name;
         this.host = host;
-        this.pattern = pattern;
-        this.patternCache = ConcurrentHashMap.newKeySet();
-        this.messageQueue = messageQueue;
+        this.sender = Sender.from(host);
         this.worker = new Worker();
-        this.sender = sender;
     }
 
-    public Dispatcher(String name, Host host, Pattern pattern) {
-        this(
-                name,
-                host,
-                pattern,
-                new ArrayBlockingQueue<>(1000),
-                Sender.from(host)
-        );
+    void initialize(TopicQueueRegistry registry, ObjectProvider<DeadLetterQueue> dlqProvider) {
+        this.registry = registry;
+        this.dlqProvider = dlqProvider;
     }
 
-    public boolean isSubscribing(Topic topic) {
-        if (patternCache.contains(topic)) {
-            return true;
-        }
-        if (pattern.matches(topic)) {
-            patternCache.add(topic);
-            return true;
-        }
-        return false;
-    }
-
-    public void dispatch(Message message, Runnable onFailure) {
-        Message messageWithPattern = message.withPattern(pattern);
-        try {
-            messageQueue.put(new MessageEnvelope(messageWithPattern, onFailure));
-        } catch (InterruptedException e) {
-            log.warn("Failed to dispatch message, interrupted: {}", messageWithPattern);
-        }
-    }
-
-    @PostConstruct
     void start() {
         worker.start();
     }
 
-    @PreDestroy
     void stop() {
         worker.stop();
     }
@@ -92,7 +55,7 @@ public class Dispatcher {
         final Thread thread;
 
         Worker() {
-            this.thread = new Thread(new Job(), "mmmq-dispatcher" + "-" + name + "-worker");
+            this.thread = new Thread(new Job(), "mmmq-dispatcher-" + name + "-worker");
         }
 
         void start() {
@@ -113,40 +76,44 @@ public class Dispatcher {
             @Override
             public void run() {
                 while (!Thread.currentThread().isInterrupted()) {
-                    try {
-                        MessageEnvelope envelope = messageQueue.take();
-                        send(envelope);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        log.info("DispatchWorker interrupted");
-                    } catch (Exception e) {
-                        log.warn("Failed to dispatch message: {}", e.getMessage());
+                    boolean processed = false;
+                    for (TopicQueue topicQueue : registry.getAll()) {
+                        Topic topic = topicQueue.topic();
+                        long offset = offsets.computeIfAbsent(topic, t -> new AtomicLong(0)).get();
+                        Message message = topicQueue.get(offset).orElse(null);
+                        if (message != null) {
+                            send(message);
+                            offsets.get(topic).incrementAndGet();
+                            processed = true;
+                        }
+                    }
+                    if (!processed) {
+                        try {
+                            registry.awaitNewMessage();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
                     }
                 }
             }
 
-            void send(MessageEnvelope messageEnvelope) {
+            void send(Message message) {
                 long currentBackoffDelay = INITIAL_BACKOFF_DELAY_MS;
-                int communicationRetryCount = 0;
-
                 while (!Thread.currentThread().isInterrupted()) {
-                    Message message = messageEnvelope.message();
                     try {
                         if (!sender.send(message, MAX_NACK_RETRY_COUNT)) {
-                            messageEnvelope.handleFailure();
+                            log.warn("NACK exhausted. Sending to DLQ: {}", message);
+                            dlqProvider.stream().forEach(dlq -> dlq.add(new DeadLetter(message)));
                         }
                         return;
                     } catch (Exception e) {
-                        communicationRetryCount++;
-                        log.warn("Communication failure (attempt {}). Backing off for {}ms. Error: {}",
-                                communicationRetryCount, currentBackoffDelay, e.getMessage());
+                        log.warn("Communication failure. Backing off {}ms. Error: {}", currentBackoffDelay, e.getMessage());
                         try {
                             Thread.sleep(currentBackoffDelay);
                         } catch (InterruptedException interruptedException) {
                             Thread.currentThread().interrupt();
                             return;
                         }
-
                         currentBackoffDelay = Math.min(currentBackoffDelay * BACKOFF_MULTIPLIER, MAX_BACKOFF_DELAY_MS);
                     }
                 }

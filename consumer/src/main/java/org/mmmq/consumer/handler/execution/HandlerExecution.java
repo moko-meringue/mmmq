@@ -2,7 +2,6 @@ package org.mmmq.consumer.handler.execution;
 
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Pattern;
-import org.mmmq.core.message.Topic;
 
 public abstract class HandlerExecution {
 
@@ -17,7 +16,7 @@ public abstract class HandlerExecution {
     public abstract void execute(Message message);
 
     public final boolean supports(Message message) {
-        return pattern.equals(message.pattern());
+        return pattern.matches(message.topic());
     }
 
     public String getName() {
