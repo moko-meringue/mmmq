@@ -5,9 +5,9 @@
 
 **MMMQ**는 메시지 큐 시스템의 핵심 개념과 동작 원리를 학습하기 위한 프로젝트입니다.
 
-- 단순히 도구를 사용하는 것을 넘어, 메시지 브로커의 존재 이유와 동작 메커니즘을 근본적으로 이해합니다.
+- 단순히 도구를 사용하는 것을 넘어, 메시지 브로커의 철학과 동작 메커니즘을 깊이 있게 탐구합니다.
 - 큐 자료구조부터 메시지 영속화, 동시성 제어까지 바닥부터 직접 쌓아 올립니다.
-- 오픈 소스 방식의 협업과 피드백을 통해 '함께 성장하는 소프트웨어'를 지향합니다.
+- 높은 처리량을 달성하기 위해 고민합니다.
 
 # 🏗️ 아키텍처
 
@@ -30,16 +30,22 @@ Dead Letter Queue에 저장된 메시지는 디스크에 나중에 재처리하�
 
 `Broker`는 Producer로부터 메시지를 받아 Consumer에게 전달합니다. 메시지 수신을 위한 엔드포인트를 제공하며, `FrontDispatcher`를 통해 메시지를 적절한 `Dispatcher`에게 전달합니다.  
   
-`FrontDispatcher`는 Broker로 들어온 메시지의 토픽을 분석하여 해당 토픽과 매칭되는 모든 `Dispatcher`에게 메시지를 분배합니다.  
+`FrontDispatcher`는 Broker로 들어온 메시지의 토픽을 분석하여 해당 토픽과 매칭되는 모든 `Dispatcher`의 내부 큐(`BlockingQueue`)에 메시지를 넣는 역할을 수행합니다.  
   
-`Dispatcher`는 메시지 큐를 관리하고 Consumer에게 메시지를 전달합니다. 각 Consumer마다 별도의 `Dispatcher`가 할당되며, 내부적으로 `BlockingQueue`를 사용하여 메시지를 관리합니다. 각 `Dispatcher`는 독립된 스레드 풀을 소유하여 특정 Consumer의 느린 메시지 소비가 다른 Consumer에게 영향을 미치는 **느린 소비자 문제**를 해결합니다.
-`Dispatcher`는 `Pattern` 객체를 사용하여 토픽과 바인딩됩니다. `Pattern`은 Ant 기반의 경로 패턴 매칭을 지원하여 유연한 토픽 구독이 가능합니다. 와일드카드(*)를 사용하여 유연한 토픽 구독이 가능합니다.
-
-> 예: `Pattern("order.*")` 을 소유한 `Dispatcher`는 `order.new`도 핸들링할 수 있습니다.
-
-`Dispatcher`는 메시지 전송에 실패한 경우 3번 재전송을 수행하며, 최종적으로 실패할 경우 `DeadLetterQueue`로 메시지를 전달합니다.
+`Dispatcher`는 실제 메시지 소비와 전달을 담당합니다. 각 `Dispatcher`는 하나의 `Pattern`에 바인딩되어 있으며, 전달받은 메시지의 `pattern` 필드를 자신이 구독 중인 `Pattern`으로 설정하여 Consumer에게 전달합니다.  
   
-`DeadLetterQueue`는 메시지 전송에 최종적으로 실패했을 때 해당 메시지를 처리합니다. 전송 실패 원인과 함께 메시지를 `DeadLetter`로 포장하여 저장함으로써, 추후 분석 및 복구를 지원합니다. 재시도 횟수 초과, 처리 불가 예외 발생 등 다양한 실패 상황에 대응합니다.
+또한, 각 `Dispatcher`는 독립된 워커 스레드를 소유합니다. 이 워커 스레드는 내부 큐에서 메시지를 하나씩 꺼내 Consumer에게 전달하며, 이를 통해 특정 Consumer의 느린 메시지 소비가 다른 Consumer에게 영향을 미치는 **느린 소비자 문제**를 해결합니다.
+
+`Pattern`은 Ant 기반의 경로 패턴 매칭을 지원하여 와일드카드(*)를 사용한 유연한 토픽 구독이 가능합니다.
+
+> 예: `Pattern("order.*")` 에 바인딩된 `Dispatcher`는 `order.new` 토픽도 핸들링할 수 있습니다.
+
+`Dispatcher`의 재시도 전략은 두 레이어로 구성됩니다.
+- **NACK 재시도**: Consumer가 NACK를 응답하면 최대 3번 재전송을 시도합니다.
+  - 최종적으로 NACK 재시도가 모두 소진된 경우 메시지는 `DeadLetterQueue`로 전달됩니다.
+- **통신 실패 재시도**: 네트워크 오류 등 통신 자체가 실패한 경우, 지수 백오프(초기 1초, 최대 60초, 배수 2)를 적용하여 무한 재시도합니다.
+
+`DeadLetterQueue`는 메시지 전송에 최종적으로 실패했을 때(재시도 횟수 초과 등) 해당 메시지를 처리합니다. 메시지를 `DeadLetter`로 포장하여 저장함으로써, 추후 분석 및 복구를 지원합니다.
 - Counter-Based(갯수 기반) DLQ: DeadLetter가 지정된 개수에 도달하면 핸들링합니다.
 - Timer-Based(타이머 기반) DLQ: 지정된 주기 간격으로 DeadLetter를 핸들링합니다.
 
@@ -106,6 +112,11 @@ public class ProducerConfig {
     public Producer orderProducer() {
         Host brokerHost = new Host("http", "ip", 8080); // Broker의 호스트 정보
         return new Producer(brokerHost);
+
+        // 재시도 횟수를 커스터마이징하려면 Builder를 사용합니다 (기본값: 3)
+        // return Producer.builder(brokerHost)
+        //         .maxRetryCount(5)
+        //         .build();
     }
 }
 ```
@@ -114,7 +125,7 @@ public class ProducerConfig {
 
 Consumer는 Broker로부터 메시지를 수신하여 처리합니다.
 
-`@MMMQListener` 어노테이션 또는 `MMMQHandler` 인터페이스를 사용하여 메시지 핸들러를 등록할 수 있습니다.
+`@MMMQListener` 어노테이션 또는 `MMMQListener` 인터페이스를 사용하여 메시지 핸들러를 등록할 수 있습니다.
 
 #### 방법 1: 어노테이션(@MMMQListener) 사용
 
@@ -137,7 +148,7 @@ public class OrderService {
 
 #### 방법 2: 인터페이스(MMMQListener) 구현
 
-`MMMQHandler` 인터페이스를 구현하여 클래스 단위로 핸들러를 정의할 수 있습니다.
+`MMMQListener` 인터페이스를 구현하여 클래스 단위로 핸들러를 정의할 수 있습니다.
 
 ```java
 @Service
@@ -170,12 +181,23 @@ Dispatcher Bean 들을 등록하여 Consumer의 주소와 바인딩할 토픽의
 @Configuration
 public class DispatcherConfig {
 
+    // Dispatcher 하나는 하나의 Pattern만 바인딩합니다.
+    // 여러 패턴을 구독하려면 Dispatcher를 여러 개 등록합니다.
     @Bean
     public Dispatcher orderDispatcher() {
         return new Dispatcher(
-                "order-dispatcher", // Dispatcher 이름
+                "order-dispatcher",           // Dispatcher 이름
                 new Host("http", "ip", 8080), // Consumer의 호스트 정보
-                List.of(new Pattern("order.*"), new Pattern("payment.kakao.*")) // 바인딩할 토픽 패턴 리스트
+                new Pattern("order.*")        // 바인딩할 토픽 패턴
+        );
+    }
+
+    @Bean
+    public Dispatcher paymentDispatcher() {
+        return new Dispatcher(
+                "payment-dispatcher",
+                new Host("http", "ip", 8081),
+                new Pattern("payment.kakao.*")
         );
     }
 }
