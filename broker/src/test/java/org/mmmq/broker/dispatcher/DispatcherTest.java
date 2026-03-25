@@ -1,5 +1,10 @@
 package org.mmmq.broker.dispatcher;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.mock;
+
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -8,13 +13,6 @@ import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 import org.springframework.beans.factory.ObjectProvider;
-
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.mockito.Mockito.mock;
 
 class DispatcherTest {
 
@@ -40,10 +38,8 @@ class DispatcherTest {
                 return true;
             }
         };
-        dispatcher.start();
 
-        Message message = new Message(new Topic("test"), Map.of("key", "value"));
-        registry.add(new Topic("test"), message);
+        registry.add(new Topic("test"), new Message(new Topic("test"), Map.of("key", "value")));
 
         assertThatCode(latch::await).doesNotThrowAnyException();
         dispatcher.stop();
@@ -60,7 +56,6 @@ class DispatcherTest {
                 return true;
             }
         };
-        dispatcher.start();
 
         registry.add(new Topic("order.new"), new Message(new Topic("order.new"), Map.of("id", 1)));
         registry.add(new Topic("payment.kakao"), new Message(new Topic("payment.kakao"), Map.of("id", 2)));
@@ -70,8 +65,8 @@ class DispatcherTest {
     }
 
     @Test
-    @DisplayName("토픽별 오프셋을 독립적으로 관리한다")
-    void offsetPerTopicTest() throws InterruptedException {
+    @DisplayName("토픽별 메시지를 독립적으로 소비한다")
+    void consumePerTopicIndependentlyTest() throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(3);
         dispatcher.sender = new Sender(null) {
             @Override
@@ -81,17 +76,35 @@ class DispatcherTest {
             }
         };
 
-        Topic topicA = new Topic("topic.a");
-        Topic topicB = new Topic("topic.b");
+        Topic topicA = new Topic("topicA");
+        Topic topicB = new Topic("topicB");
         registry.add(topicA, new Message(topicA, Map.of("seq", 1)));
         registry.add(topicA, new Message(topicA, Map.of("seq", 2)));
         registry.add(topicB, new Message(topicB, Map.of("seq", 1)));
 
-        dispatcher.start();
-
         assertThatCode(latch::await).doesNotThrowAnyException();
-        assertThat(dispatcher.offsets.get(topicA).get()).isEqualTo(2);
-        assertThat(dispatcher.offsets.get(topicB).get()).isEqualTo(1);
         dispatcher.stop();
     }
+
+//    @Test
+//    @DisplayName("Segment 경계를 넘어 메시지를 모두 소비한다")
+//    void segmentBoundaryTest() throws InterruptedException {
+//        int totalMessages = TopicQueue.SEGMENT_CAPACITY + 5;
+//        CountDownLatch latch = new CountDownLatch(totalMessages);
+//        dispatcher.sender = new Sender(null) {
+//            @Override
+//            public boolean send(Message message, int retryCount) {
+//                latch.countDown();
+//                return true;
+//            }
+//        };
+//
+//        Topic topic = new Topic("boundary-topic");
+//        for (int i = 0; i < totalMessages; i++) {
+//            registry.add(topic, new Message(topic, Map.of("seq", i)));
+//        }
+//
+//        assertThatCode(latch::await).doesNotThrowAnyException();
+//        dispatcher.stop();
+//    }
 }

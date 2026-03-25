@@ -14,20 +14,17 @@ public class FrontDispatcher {
 
     final List<Dispatcher> dispatchers;
     final TopicQueueRegistry registry;
-    final ObjectProvider<DeadLetterQueue> dlqProvider;
+    final ObjectProvider<DeadLetterQueue> deadLetterQueueProvider;
 
-    public FrontDispatcher(List<Dispatcher> dispatchers, TopicQueueRegistry registry, ObjectProvider<DeadLetterQueue> dlqProvider) {
+    public FrontDispatcher(List<Dispatcher> dispatchers, TopicQueueRegistry registry, ObjectProvider<DeadLetterQueue> deadLetterQueueProvider) {
         this.dispatchers = dispatchers;
         this.registry = registry;
-        this.dlqProvider = dlqProvider;
+        this.deadLetterQueueProvider = deadLetterQueueProvider;
     }
 
     @PostConstruct
     void initialize() {
-        dispatchers.forEach(dispatcher -> {
-            dispatcher.initialize(registry, dlqProvider);
-            dispatcher.start();
-        });
+        dispatchers.forEach(dispatcher -> dispatcher.initialize(registry, deadLetterQueueProvider));
     }
 
     @PreDestroy
