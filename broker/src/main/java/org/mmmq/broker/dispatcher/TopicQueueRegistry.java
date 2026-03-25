@@ -1,42 +1,37 @@
 package org.mmmq.broker.dispatcher;
 
-import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Topic;
-import org.springframework.stereotype.Component;
-
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
+import org.mmmq.core.message.Topic;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Component;
 
 @Component
 public class TopicQueueRegistry {
 
     private final ConcurrentHashMap<Topic, TopicQueue> queues = new ConcurrentHashMap<>();
-    private final ReentrantLock lock = new ReentrantLock();
-    private final Condition newMessage = lock.newCondition();
+    private final ObjectProvider<Dispatcher> dispatcherProvider;
+    private final ApplicationEventPublisher publisher;
 
-    public void add(Topic topic, Message message) {
-        queues.computeIfAbsent(topic, TopicQueue::new).add(message);
-        lock.lock();
-        try {
-            newMessage.signalAll();
-        } finally {
-            lock.unlock();
+    public TopicQueueRegistry(ObjectProvider<Dispatcher> dispatcherProvider, ApplicationEventPublisher publisher) {
+        this.dispatcherProvider = dispatcherProvider;
+        this.publisher = publisher;
+    }
+
+    public TopicQueue getOrCreateQueue(Topic topic) {
+        boolean[] isNew = {false};
+        TopicQueue queue = queues.computeIfAbsent(topic, topicKey -> {
+            isNew[0] = true;
+            return new TopicQueue(topicKey, publisher);
+        });
+        if (isNew[0]) {
+            queue.assignWorkers(dispatcherProvider.stream().toList());
         }
+        return queue;
     }
 
     public Collection<TopicQueue> getAll() {
         return queues.values();
-    }
-
-    public void awaitNewMessage() throws InterruptedException {
-        lock.lock();
-        try {
-            newMessage.await(100, TimeUnit.MILLISECONDS);
-        } finally {
-            lock.unlock();
-        }
     }
 }

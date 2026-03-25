@@ -1,48 +1,55 @@
 package org.mmmq.broker.dispatcher;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mmmq.broker.dlq.DeadLetterQueue;
-import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Topic;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.ObjectProvider;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mmmq.core.Host;
+import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Pattern;
+import org.mmmq.core.message.Topic;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class FrontDispatcherTest {
 
     @Mock
-    ObjectProvider<DeadLetterQueue> dlqProvider;
+    TopicQueueRegistry registry;
+
+    Host host = new Host("http", "localhost", 8080);
 
     @Test
-    @DisplayName("메시지를 받으면 해당 토픽의 TopicQueue에 추가한다")
-    void dispatchAddsMessageToTopicQueue() {
-        TopicQueueRegistry registry = new TopicQueueRegistry();
-        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(), registry, dlqProvider);
+    @DisplayName("매칭되는 Dispatcher가 있으면 해당 TopicQueue에 메시지를 추가한다")
+    void dispatchToMatchingTopicQueue() {
+        TopicQueue mockQueue = mock(TopicQueue.class);
+        when(registry.getOrCreateQueue(new Topic("order.new"))).thenReturn(mockQueue);
+
+        Dispatcher dispatcher = new Dispatcher("test", host, List.of(new Pattern("order.*")));
+        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry);
 
         Message message = new Message(new Topic("order.new"), Map.of("id", 1));
         frontDispatcher.dispatch(message);
 
-        assertThat(registry.getAll()).hasSize(1);
-        assertThat(registry.getAll().iterator().next().get(0)).contains(message);
+        verify(registry).getOrCreateQueue(new Topic("order.new"));
+        verify(mockQueue).add(message);
     }
 
     @Test
-    @DisplayName("서로 다른 토픽의 메시지는 각각의 TopicQueue에 저장된다")
-    void dispatchCreatesTopicQueuePerTopic() {
-        TopicQueueRegistry registry = new TopicQueueRegistry();
-        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(), registry, dlqProvider);
+    @DisplayName("매칭되는 Dispatcher가 없으면 TopicQueue를 생성하지 않는다")
+    void dispatchIgnoresUnmatchedTopic() {
+        Dispatcher dispatcher = new Dispatcher("test", host, List.of(new Pattern("order.*")));
+        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry);
 
-        frontDispatcher.dispatch(new Message(new Topic("order.new"), Map.of("id", 1)));
-        frontDispatcher.dispatch(new Message(new Topic("payment.kakao"), Map.of("id", 2)));
+        frontDispatcher.dispatch(new Message(new Topic("payment.kakao"), Map.of("id", 1)));
 
-        assertThat(registry.getAll()).hasSize(2);
+        verify(registry, never()).getOrCreateQueue(any());
     }
 }
