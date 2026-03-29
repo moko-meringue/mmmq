@@ -18,11 +18,11 @@ public class TopicQueueRegistry {
     public TopicQueue get(Topic topic) {
         return queues.computeIfAbsent(topic, this::create);
     }
-    
+
     private TopicQueue create(Topic topic) {
         TopicQueue topicQueue = new TopicQueue(topic);
         dispatcherProvider.stream()
-                .forEach(dispatcher -> dispatcher.startWorkerFor(topicQueue));
+                .forEach(dispatcher -> dispatcher.subscribe(topicQueue));
         return topicQueue;
     }
 }

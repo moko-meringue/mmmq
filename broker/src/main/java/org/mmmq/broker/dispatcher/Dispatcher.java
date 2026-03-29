@@ -55,7 +55,7 @@ public class Dispatcher {
                 .forEach(Subscription::shutdownNow);
     }
 
-    void startWorkerFor(TopicQueue topicQueue) {
+    void subscribe(TopicQueue topicQueue) {
         if (!matches(topicQueue.getTopic())) {
             return;
         }

@@ -38,7 +38,7 @@ class DispatcherTest {
         };
 
         TopicQueue topicQueue = new TopicQueue(new Topic("test"));
-        dispatcher.startWorkerFor(topicQueue);
+        dispatcher.subscribe(topicQueue);
         topicQueue.add(new Message(new Topic("test"), Map.of("key", "value")));
         dispatcher.onMessageArrived(new MessageArrivedEvent(topicQueue));
 
@@ -60,8 +60,8 @@ class DispatcherTest {
 
         TopicQueue orderQueue = new TopicQueue(new Topic("order.new"));
         TopicQueue paymentQueue = new TopicQueue(new Topic("payment.kakao"));
-        dispatcher.startWorkerFor(orderQueue);
-        dispatcher.startWorkerFor(paymentQueue);
+        dispatcher.subscribe(orderQueue);
+        dispatcher.subscribe(paymentQueue);
 
         orderQueue.add(new Message(new Topic("order.new"), Map.of("id", 1)));
         paymentQueue.add(new Message(new Topic("payment.kakao"), Map.of("id", 2)));
@@ -86,8 +86,8 @@ class DispatcherTest {
 
         TopicQueue topicA = new TopicQueue(new Topic("topicA"));
         TopicQueue topicB = new TopicQueue(new Topic("topicB"));
-        dispatcher.startWorkerFor(topicA);
-        dispatcher.startWorkerFor(topicB);
+        dispatcher.subscribe(topicA);
+        dispatcher.subscribe(topicB);
 
         topicA.add(new Message(new Topic("topicA"), Map.of("seq", 1)));
         topicA.add(new Message(new Topic("topicA"), Map.of("seq", 2)));
@@ -111,7 +111,7 @@ class DispatcherTest {
         };
 
         TopicQueue paymentQueue = new TopicQueue(new Topic("payment.kakao"));
-        dispatcher.startWorkerFor(paymentQueue);
+        dispatcher.subscribe(paymentQueue);
         paymentQueue.add(new Message(new Topic("payment.kakao"), Map.of("id", 1)));
         dispatcher.onMessageArrived(new MessageArrivedEvent(paymentQueue));
 
