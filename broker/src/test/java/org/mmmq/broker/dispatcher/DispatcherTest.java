@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.broker.dispatcher.sender.Sender;
+import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Pattern;

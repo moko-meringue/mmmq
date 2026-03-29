@@ -1,4 +1,4 @@
-package org.mmmq.broker.dispatcher;
+package org.mmmq.broker.topicqueue;
 
 public class Offset implements Comparable<Offset> {
 

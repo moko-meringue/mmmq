@@ -1,8 +1,8 @@
-package org.mmmq.broker.dispatcher;
+package org.mmmq.broker.topicqueue;
 
 import org.mmmq.core.message.Message;
 
-public class Segment {
+class Segment {
 
     private final int capacity;
     private final Message[] data;

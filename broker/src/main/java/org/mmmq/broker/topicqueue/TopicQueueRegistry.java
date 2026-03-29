@@ -1,6 +1,7 @@
-package org.mmmq.broker.dispatcher;
+package org.mmmq.broker.topicqueue;
 
 import java.util.concurrent.ConcurrentHashMap;
+import org.mmmq.broker.dispatcher.Dispatcher;
 import org.mmmq.core.message.Topic;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;

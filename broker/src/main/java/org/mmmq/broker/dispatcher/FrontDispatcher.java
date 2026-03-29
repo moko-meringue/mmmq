@@ -2,6 +2,8 @@ package org.mmmq.broker.dispatcher;
 
 import jakarta.annotation.PreDestroy;
 import java.util.List;
+import org.mmmq.broker.topicqueue.TopicQueue;
+import org.mmmq.broker.topicqueue.TopicQueueRegistry;
 import org.mmmq.core.message.Message;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;

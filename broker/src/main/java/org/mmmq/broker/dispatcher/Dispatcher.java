@@ -9,6 +9,8 @@ import java.util.concurrent.TimeUnit;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.dlq.DeadLetter;
 import org.mmmq.broker.dlq.DeadLetterQueue;
+import org.mmmq.broker.topicqueue.Offset;
+import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Pattern;
@@ -45,7 +47,7 @@ public class Dispatcher {
         this.sender = Sender.from(host);
     }
 
-    public boolean matches(Topic topic) {
+    boolean matches(Topic topic) {
         return patterns.stream()
                 .anyMatch(pattern -> pattern.matches(topic));
     }
@@ -55,7 +57,7 @@ public class Dispatcher {
                 .forEach(Subscription::shutdownNow);
     }
 
-    void subscribe(TopicQueue topicQueue) {
+    public void subscribe(TopicQueue topicQueue) {
         if (!matches(topicQueue.getTopic())) {
             return;
         }

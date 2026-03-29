@@ -1,4 +1,4 @@
-package org.mmmq.broker.dispatcher;
+package org.mmmq.broker.topicqueue;
 
 import jakarta.annotation.Nullable;
 import java.util.Map;

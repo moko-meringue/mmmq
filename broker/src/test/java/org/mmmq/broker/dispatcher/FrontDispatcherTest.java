@@ -11,6 +11,8 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mmmq.broker.topicqueue.TopicQueue;
+import org.mmmq.broker.topicqueue.TopicQueueRegistry;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Pattern;
