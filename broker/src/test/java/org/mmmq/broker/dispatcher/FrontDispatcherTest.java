@@ -32,7 +32,7 @@ class FrontDispatcherTest {
     @DisplayName("매칭되는 Dispatcher가 있으면 해당 TopicQueue에 메시지를 추가한다")
     void dispatchToMatchingTopicQueue() {
         TopicQueue mockQueue = mock(TopicQueue.class);
-        when(registry.getOrCreateQueue(new Topic("order.new"))).thenReturn(mockQueue);
+        when(registry.get(new Topic("order.new"))).thenReturn(mockQueue);
 
         Dispatcher dispatcher = new Dispatcher("test", host, List.of(new Pattern("order.*")));
         FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry, publisher);
@@ -40,7 +40,7 @@ class FrontDispatcherTest {
         Message message = new Message(new Topic("order.new"), Map.of("id", 1));
         frontDispatcher.dispatch(message);
 
-        verify(registry).getOrCreateQueue(new Topic("order.new"));
+        verify(registry).get(new Topic("order.new"));
         verify(mockQueue).add(message);
     }
 
@@ -52,6 +52,6 @@ class FrontDispatcherTest {
 
         frontDispatcher.dispatch(new Message(new Topic("payment.kakao"), Map.of("id", 1)));
 
-        verify(registry, never()).getOrCreateQueue(any());
+        verify(registry, never()).get(any());
     }
 }

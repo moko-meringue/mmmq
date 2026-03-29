@@ -15,7 +15,7 @@ public class TopicQueueRegistry {
         this.dispatcherProvider = dispatcherProvider;
     }
 
-    public TopicQueue getOrCreateQueue(Topic topic) {
+    public TopicQueue get(Topic topic) {
         return queues.computeIfAbsent(topic, topicKey -> {
             TopicQueue topicQueue = new TopicQueue(topicKey);
             topicQueue.assignWorkers(dispatcherProvider.stream().toList());
