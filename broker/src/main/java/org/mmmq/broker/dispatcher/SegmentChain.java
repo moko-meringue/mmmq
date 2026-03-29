@@ -1,9 +1,7 @@
 package org.mmmq.broker.dispatcher;
 
 import jakarta.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -14,11 +12,11 @@ class SegmentChain {
     private static final int DEFAULT_SEGMENT_CAPACITY = 1000;
 
     private final ReentrantLock lock = new ReentrantLock();
-    private final List<Segment> segments = new ArrayList<>();
+    private final Map<Integer, Segment> segments = new ConcurrentHashMap<>();
     private final int segmentCapacity;
     private final Set<Offset> offsets = ConcurrentHashMap.newKeySet();
-
     private int headIndex = 0;
+    private int tailIndex = 0;
 
     SegmentChain() {
         this(DEFAULT_SEGMENT_CAPACITY);
@@ -26,7 +24,7 @@ class SegmentChain {
 
     SegmentChain(int segmentCapacity) {
         this.segmentCapacity = segmentCapacity;
-        segments.add(new Segment(this.segmentCapacity));
+        segments.put(tailIndex, new Segment(this.segmentCapacity));
     }
 
     Offset getNewOffset() {
@@ -38,10 +36,11 @@ class SegmentChain {
     void add(Message message) {
         this.lock.lock();
         try {
-            Segment tail = segments.get(segments.size() - 1);
+            Segment tail = segments.get(tailIndex);
             if (tail == null || tail.isFull()) {
+                tailIndex++;
                 tail = new Segment(this.segmentCapacity);
-                segments.add(tail);
+                segments.put(tailIndex, tail);
             }
             tail.put(message);
         } finally {
@@ -53,7 +52,12 @@ class SegmentChain {
     Message get(Offset offset) {
         this.lock.lock();
         try {
-            Segment segment = getSegment(offset);
+            int index = offset.getUnitIndex(this.segmentCapacity);
+            Segment segment = segments.get(index);
+            if (segment == null) {
+                return null;
+            }
+
             int relativeOffset = offset.getRelativeIndex(this.segmentCapacity);
             if (!segment.existsAt(relativeOffset)) {
                 return null;
@@ -85,16 +89,19 @@ class SegmentChain {
         }
         int limit = minOffset.getUnitIndex(this.segmentCapacity);
         if (headIndex < limit) {
-            Collections.fill(segments.subList(headIndex, limit), null);
+            for (int i = headIndex; i < limit; i++) {
+                segments.remove(i);
+            }
             headIndex = limit;
         }
     }
 
     private Segment getSegment(Offset offset) {
         int index = offset.getUnitIndex(this.segmentCapacity);
-        if (index >= segments.size() || segments.get(index) == null) {
-            throw new IllegalArgumentException("Offset's offset is out of bounds or has been trimmed: " + offset);
+        Segment segment = segments.get(index);
+        if (segment == null) {
+            throw new IllegalArgumentException("Invalid offset: " + offset);
         }
-        return segments.get(index);
+        return segment;
     }
 }
