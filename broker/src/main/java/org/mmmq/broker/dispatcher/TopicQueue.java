@@ -1,6 +1,5 @@
 package org.mmmq.broker.dispatcher;
 
-import java.util.List;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 
@@ -12,10 +11,6 @@ public class TopicQueue {
     public TopicQueue(Topic topic) {
         this.topic = topic;
         this.segmentChain = new SegmentChain();
-    }
-
-    void assignWorkers(List<Dispatcher> dispatchers) {
-        dispatchers.forEach(dispatcher -> dispatcher.startWorkerFor(this));
     }
 
     public void add(Message message) {

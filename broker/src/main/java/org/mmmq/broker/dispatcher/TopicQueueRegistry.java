@@ -16,10 +16,13 @@ public class TopicQueueRegistry {
     }
 
     public TopicQueue get(Topic topic) {
-        return queues.computeIfAbsent(topic, topicKey -> {
-            TopicQueue topicQueue = new TopicQueue(topicKey);
-            topicQueue.assignWorkers(dispatcherProvider.stream().toList());
-            return topicQueue;
-        });
+        return queues.computeIfAbsent(topic, this::create);
+    }
+    
+    private TopicQueue create(Topic topic) {
+        TopicQueue topicQueue = new TopicQueue(topic);
+        dispatcherProvider.stream()
+                .forEach(dispatcher -> dispatcher.startWorkerFor(topicQueue));
+        return topicQueue;
     }
 }
