@@ -1,37 +1,28 @@
 package org.mmmq.broker.dispatcher;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Consumer;
-import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 @Component
 public class TopicQueueRegistry {
 
     private final ConcurrentHashMap<Topic, TopicQueue> queues = new ConcurrentHashMap<>();
-    private final List<Consumer<TopicQueue>> listeners = new CopyOnWriteArrayList<>();
+    private final ObjectProvider<Dispatcher> dispatcherProvider;
+    private final ApplicationEventPublisher publisher;
 
-    public void onNewQueue(Consumer<TopicQueue> listener) {
-        listeners.add(listener);
+    public TopicQueueRegistry(ObjectProvider<Dispatcher> dispatcherProvider, ApplicationEventPublisher publisher) {
+        this.dispatcherProvider = dispatcherProvider;
+        this.publisher = publisher;
     }
 
-    public void add(Topic topic, Message message) {
-        boolean[] isNew = {false};
-        TopicQueue queue = queues.computeIfAbsent(topic, topicKey -> {
-            isNew[0] = true;
-            return new TopicQueue(topicKey);
+    public TopicQueue getOrCreateQueue(Topic topic) {
+        return queues.computeIfAbsent(topic, topicKey -> {
+            TopicQueue topicQueue = new TopicQueue(topicKey, publisher);
+            topicQueue.assignWorkers(dispatcherProvider.stream().toList());
+            return topicQueue;
         });
-        queue.add(message);
-        if (isNew[0]) {
-            listeners.forEach(listener -> listener.accept(queue));
-        }
-    }
-
-    public Collection<TopicQueue> getAll() {
-        return queues.values();
     }
 }

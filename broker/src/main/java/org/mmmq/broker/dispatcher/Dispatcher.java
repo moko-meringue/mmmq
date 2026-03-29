@@ -1,15 +1,21 @@
 package org.mmmq.broker.dispatcher;
 
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.dlq.DeadLetter;
 import org.mmmq.broker.dlq.DeadLetterQueue;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.event.EventListener;
 
 public class Dispatcher {
 
@@ -22,29 +28,58 @@ public class Dispatcher {
 
     final String name;
     final Host host;
-    private final ConcurrentHashMap<Topic, Worker> workers = new ConcurrentHashMap<>();
+    final List<Pattern> patterns;
+    final List<DeadLetterQueue> deadLetterQueues;
+    final ConcurrentHashMap<Topic, Subscription> subscriptions = new ConcurrentHashMap<>();
     Sender sender;
-    private ObjectProvider<DeadLetterQueue> deadLetterQueueProvider;
 
-    public Dispatcher(String name, Host host) {
+    public Dispatcher(String name, Host host, List<Pattern> patterns) {
+        this(name, host, patterns, List.of());
+    }
+
+    public Dispatcher(String name, Host host, List<Pattern> patterns, List<DeadLetterQueue> deadLetterQueues) {
         this.name = name;
         this.host = host;
+        this.patterns = patterns;
+        this.deadLetterQueues = deadLetterQueues;
         this.sender = Sender.from(host);
     }
 
-    void initialize(TopicQueueRegistry registry, ObjectProvider<DeadLetterQueue> deadLetterQueueProvider) {
-        this.deadLetterQueueProvider = deadLetterQueueProvider;
-        registry.onNewQueue(this::startWorkerFor);
+    public boolean matches(Topic topic) {
+        return patterns.stream().anyMatch(pattern -> pattern.matches(topic));
     }
 
     void stop() {
-        workers.values().forEach(Worker::stop);
+        subscriptions.values().forEach(sub -> sub.executor().shutdownNow());
     }
 
-    private void startWorkerFor(TopicQueue topicQueue) {
-        Worker worker = new Worker(topicQueue);
-        workers.put(topicQueue.getTopic(), worker);
-        worker.start();
+    void startWorkerFor(TopicQueue topicQueue) {
+        if (!matches(topicQueue.getTopic())) {
+            return;
+        }
+        Offset offset = topicQueue.getNewOffset();
+        ExecutorService executor = new ThreadPoolExecutor(
+                0, 1, 60L, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(1),
+                new ThreadPoolExecutor.DiscardPolicy()
+        );
+        // TODO: 기존 구독이 있는지 확인, 동시성 제어 필요.
+        subscriptions.put(topicQueue.getTopic(), new Subscription(topicQueue, offset, executor));
+    }
+
+    @EventListener
+    void onMessageArrived(MessageArrivedEvent event) {
+        Subscription sub = subscriptions.get(event.getTopicQueue().getTopic());
+        if (sub == null) {
+            return;
+        }
+        sub.executor().submit(() -> drain(sub.topicQueue(), sub.offset()));
+    }
+
+    void drain(TopicQueue topicQueue, Offset offset) {
+        while (topicQueue.hasMessageAt(offset)) {
+            send(topicQueue.poll(offset));
+        }
     }
 
     private void send(Message message) {
@@ -53,8 +88,7 @@ public class Dispatcher {
             try {
                 if (!sender.send(message, MAX_NACK_RETRY_COUNT)) {
                     log.warn("NACK exhausted. Sending to DLQ: {}", message);
-                    deadLetterQueueProvider.stream().forEach(
-                            deadLetterQueue -> deadLetterQueue.add(new DeadLetter(message)));
+                    deadLetterQueues.forEach(dlq -> dlq.add(new DeadLetter(message)));
                 }
                 return;
             } catch (Exception exception) {
@@ -71,36 +105,10 @@ public class Dispatcher {
         }
     }
 
-    private class Worker {
-
-        final Thread thread;
-
-        Worker(TopicQueue topicQueue) {
-            Cursor cursor = topicQueue.subscribe();
-            this.thread = new Thread(() -> {
-                while (!Thread.currentThread().isInterrupted()) {
-                    try {
-                        // TopicQueue에 cursor 커서를 전달하여 다음 메시지를 가져옵니다.
-                        Message message = topicQueue.take(cursor);
-                        send(message);
-                    } catch (InterruptedException interruptedException) {
-                        Thread.currentThread().interrupt();
-                    }
-                }
-            }, "mmmq-dispatcher-" + name + "-worker-" + topicQueue.getTopic().name());
-        }
-
-        void start() {
-            thread.start();
-        }
-
-        void stop() {
-            thread.interrupt();
-            try {
-                thread.join(5000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
+    record Subscription(
+            TopicQueue topicQueue,
+            Offset offset,
+            ExecutorService executor
+    ) {
     }
 }

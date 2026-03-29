@@ -1,30 +1,32 @@
 package org.mmmq.broker.dispatcher;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
-import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationEventPublisher;
 
 class DispatcherTest {
 
     Host host = new Host("http", "localhost", 8080);
-    TopicQueueRegistry registry;
+    ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
     Dispatcher dispatcher;
 
     @BeforeEach
     void setUp() {
-        registry = new TopicQueueRegistry();
-        dispatcher = new Dispatcher("test-dispatcher", host);
-        dispatcher.initialize(registry, mock(ObjectProvider.class));
+        dispatcher = new Dispatcher("test-dispatcher", host, List.of(new Pattern("**")));
     }
 
     @Test
@@ -39,7 +41,10 @@ class DispatcherTest {
             }
         };
 
-        registry.add(new Topic("test"), new Message(new Topic("test"), Map.of("key", "value")));
+        TopicQueue topicQueue = new TopicQueue(new Topic("test"), publisher);
+        dispatcher.startWorkerFor(topicQueue);
+        topicQueue.add(new Message(new Topic("test"), Map.of("key", "value")));
+        dispatcher.onMessageArrived(new MessageArrivedEvent(topicQueue));
 
         assertThatCode(latch::await).doesNotThrowAnyException();
         dispatcher.stop();
@@ -57,8 +62,15 @@ class DispatcherTest {
             }
         };
 
-        registry.add(new Topic("order.new"), new Message(new Topic("order.new"), Map.of("id", 1)));
-        registry.add(new Topic("payment.kakao"), new Message(new Topic("payment.kakao"), Map.of("id", 2)));
+        TopicQueue orderQueue = new TopicQueue(new Topic("order.new"), publisher);
+        TopicQueue paymentQueue = new TopicQueue(new Topic("payment.kakao"), publisher);
+        dispatcher.startWorkerFor(orderQueue);
+        dispatcher.startWorkerFor(paymentQueue);
+
+        orderQueue.add(new Message(new Topic("order.new"), Map.of("id", 1)));
+        paymentQueue.add(new Message(new Topic("payment.kakao"), Map.of("id", 2)));
+        dispatcher.onMessageArrived(new MessageArrivedEvent(orderQueue));
+        dispatcher.onMessageArrived(new MessageArrivedEvent(paymentQueue));
 
         assertThatCode(latch::await).doesNotThrowAnyException();
         dispatcher.stop();
@@ -76,35 +88,37 @@ class DispatcherTest {
             }
         };
 
-        Topic topicA = new Topic("topicA");
-        Topic topicB = new Topic("topicB");
-        registry.add(topicA, new Message(topicA, Map.of("seq", 1)));
-        registry.add(topicA, new Message(topicA, Map.of("seq", 2)));
-        registry.add(topicB, new Message(topicB, Map.of("seq", 1)));
+        TopicQueue topicA = new TopicQueue(new Topic("topicA"), publisher);
+        TopicQueue topicB = new TopicQueue(new Topic("topicB"), publisher);
+        dispatcher.startWorkerFor(topicA);
+        dispatcher.startWorkerFor(topicB);
+
+        topicA.add(new Message(new Topic("topicA"), Map.of("seq", 1)));
+        topicA.add(new Message(new Topic("topicA"), Map.of("seq", 2)));
+        topicB.add(new Message(new Topic("topicB"), Map.of("seq", 1)));
+        dispatcher.onMessageArrived(new MessageArrivedEvent(topicA));
+        dispatcher.onMessageArrived(new MessageArrivedEvent(topicB));
 
         assertThatCode(latch::await).doesNotThrowAnyException();
         dispatcher.stop();
     }
 
-//    @Test
-//    @DisplayName("Segment 경계를 넘어 메시지를 모두 소비한다")
-//    void segmentBoundaryTest() throws InterruptedException {
-//        int totalMessages = TopicQueue.SEGMENT_CAPACITY + 5;
-//        CountDownLatch latch = new CountDownLatch(totalMessages);
-//        dispatcher.sender = new Sender(null) {
-//            @Override
-//            public boolean send(Message message, int retryCount) {
-//                latch.countDown();
-//                return true;
-//            }
-//        };
-//
-//        Topic topic = new Topic("boundary-topic");
-//        for (int i = 0; i < totalMessages; i++) {
-//            registry.add(topic, new Message(topic, Map.of("seq", i)));
-//        }
-//
-//        assertThatCode(latch::await).doesNotThrowAnyException();
-//        dispatcher.stop();
-//    }
+    @Test
+    @DisplayName("패턴 미매칭 토픽은 구독하지 않는다")
+    void doesNotSubscribeUnmatchedTopicTest() throws InterruptedException {
+        dispatcher = new Dispatcher("test-dispatcher", host, List.of(new Pattern("order.*")));
+        dispatcher.sender = new Sender(null) {
+            @Override
+            public boolean send(Message message, int retryCount) {
+                return true;
+            }
+        };
+
+        TopicQueue paymentQueue = new TopicQueue(new Topic("payment.kakao"), publisher);
+        dispatcher.startWorkerFor(paymentQueue);
+        paymentQueue.add(new Message(new Topic("payment.kakao"), Map.of("id", 1)));
+        dispatcher.onMessageArrived(new MessageArrivedEvent(paymentQueue));
+
+        assertThat(dispatcher.subscriptions).doesNotContainKey(new Topic("payment.kakao"));
+    }
 }
