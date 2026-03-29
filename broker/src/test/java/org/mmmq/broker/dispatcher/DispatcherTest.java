@@ -2,12 +2,10 @@ package org.mmmq.broker.dispatcher;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.mockito.Mockito.mock;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,12 +14,10 @@ import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
-import org.springframework.context.ApplicationEventPublisher;
 
 class DispatcherTest {
 
     Host host = new Host("http", "localhost", 8080);
-    ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
     Dispatcher dispatcher;
 
     @BeforeEach
@@ -31,7 +27,7 @@ class DispatcherTest {
 
     @Test
     @DisplayName("토픽 큐에서 메시지를 읽어 전송한다")
-    void consumeFromTopicQueueTest() throws InterruptedException {
+    void consumeFromTopicQueueTest() {
         CountDownLatch latch = new CountDownLatch(1);
         dispatcher.sender = new Sender(null) {
             @Override
@@ -41,7 +37,7 @@ class DispatcherTest {
             }
         };
 
-        TopicQueue topicQueue = new TopicQueue(new Topic("test"), publisher);
+        TopicQueue topicQueue = new TopicQueue(new Topic("test"));
         dispatcher.startWorkerFor(topicQueue);
         topicQueue.add(new Message(new Topic("test"), Map.of("key", "value")));
         dispatcher.onMessageArrived(new MessageArrivedEvent(topicQueue));
@@ -62,8 +58,8 @@ class DispatcherTest {
             }
         };
 
-        TopicQueue orderQueue = new TopicQueue(new Topic("order.new"), publisher);
-        TopicQueue paymentQueue = new TopicQueue(new Topic("payment.kakao"), publisher);
+        TopicQueue orderQueue = new TopicQueue(new Topic("order.new"));
+        TopicQueue paymentQueue = new TopicQueue(new Topic("payment.kakao"));
         dispatcher.startWorkerFor(orderQueue);
         dispatcher.startWorkerFor(paymentQueue);
 
@@ -88,8 +84,8 @@ class DispatcherTest {
             }
         };
 
-        TopicQueue topicA = new TopicQueue(new Topic("topicA"), publisher);
-        TopicQueue topicB = new TopicQueue(new Topic("topicB"), publisher);
+        TopicQueue topicA = new TopicQueue(new Topic("topicA"));
+        TopicQueue topicB = new TopicQueue(new Topic("topicB"));
         dispatcher.startWorkerFor(topicA);
         dispatcher.startWorkerFor(topicB);
 
@@ -114,11 +110,11 @@ class DispatcherTest {
             }
         };
 
-        TopicQueue paymentQueue = new TopicQueue(new Topic("payment.kakao"), publisher);
+        TopicQueue paymentQueue = new TopicQueue(new Topic("payment.kakao"));
         dispatcher.startWorkerFor(paymentQueue);
         paymentQueue.add(new Message(new Topic("payment.kakao"), Map.of("id", 1)));
         dispatcher.onMessageArrived(new MessageArrivedEvent(paymentQueue));
 
-        assertThat(dispatcher.subscriptions).doesNotContainKey(new Topic("payment.kakao"));
+        assertThat(dispatcher.subscriptions).doesNotContainKey(paymentQueue);
     }
 }

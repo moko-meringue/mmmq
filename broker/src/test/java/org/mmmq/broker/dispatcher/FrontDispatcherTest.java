@@ -17,12 +17,14 @@ import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class FrontDispatcherTest {
 
     @Mock
     TopicQueueRegistry registry;
+    ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
     Host host = new Host("http", "localhost", 8080);
 
@@ -33,7 +35,7 @@ class FrontDispatcherTest {
         when(registry.getOrCreateQueue(new Topic("order.new"))).thenReturn(mockQueue);
 
         Dispatcher dispatcher = new Dispatcher("test", host, List.of(new Pattern("order.*")));
-        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry);
+        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry, publisher);
 
         Message message = new Message(new Topic("order.new"), Map.of("id", 1));
         frontDispatcher.dispatch(message);
@@ -46,7 +48,7 @@ class FrontDispatcherTest {
     @DisplayName("매칭되는 Dispatcher가 없으면 TopicQueue를 생성하지 않는다")
     void dispatchIgnoresUnmatchedTopic() {
         Dispatcher dispatcher = new Dispatcher("test", host, List.of(new Pattern("order.*")));
-        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry);
+        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry, publisher);
 
         frontDispatcher.dispatch(new Message(new Topic("payment.kakao"), Map.of("id", 1)));
 
