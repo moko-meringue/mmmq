@@ -30,7 +30,7 @@ public class Dispatcher {
     final Host host;
     final List<Pattern> patterns;
     final List<DeadLetterQueue> deadLetterQueues;
-    final ConcurrentHashMap<Topic, Subscription> subscriptions = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<TopicQueue, Subscription> subscriptions = new ConcurrentHashMap<>();
     Sender sender;
 
     public Dispatcher(String name, Host host, List<Pattern> patterns) {
@@ -46,36 +46,37 @@ public class Dispatcher {
     }
 
     public boolean matches(Topic topic) {
-        return patterns.stream().anyMatch(pattern -> pattern.matches(topic));
+        return patterns.stream()
+                .anyMatch(pattern -> pattern.matches(topic));
     }
 
     void stop() {
-        subscriptions.values().forEach(sub -> sub.executor().shutdownNow());
+        subscriptions.values()
+                .forEach(Subscription::shutdownNow);
     }
 
     void startWorkerFor(TopicQueue topicQueue) {
         if (!matches(topicQueue.getTopic())) {
             return;
         }
-        Offset offset = topicQueue.getNewOffset();
-        ExecutorService executor = new ThreadPoolExecutor(
-                0, 1, 60L, TimeUnit.SECONDS,
-                new ArrayBlockingQueue<>(1),
-                new ThreadPoolExecutor.DiscardPolicy()
-        );
-        subscriptions.computeIfAbsent(topicQueue.getTopic(), topic -> new Subscription(topicQueue, offset, executor));
+        subscriptions.computeIfAbsent(topicQueue, topic -> new Subscription(topicQueue));
     }
 
     @EventListener
     void onMessageArrived(MessageArrivedEvent event) {
-        Subscription sub = subscriptions.get(event.getTopicQueue().getTopic());
-        if (sub == null) {
-            return;
-        }
-        sub.executor().submit(() -> drain(sub.topicQueue(), sub.offset()));
+        TopicQueue topicQueue = event.topicQueue();
+        subscriptions.computeIfPresent(topicQueue, (topic, subscription) -> {
+            subscription.submit(() -> drain(topicQueue, subscription));
+            return subscription;
+        });
     }
 
-    void drain(TopicQueue topicQueue, Offset offset) {
+    void drain(TopicQueue topicQueue, Subscription subscription) {
+        Offset offset = subscription.offset();
+        // TODO: hasMessageAt, poll 메서드는 각각 lock을 사용하는 비효율적인 구조이다.
+        // topicQueue에서 남은 메시지를 전부 가져오는 메서드를 만들어서 send를 한 번에 처리하는 구조로 개선할 수 있다.
+        // 그러나, 이렇게 구현한다면 특정 Dispatcher가 모든 메시지를 독점적으로 가져가는 상황이 발생할 수 있다.
+        // 이를 방지하기 위해, 일정량의 메시지만 가져오는 구조로 개선할 수 있다.
         while (topicQueue.hasMessageAt(offset)) {
             send(topicQueue.poll(offset));
         }
@@ -105,9 +106,27 @@ public class Dispatcher {
     }
 
     record Subscription(
-            TopicQueue topicQueue,
             Offset offset,
-            ExecutorService executor
+            ExecutorService worker
     ) {
+
+        Subscription(TopicQueue topicQueue) {
+            this(
+                    topicQueue.getNewOffset(),
+                    new ThreadPoolExecutor(
+                            0, 1, 60L, TimeUnit.SECONDS,
+                            new ArrayBlockingQueue<>(1),
+                            new ThreadPoolExecutor.DiscardPolicy()
+                    )
+            );
+        }
+
+        void submit(Runnable task) {
+            worker.submit(task);
+        }
+
+        void shutdownNow() {
+            worker.shutdownNow();
+        }
     }
 }
