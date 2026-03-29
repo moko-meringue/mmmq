@@ -73,12 +73,9 @@ public class Dispatcher {
 
     void drain(TopicQueue topicQueue, Subscription subscription) {
         Offset offset = subscription.offset();
-        // TODO: hasMessageAt, poll 메서드는 각각 lock을 사용하는 비효율적인 구조이다.
-        // topicQueue에서 남은 메시지를 전부 가져오는 메서드를 만들어서 send를 한 번에 처리하는 구조로 개선할 수 있다.
-        // 그러나, 이렇게 구현한다면 특정 Dispatcher가 모든 메시지를 독점적으로 가져가는 상황이 발생할 수 있다.
-        // 이를 방지하기 위해, 일정량의 메시지만 가져오는 구조로 개선할 수 있다.
-        while (topicQueue.hasMessageAt(offset)) {
-            send(topicQueue.poll(offset));
+        Message message;
+        while ((message = topicQueue.poll(offset)) != null) {
+            send(message);
         }
     }
 

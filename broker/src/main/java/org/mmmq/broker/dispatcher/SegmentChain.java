@@ -1,5 +1,6 @@
 package org.mmmq.broker.dispatcher;
 
+import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -48,22 +49,16 @@ class SegmentChain {
         }
     }
 
-    boolean hasMessageAt(Offset offset) {
-        this.lock.lock();
-        try {
-            Segment segment = getSegment(offset);
-            int relativeOffset = offset.getRelativeIndex(this.segmentCapacity);
-            return segment.existsAt(relativeOffset);
-        } finally {
-            this.lock.unlock();
-        }
-    }
-
+    @Nullable
     Message get(Offset offset) {
         this.lock.lock();
         try {
             Segment segment = getSegment(offset);
             int relativeOffset = offset.getRelativeIndex(this.segmentCapacity);
+            if (!segment.existsAt(relativeOffset)) {
+                return null;
+            }
+
             Message message = segment.get(relativeOffset);
             updateOffset(offset);
             return message;

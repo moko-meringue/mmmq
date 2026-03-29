@@ -1,5 +1,6 @@
 package org.mmmq.broker.dispatcher;
 
+import jakarta.annotation.Nullable;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 
@@ -21,10 +22,7 @@ public class TopicQueue {
         return segmentChain.getNewOffset();
     }
 
-    public boolean hasMessageAt(Offset offset) {
-        return segmentChain.hasMessageAt(offset);
-    }
-
+    @Nullable
     public Message poll(Offset offset) {
         return segmentChain.get(offset);
     }
