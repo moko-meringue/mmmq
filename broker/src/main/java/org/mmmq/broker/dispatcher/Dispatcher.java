@@ -63,8 +63,7 @@ public class Dispatcher {
                 new ArrayBlockingQueue<>(1),
                 new ThreadPoolExecutor.DiscardPolicy()
         );
-        // TODO: 기존 구독이 있는지 확인, 동시성 제어 필요.
-        subscriptions.put(topicQueue.getTopic(), new Subscription(topicQueue, offset, executor));
+        subscriptions.computeIfAbsent(topicQueue.getTopic(), topic -> new Subscription(topicQueue, offset, executor));
     }
 
     @EventListener
