@@ -33,7 +33,7 @@ class SegmentChain {
         return offset;
     }
 
-    void add(Message message) {
+    void offer(Message message) {
         this.lock.lock();
         try {
             Segment tail = segments.get(tailIndex);
@@ -49,7 +49,7 @@ class SegmentChain {
     }
 
     @Nullable
-    Message get(Offset offset) {
+    Message poll(Offset offset) {
         this.lock.lock();
         try {
             int index = offset.getUnitIndex(this.segmentCapacity);

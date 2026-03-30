@@ -14,8 +14,8 @@ public class TopicQueue {
         this.segmentChain = new SegmentChain();
     }
 
-    public void add(Message message) {
-        segmentChain.add(message);
+    public void offer(Message message) {
+        segmentChain.offer(message);
     }
 
     public Offset getNewOffset() {
@@ -24,7 +24,7 @@ public class TopicQueue {
 
     @Nullable
     public Message poll(Offset offset) {
-        return segmentChain.get(offset);
+        return segmentChain.poll(offset);
     }
 
     public Topic getTopic() {
