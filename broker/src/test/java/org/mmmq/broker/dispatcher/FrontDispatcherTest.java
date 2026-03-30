@@ -1,61 +1,59 @@
 package org.mmmq.broker.dispatcher;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mmmq.broker.dlq.DeadLetterQueue;
-import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Topic;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.ObjectProvider;
-
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-//@ExtendWith(MockitoExtension.class)
-//class FrontDispatcherTest {
-//
-//    @Mock
-//    ObjectProvider<DeadLetterQueue> deadLetterQueueProvider;
-//
-//    @Test
-//    @DisplayName("Broker는 메시지를 받으면 적절한 MessageDispatcher에 전달할 수 있다.")
-//    void forwardMessageTest() {
-//        Dispatcher dispatcher = Mockito.mock(Dispatcher.class);
-//        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), deadLetterQueueProvider);
-//        when(dispatcher.isSubscribing(new Topic("topic1"))).thenReturn(true);
-//
-//        Message message = new Message(new Topic("topic1"), Map.of("key1", "value"));
-//        frontDispatcher.dispatch(message);
-//
-//        verify(dispatcher).dispatch(eq(message), any());
-//    }
-//}
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mmmq.broker.topicqueue.TopicQueue;
+import org.mmmq.broker.topicqueue.TopicQueueRegistry;
+import org.mmmq.core.Host;
+import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Pattern;
+import org.mmmq.core.message.Topic;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+
 @ExtendWith(MockitoExtension.class)
 class FrontDispatcherTest {
 
     @Mock
-    ObjectProvider<DeadLetterQueue> deadLetterQueueProvider;
+    TopicQueueRegistry registry;
+    ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
+
+    Host host = new Host("http", "localhost", 8080);
 
     @Test
-    @DisplayName("Broker는 메시지를 받으면 적절한 MessageDispatcher에 전달한다.")
-    void forwardMessageTest() {
-        Dispatcher dispatcher = Mockito.mock(Dispatcher.class);
-        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), deadLetterQueueProvider);
-        when(dispatcher.isSubscribing(any())).thenReturn(true);
-        Message message = new Message(new Topic("topic1"), Map.of("key1", "value"));
+    @DisplayName("매칭되는 Dispatcher가 있으면 해당 TopicQueue에 메시지를 추가한다")
+    void dispatchToMatchingTopicQueue() {
+        TopicQueue mockQueue = mock(TopicQueue.class);
+        when(registry.get(new Topic("order.new"))).thenReturn(mockQueue);
 
+        Dispatcher dispatcher = new Dispatcher("test", host, List.of(new Pattern("order.*")));
+        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry, publisher);
+
+        Message message = new Message(new Topic("order.new"), Map.of("id", 1));
         frontDispatcher.dispatch(message);
 
-        verify(dispatcher).dispatch(eq(message), any());
+        verify(registry).get(new Topic("order.new"));
+        verify(mockQueue).offer(message);
+    }
+
+    @Test
+    @DisplayName("매칭되는 Dispatcher가 없으면 TopicQueue를 생성하지 않는다")
+    void dispatchIgnoresUnmatchedTopic() {
+        Dispatcher dispatcher = new Dispatcher("test", host, List.of(new Pattern("order.*")));
+        FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry, publisher);
+
+        frontDispatcher.dispatch(new Message(new Topic("payment.kakao"), Map.of("id", 1)));
+
+        verify(registry, never()).get(any());
     }
 }

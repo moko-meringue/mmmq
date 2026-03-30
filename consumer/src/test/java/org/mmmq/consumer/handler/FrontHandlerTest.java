@@ -66,14 +66,14 @@ class FrontHandlerTest {
     void executeTest() throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(3);
 
-        FakeHandlerExecution fakeHandlerExecutionA = new FakeHandlerExecution(new Pattern("topic a")) {
+        FakeHandlerExecution fakeHandlerExecutionA = new FakeHandlerExecution(new Pattern("topicA")) {
             @Override
             public void execute(Message message) {
                 super.execute(message);
                 latch.countDown();
             }
         };
-        FakeHandlerExecution fakeHandlerExecutionB = new FakeHandlerExecution(new Pattern("topic b")) {
+        FakeHandlerExecution fakeHandlerExecutionB = new FakeHandlerExecution(new Pattern("topicB")) {
             @Override
             public void execute(Message message) {
                 super.execute(message);
@@ -84,8 +84,8 @@ class FrontHandlerTest {
         frontHandler.addHandlerExecution(fakeHandlerExecutionA);
         frontHandler.addHandlerExecution(fakeHandlerExecutionB);
 
-        Message messageA = new Message(new Topic("topic a"), Map.of("key", "value A"), new Pattern("topic a"));
-        Message messageB = new Message(new Topic("topic b"), Map.of("key", "value B"), new Pattern("topic b"));
+        Message messageA = new Message(new Topic("topicA"), Map.of("key", "value A"));
+        Message messageB = new Message(new Topic("topicB"), Map.of("key", "value B"));
 
         frontHandler.start();
 
@@ -110,7 +110,7 @@ class FrontHandlerTest {
                 latch.countDown();
             }
         });
-        Message message = new Message(new Topic("topic"), Map.of("key", "value"), new Pattern("topic"));
+        Message message = new Message(new Topic("topic"), Map.of("key", "value"));
         frontHandler.handle(message);
         assertThatCode(latch::await).doesNotThrowAnyException();
     }

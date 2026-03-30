@@ -1,41 +1,43 @@
 package org.mmmq.broker.dispatcher;
 
-import org.mmmq.broker.dlq.DeadLetter;
-import org.mmmq.broker.dlq.DeadLetterQueue;
-import org.mmmq.core.message.Message;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.stereotype.Component;
-
+import jakarta.annotation.PreDestroy;
 import java.util.List;
+import org.mmmq.broker.topicqueue.TopicQueue;
+import org.mmmq.broker.topicqueue.TopicQueueRegistry;
+import org.mmmq.core.message.Message;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Component;
 
 @Component
 public class FrontDispatcher {
 
-    private static final Logger log = LoggerFactory.getLogger(FrontDispatcher.class);
     final List<Dispatcher> dispatchers;
-    final ObjectProvider<DeadLetterQueue> deadLetterQueueProvider;
+    final TopicQueueRegistry registry;
+    private final ApplicationEventPublisher publisher;
 
-    public FrontDispatcher(List<Dispatcher> dispatchers, ObjectProvider<DeadLetterQueue> deadLetterQueueProvider) {
+    public FrontDispatcher(
+            List<Dispatcher> dispatchers,
+            TopicQueueRegistry registry,
+            ApplicationEventPublisher publisher
+    ) {
         this.dispatchers = dispatchers;
-        this.deadLetterQueueProvider = deadLetterQueueProvider;
+        this.registry = registry;
+        this.publisher = publisher;
+    }
+
+    @PreDestroy
+    void destroy() {
+        dispatchers.forEach(Dispatcher::stop);
     }
 
     public void dispatch(Message message) {
-        dispatchers.stream()
-                .filter(dispatcher -> dispatcher.isSubscribing(message.topic()))
-                .forEach(messageDispatcher -> push(messageDispatcher, message));
-    }
-
-    private void push(Dispatcher dispatcher, Message message) {
-        Runnable onFailure = () -> {
-            log.warn("Dispatching failed for message: {}", message);
-            DeadLetter deadLetter = new DeadLetter(message);
-            deadLetterQueueProvider.stream()
-                    .forEach(deadLetterQueue -> deadLetterQueue.add(deadLetter));
-        };
-
-        dispatcher.dispatch(message, onFailure);
+        boolean anyMatch = dispatchers.stream()
+                .anyMatch(dispatcher -> dispatcher.matches(message.topic()));
+        if (!anyMatch) {
+            return;
+        }
+        TopicQueue queue = registry.get(message.topic());
+        queue.offer(message);
+        publisher.publishEvent(new MessageArrivedEvent(queue));
     }
 }
