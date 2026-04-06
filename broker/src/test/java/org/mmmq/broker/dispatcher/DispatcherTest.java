@@ -12,13 +12,14 @@ import org.junit.jupiter.api.Test;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.core.Host;
+import org.mmmq.core.WebProtocol;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
 
 class DispatcherTest {
 
-    Host host = new Host("http", "localhost", 8080);
+    Host host = new Host(WebProtocol.HTTP, "localhost", 8080);
     Dispatcher dispatcher;
 
     @BeforeEach

@@ -13,14 +13,14 @@ class HostTest {
     @Test
     @DisplayName("Host 생성 시 호스트 연결 검증을 진행한다.")
     void convertAddressWhenCreateTest() {
-        assertThatCode(() -> new Host("http", "localhost", 8080) {
+        assertThatCode(() -> new Host(WebProtocol.HTTP, "localhost", 8080) {
             @Override
             public boolean healthCheck(InetAddress host) {
                 return true;
             }
         }).doesNotThrowAnyException();
 
-        assertThatThrownBy(() -> new Host("http", "localhost", 8080) {
+        assertThatThrownBy(() -> new Host(WebProtocol.HTTP, "localhost", 8080) {
             @Override
             public boolean healthCheck(InetAddress host) {
                 return false;
