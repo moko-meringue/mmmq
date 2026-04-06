@@ -1,7 +1,5 @@
 package org.mmmq.core;
 
-import java.util.Arrays;
-
 public enum WebProtocol {
 
     HTTP("http"),
@@ -11,13 +9,6 @@ public enum WebProtocol {
 
     WebProtocol(String scheme) {
         this.scheme = scheme;
-    }
-
-    public static WebProtocol fromScheme(String scheme) {
-        return Arrays.stream(values())
-                .filter(protocol -> protocol.getScheme().equals(scheme))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unsupported scheme: " + scheme));
     }
 
     public String getScheme() {

@@ -10,8 +10,8 @@ public class Host {
     final InetAddress address;
     final int port;
 
-    public Host(String webProtocol, String address, int port) {
-        this.protocol = WebProtocol.fromScheme(webProtocol);
+    public Host(WebProtocol webProtocol, String address, int port) {
+        this.protocol = webProtocol;
         this.address = convertAddress(address);
         this.port = port;
     }

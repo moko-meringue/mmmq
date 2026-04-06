@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.core.Host;
+import org.mmmq.core.WebProtocol;
 import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.acknowledgement.BrokerAcknowledgement;
 import org.mmmq.core.message.Message;
@@ -58,7 +59,7 @@ class GatewayTest {
     }
 
     private Host createTestHost() {
-        return new Host("http", "localhost", 8080) {
+        return new Host(WebProtocol.HTTP, "localhost", 8080) {
             @Override
             public boolean healthCheck(InetAddress host) {
                 return true;

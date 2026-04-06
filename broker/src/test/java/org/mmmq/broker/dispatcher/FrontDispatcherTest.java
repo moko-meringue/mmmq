@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.broker.topicqueue.TopicQueueRegistry;
 import org.mmmq.core.Host;
+import org.mmmq.core.WebProtocol;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
@@ -28,7 +29,7 @@ class FrontDispatcherTest {
     TopicQueueRegistry registry;
     ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
-    Host host = new Host("http", "localhost", 8080);
+    Host host = new Host(WebProtocol.HTTP, "localhost", 8080);
 
     @Test
     @DisplayName("매칭되는 Dispatcher가 있으면 해당 TopicQueue에 메시지를 추가한다")

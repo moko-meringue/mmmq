@@ -309,7 +309,7 @@ public class ProducerConfig {
 
     @Bean
     public Producer producer() {
-        Host brokerHost = new Host("http", "ip", 8080);
+        Host brokerHost = new Host(WebProtocol.HTTP, "ip", 8080);
         return new Producer(brokerHost);
 
         // 재시도 횟수 커스터마이징 (기본값: 3)
@@ -365,7 +365,7 @@ public class DispatcherConfig {
     public Dispatcher orderDispatcher() {
         return new Dispatcher(
                 "order-dispatcher",
-                new Host("http", "ip", 8080),       // Consumer 호스트
+                new Host(WebProtocol.HTTP, "ip", 8080),       // Consumer 호스트
                 List.of(new Pattern("order.*"))      // 바인딩할 패턴 목록
         );
     }
@@ -374,7 +374,7 @@ public class DispatcherConfig {
     public Dispatcher paymentDispatcher() {
         return new Dispatcher(
                 "payment-dispatcher",
-                new Host("http", "ip", 8081),
+                new Host(WebProtocol.HTTP, "ip", 8081),
                 List.of(new Pattern("payment.*"))
         );
     }
@@ -384,7 +384,7 @@ public class DispatcherConfig {
     public Dispatcher orderDispatcherWithDlq(List<DeadLetterQueue> deadLetterQueues) {
         return new Dispatcher(
                 "order-dispatcher",
-                new Host("http", "ip", 8080),
+                new Host(WebProtocol.HTTP, "ip", 8080),
                 List.of(new Pattern("order.*")),
                 deadLetterQueues
         );
