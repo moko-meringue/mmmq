@@ -34,11 +34,11 @@ class InterfaceExecutionRegistrationTest {
         HandlerExecutions handlerExecutions = FrontHandlerUtil.getHandlerExecutions(frontHandler);
 
         List<HandlerExecution> executions = handlerExecutions.getExecutions(
-                new Message(new Topic("test-topic"), java.util.Map.of())
+                new Message(new Topic("order.new"), java.util.Map.of())
         );
         assertThat(executions.size()).isEqualTo(1);
         HandlerExecution execution = executions.get(0);
-        assertThat(execution.getPattern().value()).isEqualTo("test-topic");
+        assertThat(execution.getPattern().value()).isEqualTo("order.new");
     }
 
     @Configuration
@@ -70,7 +70,7 @@ class InterfaceExecutionRegistrationTest {
 
         @Override
         public Pattern listens() {
-            return new Pattern("test-topic");
+            return new Pattern("order.new");
         }
 
         @Override

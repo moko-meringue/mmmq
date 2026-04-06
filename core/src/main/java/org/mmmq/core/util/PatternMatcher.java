@@ -22,7 +22,7 @@ public class PatternMatcher {
     private volatile Boolean cachePatterns;
 
     public PatternMatcher() {
-        this.pathSeparator = ".`";
+        this.pathSeparator = ".";
     }
 
     private void deactivatePatternCache() {
