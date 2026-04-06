@@ -17,7 +17,8 @@ class PatternTest {
                 Arguments.of(new Pattern("sports.*"), "news.politics", false),
                 Arguments.of(new Pattern("news.**"), "news", true),
                 Arguments.of(new Pattern("news.**"), "news.world.europe", true),
-                Arguments.of(new Pattern("news.**"), "sports.football", false)
+                Arguments.of(new Pattern("news.**"), "sports.football", false),
+                Arguments.of(new Pattern("order.new"), "order.new", true)
         );
     }
 
