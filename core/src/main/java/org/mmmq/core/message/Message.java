@@ -1,10 +1,8 @@
 package org.mmmq.core.message;
 
-import java.util.Map;
-
 public record Message(
     Topic topic,
-    Map<String, Object> content
+    Object content
 ) {
 
     public Message {

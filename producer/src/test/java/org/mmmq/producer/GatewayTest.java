@@ -1,7 +1,17 @@
 package org.mmmq.producer;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withBadRequest;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+
+import java.net.InetAddress;
+import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,14 +29,8 @@ import org.springframework.test.web.client.ExpectedCount;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
-import java.net.InetAddress;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 class GatewayTest {
 
@@ -40,16 +44,16 @@ class GatewayTest {
         objectMapper = new ObjectMapper();
         host = createTestHost();
         RestClient tempClient = RestClient.builder()
-                .baseUrl(host.toUri())
-                .defaultStatusHandler(
-                        status -> status.is4xxClientError() || status.is5xxServerError(),
-                        (request, response) -> {
-                            throw new MessageDeliveryException(
-                                    "Failed to send message to gateway: " + response.getStatusCode().value(), null
-                            );
-                        }
-                )
-                .build();
+            .baseUrl(host.toUri())
+            .defaultStatusHandler(
+                status -> status.is4xxClientError() || status.is5xxServerError(),
+                (request, response) -> {
+                    throw new MessageDeliveryException(
+                        "Failed to send message to gateway: " + response.getStatusCode().value(), null
+                    );
+                }
+            )
+            .build();
 
         RestClient.Builder builder = tempClient.mutate();
         MockServerRestClientCustomizer customizer = new MockServerRestClientCustomizer();
@@ -84,16 +88,38 @@ class GatewayTest {
         BrokerAcknowledgement expectedResponse = new BrokerAcknowledgement(Acknowledgement.ACK);
 
         server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(withSuccess(
-                        objectMapper.writeValueAsString(expectedResponse),
-                        MediaType.APPLICATION_JSON
-                ));
+            .andExpect(method(HttpMethod.POST))
+            .andRespond(withSuccess(
+                objectMapper.writeValueAsString(expectedResponse),
+                MediaType.APPLICATION_JSON
+            ));
 
         gateway.restClient = restClient;
         BrokerAcknowledgement result = gateway.send(message);
 
         assertThat(result.isAck()).isTrue();
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("POJO 객체를 content로 전달하면 필드가 직렬화되어 전송된다")
+    void sendsPojoContentAsJson() throws JsonProcessingException {
+        Gateway gateway = new Gateway(host);
+        Message message = new Message(new Topic("order.new"), new OrderContent(1, "laptop"));
+        BrokerAcknowledgement expectedResponse = new BrokerAcknowledgement(Acknowledgement.ACK);
+
+        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(
+                content().json("{\"topic\":{\"name\":\"order.new\"},\"content\":{\"id\":1,\"name\":\"laptop\"}}"))
+            .andRespond(withSuccess(
+                objectMapper.writeValueAsString(expectedResponse),
+                MediaType.APPLICATION_JSON
+            ));
+
+        gateway.restClient = restClient;
+        gateway.send(message);
+
         server.verify();
     }
 
@@ -104,13 +130,13 @@ class GatewayTest {
         Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
 
         server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(withBadRequest().body("Bad request"));
+            .andExpect(method(HttpMethod.POST))
+            .andRespond(withBadRequest().body("Bad request"));
 
         gateway.restClient = restClient;
 
         assertThatThrownBy(() -> gateway.send(message))
-                .isInstanceOf(MessageDeliveryException.class);
+            .isInstanceOf(MessageDeliveryException.class);
 
         server.verify();
     }
@@ -122,14 +148,17 @@ class GatewayTest {
         Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
 
         server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
-                .andExpect(method(HttpMethod.POST))
-                .andRespond(withServerError());
+            .andExpect(method(HttpMethod.POST))
+            .andRespond(withServerError());
 
         gateway.restClient = restClient;
 
         assertThatThrownBy(() -> gateway.send(message))
-                .isInstanceOf(MessageDeliveryException.class);
+            .isInstanceOf(MessageDeliveryException.class);
 
         server.verify();
+    }
+
+    record OrderContent(int id, String name) {
     }
 }
