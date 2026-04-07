@@ -8,7 +8,6 @@ import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
 
 import java.lang.reflect.Method;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,7 +25,7 @@ class MethodExecutionTest {
         methodExecution.execute(
                 new Message(
                         new Topic("topic"),
-                        Map.of("field", "value")
+                        new Dto("value")
                 ));
 
         assertThat(target.calledCount).isEqualTo(1);
