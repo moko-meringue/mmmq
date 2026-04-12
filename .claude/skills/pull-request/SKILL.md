@@ -9,6 +9,8 @@ description: PR 작성, Pull Request 생성, 또는 작업 요약을 요청할 �
 
 ## 1. Title Generation
 - Language: The description following the tag MUST be in Korean.
+- DO NOT use tag prefixes. The title should be a concise summary of the changes in Korean without any tags.
+- Example: `패턴 기반 토픽 라우팅 기능 추가`, `오프셋 기반 독립 소비 모델 및 이벤트 기반 메시지 분배 아키텍처 도입`
 
 ## 2. Body Generation (Language & Tone)
 - Language: ALWAYS write the PR body in Korean.
