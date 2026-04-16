@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.broker.dispatcher.sender.Sender;
+import org.mmmq.broker.fixture.NoOpWalWriter;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.core.Host;
 import org.mmmq.core.WebProtocol;
@@ -39,9 +40,9 @@ class DispatcherTest {
             }
         };
 
-        TopicQueue topicQueue = new TopicQueue(new Topic("test"));
+        TopicQueue topicQueue = new TopicQueue(new Topic("test"), new NoOpWalWriter());
         dispatcher.subscribe(topicQueue);
-        topicQueue.offer(new Message(new Topic("test"), Map.of("key", "value")));
+        topicQueue.offer(new Message(new Topic("test"), Map.of("key", "value")), true);
         dispatcher.onMessageArrived(new MessageArrivedEvent(topicQueue));
 
         assertThatCode(latch::await).doesNotThrowAnyException();
@@ -60,13 +61,13 @@ class DispatcherTest {
             }
         };
 
-        TopicQueue orderQueue = new TopicQueue(new Topic("order.new"));
-        TopicQueue paymentQueue = new TopicQueue(new Topic("payment.kakao"));
+        TopicQueue orderQueue = new TopicQueue(new Topic("order.new"), new NoOpWalWriter());
+        TopicQueue paymentQueue = new TopicQueue(new Topic("payment.kakao"), new NoOpWalWriter());
         dispatcher.subscribe(orderQueue);
         dispatcher.subscribe(paymentQueue);
 
-        orderQueue.offer(new Message(new Topic("order.new"), Map.of("id", 1)));
-        paymentQueue.offer(new Message(new Topic("payment.kakao"), Map.of("id", 2)));
+        orderQueue.offer(new Message(new Topic("order.new"), Map.of("id", 1)), true);
+        paymentQueue.offer(new Message(new Topic("payment.kakao"), Map.of("id", 2)), true);
         dispatcher.onMessageArrived(new MessageArrivedEvent(orderQueue));
         dispatcher.onMessageArrived(new MessageArrivedEvent(paymentQueue));
 
@@ -86,14 +87,14 @@ class DispatcherTest {
             }
         };
 
-        TopicQueue topicA = new TopicQueue(new Topic("topicA"));
-        TopicQueue topicB = new TopicQueue(new Topic("topicB"));
+        TopicQueue topicA = new TopicQueue(new Topic("topicA"), new NoOpWalWriter());
+        TopicQueue topicB = new TopicQueue(new Topic("topicB"), new NoOpWalWriter());
         dispatcher.subscribe(topicA);
         dispatcher.subscribe(topicB);
 
-        topicA.offer(new Message(new Topic("topicA"), Map.of("seq", 1)));
-        topicA.offer(new Message(new Topic("topicA"), Map.of("seq", 2)));
-        topicB.offer(new Message(new Topic("topicB"), Map.of("seq", 1)));
+        topicA.offer(new Message(new Topic("topicA"), Map.of("seq", 1)), true);
+        topicA.offer(new Message(new Topic("topicA"), Map.of("seq", 2)), true);
+        topicB.offer(new Message(new Topic("topicB"), Map.of("seq", 1)), true);
         dispatcher.onMessageArrived(new MessageArrivedEvent(topicA));
         dispatcher.onMessageArrived(new MessageArrivedEvent(topicB));
 
@@ -112,9 +113,9 @@ class DispatcherTest {
             }
         };
 
-        TopicQueue paymentQueue = new TopicQueue(new Topic("payment.kakao"));
+        TopicQueue paymentQueue = new TopicQueue(new Topic("payment.kakao"), new NoOpWalWriter());
         dispatcher.subscribe(paymentQueue);
-        paymentQueue.offer(new Message(new Topic("payment.kakao"), Map.of("id", 1)));
+        paymentQueue.offer(new Message(new Topic("payment.kakao"), Map.of("id", 1)), true);
         dispatcher.onMessageArrived(new MessageArrivedEvent(paymentQueue));
 
         assertThat(dispatcher.subscriptions).doesNotContainKey(paymentQueue);

@@ -11,6 +11,7 @@ import org.mmmq.broker.dlq.DeadLetter;
 import org.mmmq.broker.dlq.DeadLetterQueue;
 import org.mmmq.broker.topicqueue.Offset;
 import org.mmmq.broker.topicqueue.TopicQueue;
+import org.mmmq.broker.wal.TopicQueueRecoveredEvent;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Pattern;
@@ -47,21 +48,13 @@ public class Dispatcher {
         this.sender = Sender.from(host);
     }
 
-    boolean matches(Topic topic) {
-        return patterns.stream()
-                .anyMatch(pattern -> pattern.matches(topic));
-    }
-
-    void stop() {
-        subscriptions.values()
-                .forEach(Subscription::shutdownNow);
-    }
-
-    public void subscribe(TopicQueue topicQueue) {
-        if (!matches(topicQueue.getTopic())) {
-            return;
-        }
-        subscriptions.computeIfAbsent(topicQueue, topic -> new Subscription(topicQueue));
+    @EventListener
+    void onTopicQueueRecovered(TopicQueueRecoveredEvent event) {
+        TopicQueue topicQueue = event.topicQueue();
+        subscriptions.computeIfPresent(topicQueue, (topic, subscription) -> {
+            subscription.submit(() -> drain(topicQueue, subscription));
+            return subscription;
+        });
     }
 
     @EventListener
@@ -79,6 +72,23 @@ public class Dispatcher {
         while ((message = topicQueue.poll(offset)) != null) {
             send(message);
         }
+    }
+
+    public void subscribe(TopicQueue topicQueue) {
+        if (!matches(topicQueue.getTopic())) {
+            return;
+        }
+        subscriptions.computeIfAbsent(topicQueue, topic -> new Subscription(topicQueue));
+    }
+
+    boolean matches(Topic topic) {
+        return patterns.stream()
+                .anyMatch(pattern -> pattern.matches(topic));
+    }
+
+    void stop() {
+        subscriptions.values()
+                .forEach(Subscription::shutdownNow);
     }
 
     private void send(Message message) {

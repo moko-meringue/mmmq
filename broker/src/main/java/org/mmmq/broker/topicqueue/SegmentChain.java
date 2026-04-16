@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import org.mmmq.broker.wal.WalEntry;
+import org.mmmq.broker.wal.WalWriter;
 import org.mmmq.core.message.Message;
 
 class SegmentChain {
@@ -15,15 +17,17 @@ class SegmentChain {
     private final Map<Integer, Segment> segments = new ConcurrentHashMap<>();
     private final int segmentCapacity;
     private final Set<Offset> offsets = ConcurrentHashMap.newKeySet();
+    private final WalWriter walWriter;
     private int headIndex = 0;
     private int tailIndex = 0;
 
-    SegmentChain() {
-        this(DEFAULT_SEGMENT_CAPACITY);
+    SegmentChain(WalWriter walWriter) {
+        this(DEFAULT_SEGMENT_CAPACITY, walWriter);
     }
 
-    SegmentChain(int segmentCapacity) {
+    SegmentChain(int segmentCapacity, WalWriter walWriter) {
         this.segmentCapacity = segmentCapacity;
+        this.walWriter = walWriter;
         segments.put(tailIndex, new Segment(this.segmentCapacity));
     }
 
@@ -33,19 +37,26 @@ class SegmentChain {
         return offset;
     }
 
-    void offer(Message message) {
+    void offer(Message message, boolean withWal) {
         this.lock.lock();
         try {
-            Segment tail = segments.get(tailIndex);
-            if (tail == null || tail.isFull()) {
-                tailIndex++;
-                tail = new Segment(this.segmentCapacity);
-                segments.put(tailIndex, tail);
+            if (withWal) {
+                walWriter.write(new WalEntry(message), tailIndex);
             }
-            tail.put(message);
+            appendToTail(message);
         } finally {
             this.lock.unlock();
         }
+    }
+
+    private void appendToTail(Message message) {
+        Segment tail = segments.get(tailIndex);
+        if (tail == null || tail.isFull()) {
+            tailIndex++;
+            tail = new Segment(this.segmentCapacity);
+            segments.put(tailIndex, tail);
+        }
+        tail.put(message);
     }
 
     @Nullable
@@ -91,6 +102,7 @@ class SegmentChain {
         if (headIndex < limit) {
             for (int i = headIndex; i < limit; i++) {
                 segments.remove(i);
+                walWriter.deleteSegmentFile(i);
             }
             headIndex = limit;
         }

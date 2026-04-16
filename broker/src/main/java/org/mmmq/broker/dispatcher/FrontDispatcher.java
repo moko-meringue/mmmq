@@ -37,7 +37,7 @@ public class FrontDispatcher {
             return;
         }
         TopicQueue queue = registry.get(message.topic());
-        queue.offer(message);
+        queue.offer(message, true);
         publisher.publishEvent(new MessageArrivedEvent(queue));
     }
 }

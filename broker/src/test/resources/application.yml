@@ -1,0 +1,5 @@
+mmmq:
+  broker:
+    wal:
+      dir: ${java.io.tmpdir}/mmmq-wal-test
+      flush-policy: page_cache
