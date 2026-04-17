@@ -16,6 +16,7 @@ import org.mmmq.broker.fixture.NoOpWalWriter;
 import org.mmmq.broker.topicqueue.Offset;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.broker.topicqueue.TopicQueueRegistry;
+import org.mmmq.broker.wal.codec.JsonWalCodec;
 import org.mmmq.core.message.Topic;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -26,12 +27,12 @@ class WalRecoveryTest {
     void recoversTopicsInSegmentOrder(@TempDir Path walDir) throws Exception {
         Files.writeString(
                 walDir.resolve("order-1.wal"),
-                "{\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":3}}}\n"
+                "{\"segmentIndex\":1,\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":3}}}\n"
         );
         Files.writeString(
                 walDir.resolve("order-0.wal"),
-                "{\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":1}}}\n"
-                        + "{\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":2}}}\n"
+                "{\"segmentIndex\":0,\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":1}}}\n"
+                        + "{\"segmentIndex\":0,\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":2}}}\n"
         );
 
         final TopicQueueRegistry registry = mock(TopicQueueRegistry.class);
@@ -40,7 +41,7 @@ class WalRecoveryTest {
         when(registry.get(new Topic("order"))).thenReturn(topicQueue);
         final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
-        new WalRecovery(registry, publisher).afterSingletonsInstantiated();
+        new WalRecovery(registry, publisher, new JsonWalCodec()).afterSingletonsInstantiated();
 
         final Offset offset = topicQueue.getNewOffset();
         assertThat(((java.util.Map<?, ?>) topicQueue.poll(offset).content()).get("id")).isEqualTo(1);
@@ -56,7 +57,7 @@ class WalRecoveryTest {
         when(registry.walDir()).thenReturn(walDir);
         final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
-        new WalRecovery(registry, publisher).afterSingletonsInstantiated();
+        new WalRecovery(registry, publisher, new JsonWalCodec()).afterSingletonsInstantiated();
 
         verify(publisher, times(0)).publishEvent(any());
     }
@@ -71,7 +72,7 @@ class WalRecoveryTest {
         when(registry.walDir()).thenReturn(walDir);
         final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
-        new WalRecovery(registry, publisher).afterSingletonsInstantiated();
+        new WalRecovery(registry, publisher, new JsonWalCodec()).afterSingletonsInstantiated();
 
         verify(publisher, times(0)).publishEvent(any());
     }

@@ -1,20 +1,15 @@
 package org.mmmq.broker.fixture;
 
-import org.mmmq.broker.wal.flush.PageCacheFlushPolicy;
+import org.mmmq.broker.wal.WalAppender;
 import org.mmmq.broker.wal.WalEntry;
-import org.mmmq.broker.wal.WalWriter;
 
-public class NoOpWalWriter extends WalWriter {
+public class NoOpWalWriter implements WalAppender {
 
-    public NoOpWalWriter() {
-        super(null, null, new PageCacheFlushPolicy());
+    @Override
+    public void write(WalEntry entry) {
     }
 
     @Override
-    public synchronized void write(WalEntry entry, int segmentIndex) {
-    }
-
-    @Override
-    public synchronized void deleteSegmentFile(int segmentIndex) {
+    public void deleteSegmentFile(int segmentIndex) {
     }
 }

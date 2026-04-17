@@ -5,8 +5,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import org.mmmq.broker.wal.WalAppender;
 import org.mmmq.broker.wal.WalEntry;
-import org.mmmq.broker.wal.WalWriter;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 
@@ -19,11 +19,11 @@ public class TopicQueue {
     private final Map<Integer, Segment> segments = new ConcurrentHashMap<>();
     private final int segmentCapacity;
     private final Set<Offset> offsets = ConcurrentHashMap.newKeySet();
-    private final WalWriter walWriter;
+    private final WalAppender walWriter;
     private int headIndex = 0;
     private int tailIndex = 0;
 
-    public TopicQueue(Topic topic, WalWriter walWriter) {
+    public TopicQueue(Topic topic, WalAppender walWriter) {
         this.topic = topic;
         this.walWriter = walWriter;
         segmentCapacity = DEFAULT_SEGMENT_CAPACITY;
@@ -40,7 +40,7 @@ public class TopicQueue {
     public void offer(Message message) {
         lock.lock();
         try {
-            walWriter.write(new WalEntry(message), tailIndex);
+            walWriter.write(new WalEntry(tailIndex, message));
             appendToTail(message);
         } finally {
             lock.unlock();

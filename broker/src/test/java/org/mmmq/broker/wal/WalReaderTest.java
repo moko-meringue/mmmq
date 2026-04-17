@@ -8,10 +8,11 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mmmq.broker.wal.codec.JsonWalCodec;
 
 class WalReaderTest {
 
-    private final WalReader reader = new WalReader();
+    private final WalReader reader = new WalReader(new JsonWalCodec());
 
     @Test
     @DisplayName("파일이 존재하지 않으면 빈 리스트를 반환한다")
@@ -27,8 +28,8 @@ class WalReaderTest {
         final Path file = tempDir.resolve("order-0.wal");
         Files.writeString(
                 file,
-                "{\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":1}}}\n"
-                        + "{\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":2}}}\n"
+                "{\"segmentIndex\":0,\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":1}}}\n"
+                        + "{\"segmentIndex\":0,\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":2}}}\n"
         );
 
         final List<WalEntry> entries = reader.stream(file).toList();
@@ -44,10 +45,10 @@ class WalReaderTest {
         final Path file = tempDir.resolve("order-0.wal");
         Files.writeString(
                 file,
-                "{\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":1}}}\n"
+                "{\"segmentIndex\":0,\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":1}}}\n"
                         + "\n"
                         + "this-is-not-json\n"
-                        + "{\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":3}}}\n"
+                        + "{\"segmentIndex\":0,\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":3}}}\n"
         );
 
         final List<WalEntry> entries = reader.stream(file).toList();

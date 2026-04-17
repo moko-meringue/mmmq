@@ -44,9 +44,8 @@ Encapsulation is a first-class concern. Apply the most restrictive access modifi
 
 ---
 
-## Optional
+## Nullable
 
-- Prefer `Optional` over null checks. Use method chaining (`map()`, `flatMap()`, `filter()`, `orElseThrow()`, `ifPresent()`, etc.) to handle absent values. NEVER use `isPresent()` + `get()`.
 - A method may return `null`, but if it can, it MUST be annotated with `@Nullable`. Unannotated methods are assumed to never return `null`.
 
 ---
@@ -104,6 +103,7 @@ Encapsulation is a first-class concern. Apply the most restrictive access modifi
 ### Variables & Constants
 - camelCase for variables. Names must clearly express purpose.
 - Constants: `UPPER_SNAKE_CASE` for `static final` fields.
+- Logger: MUST be declared as `private static final Logger log = LoggerFactory.getLogger(ClassName.class);`. The variable name is always `log`.
 
 ---
 
