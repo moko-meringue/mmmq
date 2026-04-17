@@ -75,7 +75,7 @@ public class WalRecovery implements SmartInitializingSingleton {
         sorted.stream()
                 .flatMap(walFile -> walReader.stream(walFile.path()))
                 .forEach(entry -> {
-                    topicQueue.offer(entry.message(), false);
+                    topicQueue.restore(entry.message());
                     replayed.incrementAndGet();
                 });
 

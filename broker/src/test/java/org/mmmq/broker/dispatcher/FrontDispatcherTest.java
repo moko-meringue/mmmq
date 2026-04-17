@@ -44,7 +44,7 @@ class FrontDispatcherTest {
         frontDispatcher.dispatch(message);
 
         verify(registry).get(new Topic("order.new"));
-        verify(mockQueue).offer(message, true);
+        verify(mockQueue).offer(message);
     }
 
     @Test

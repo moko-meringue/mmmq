@@ -15,8 +15,12 @@ public class TopicQueue {
         this.segmentChain = new SegmentChain(walWriter);
     }
 
-    public void offer(Message message, boolean withWal) {
-        segmentChain.offer(message, withWal);
+    public void offer(Message message) {
+        segmentChain.offer(message);
+    }
+
+    public void restore(Message message) {
+        segmentChain.restore(message);
     }
 
     public Offset getNewOffset() {

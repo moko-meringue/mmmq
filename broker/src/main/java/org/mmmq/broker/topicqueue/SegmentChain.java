@@ -37,12 +37,19 @@ class SegmentChain {
         return offset;
     }
 
-    void offer(Message message, boolean withWal) {
+    void offer(Message message) {
         this.lock.lock();
         try {
-            if (withWal) {
-                walWriter.write(new WalEntry(message), tailIndex);
-            }
+            walWriter.write(new WalEntry(message), tailIndex);
+            appendToTail(message);
+        } finally {
+            this.lock.unlock();
+        }
+    }
+
+    void restore(Message message) {
+        this.lock.lock();
+        try {
             appendToTail(message);
         } finally {
             this.lock.unlock();
