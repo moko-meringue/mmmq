@@ -15,7 +15,7 @@ public class WalFileChannel {
 
     WalFileChannel(WalFile walFile, WalFlushPolicy flushPolicy) {
         this.walFile = walFile;
-        this.channel = walFile.openAppendChannel();
+        this.channel = walFile.openChannel();
         this.flushPolicy = flushPolicy;
     }
 
