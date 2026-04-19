@@ -6,7 +6,11 @@ import java.nio.channels.FileChannel;
 public class FsyncFlushPolicy implements WalFlushPolicy {
 
     @Override
-    public void flush(FileChannel channel) throws IOException {
-        channel.force(false);
+    public void flush(FileChannel channel) {
+        try {
+            channel.force(false);
+        } catch (IOException exception) {
+            throw new RuntimeException("Failed to fsync WAL channel: " + channel, exception);
+        }
     }
 }
