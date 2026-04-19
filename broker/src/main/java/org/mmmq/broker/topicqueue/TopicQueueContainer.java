@@ -23,7 +23,7 @@ public class TopicQueueContainer implements MessageRestorer {
     }
 
     public TopicQueue get(Topic topic) {
-        return queues.computeIfAbsent(topic, this::create);
+        return queues.computeIfAbsent(topic, this::createTopicQueue);
     }
 
     @Override
@@ -31,12 +31,9 @@ public class TopicQueueContainer implements MessageRestorer {
         get(message.topic()).restore(message);
     }
 
-    private TopicQueue create(Topic topic) {
-        MessagePersistence persistence = persistenceFactory.create(topic.name());
-        TopicQueue topicQueue = new TopicQueue(topic, persistence);
-        for (Dispatcher dispatcher : dispatcherProvider) {
-            dispatcher.subscribe(topicQueue);
-        }
+    private TopicQueue createTopicQueue(Topic topic) {
+        TopicQueue topicQueue = new TopicQueue(topic, persistenceFactory.create(topic.name()));
+        dispatcherProvider.forEach(dispatcher -> dispatcher.subscribe(topicQueue));
 
         return topicQueue;
     }
