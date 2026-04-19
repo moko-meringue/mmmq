@@ -24,23 +24,23 @@ class WalMessagePersistence implements MessagePersistence {
     }
 
     @Override
-    public synchronized void persist(Message message, int index) {
-        if (currentChannel == null || currentChannel.index() != index) {
+    public synchronized void persist(Message message, int walFileIndex) {
+        if (currentChannel == null || currentChannel.getWalFileIndex() != walFileIndex) {
             if (currentChannel != null) {
                 currentChannel.close();
             }
-            WalFile next = walFileStore.create(topicName, index);
+            WalFile next = walFileStore.create(topicName, walFileIndex);
             currentChannel = new WalFileChannel(next, flushPolicy);
         }
         currentChannel.write(codec.encode(new WalEntry(message)));
     }
 
     @Override
-    public synchronized void evict(int index) {
-        if (currentChannel != null && currentChannel.index() == index) {
+    public synchronized void evict(int walFileIndex) {
+        if (currentChannel != null && currentChannel.getWalFileIndex() == walFileIndex) {
             currentChannel.close();
             currentChannel = null;
         }
-        walFileStore.delete(topicName, index);
+        walFileStore.delete(topicName, walFileIndex);
     }
 }

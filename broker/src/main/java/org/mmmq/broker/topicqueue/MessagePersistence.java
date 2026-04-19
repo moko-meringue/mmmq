@@ -4,7 +4,7 @@ import org.mmmq.core.message.Message;
 
 public interface MessagePersistence {
 
-    void persist(Message message, int index);
+    void persist(Message message, int segmentIndex);
 
-    void evict(int index);
+    void evict(int segmentIndex);
 }
