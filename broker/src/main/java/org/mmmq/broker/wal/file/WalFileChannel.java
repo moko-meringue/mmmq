@@ -48,7 +48,7 @@ public class WalFileChannel {
         }
     }
 
-    int index() {
+    int getWalFileIndex() {
         return walFile.index();
     }
 }
