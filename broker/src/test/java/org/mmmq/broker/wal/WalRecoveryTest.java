@@ -18,6 +18,7 @@ import org.mmmq.broker.topicqueue.Offset;
 import org.mmmq.broker.topicqueue.RestoreCompletedEvent;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.broker.wal.codec.JsonWalCodec;
+import org.mmmq.broker.wal.file.WalFileStore;
 import org.mmmq.core.message.Topic;
 import org.springframework.context.ApplicationEventPublisher;
 

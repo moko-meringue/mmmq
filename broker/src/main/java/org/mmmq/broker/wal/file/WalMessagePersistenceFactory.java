@@ -1,4 +1,4 @@
-package org.mmmq.broker.wal;
+package org.mmmq.broker.wal.file;
 
 import org.mmmq.broker.topicqueue.MessagePersistence;
 import org.mmmq.broker.topicqueue.MessagePersistenceFactory;
@@ -16,8 +16,8 @@ class WalMessagePersistenceFactory implements MessagePersistenceFactory {
     private final WalFlushPolicy flushPolicy;
 
     WalMessagePersistenceFactory(
-            WalFileStore walDirectory,
             WalCodec codec,
+            WalFileStore walDirectory,
             @Value("${mmmq.broker.wal.flush-policy:page_cache}") String flushPolicyName
     ) {
         this.walDirectory = walDirectory;

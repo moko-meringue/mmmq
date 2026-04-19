@@ -1,4 +1,4 @@
-package org.mmmq.broker.wal;
+package org.mmmq.broker.wal.file;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

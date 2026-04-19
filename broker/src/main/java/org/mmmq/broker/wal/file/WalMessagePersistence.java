@@ -1,7 +1,8 @@
-package org.mmmq.broker.wal;
+package org.mmmq.broker.wal.file;
 
 import jakarta.annotation.Nullable;
 import org.mmmq.broker.topicqueue.MessagePersistence;
+import org.mmmq.broker.wal.WalEntry;
 import org.mmmq.broker.wal.codec.WalCodec;
 import org.mmmq.broker.wal.flush.WalFlushPolicy;
 import org.mmmq.core.message.Message;

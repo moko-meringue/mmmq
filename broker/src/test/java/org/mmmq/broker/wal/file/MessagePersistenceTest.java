@@ -1,4 +1,4 @@
-package org.mmmq.broker.wal;
+package org.mmmq.broker.wal.file;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,7 +19,7 @@ class MessagePersistenceTest {
     private MessagePersistence createMessagePersistence(Path tempDir, String topicName) {
         WalFileStore directory = new WalFileStore(tempDir.toString());
         WalMessagePersistenceFactory factory = new WalMessagePersistenceFactory(
-                directory, new JsonWalCodec(), "page_cache"
+                new JsonWalCodec(), directory, "page_cache"
         );
 
         return factory.create(topicName);

@@ -1,4 +1,4 @@
-package org.mmmq.broker.wal;
+package org.mmmq.broker.wal.file;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -8,6 +8,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mmmq.broker.wal.WalEntry;
 import org.mmmq.broker.wal.codec.JsonWalCodec;
 
 class WalFileTest {

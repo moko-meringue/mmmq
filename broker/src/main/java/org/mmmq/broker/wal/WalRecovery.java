@@ -4,6 +4,7 @@ import java.util.stream.Stream;
 import org.mmmq.broker.topicqueue.MessageRestorer;
 import org.mmmq.broker.topicqueue.RestoreCompletedEvent;
 import org.mmmq.broker.wal.codec.WalCodec;
+import org.mmmq.broker.wal.file.WalFileStore;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
