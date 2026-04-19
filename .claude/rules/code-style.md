@@ -55,7 +55,7 @@ Encapsulation is a first-class concern. Apply the most restrictive access modifi
 - Prefer Stream API over traditional for/while loops.
 - Lambda parameter names must be descriptive — NEVER single-letter names.
 - Use `Stream.toList()` for terminal collection. NEVER use `Collectors.toList()`.
-- Avoid `Stream.forEach()` — it encourages side effects. Use an enhanced for-each loop instead when side effects are necessary.
+- Prefer `Stream.forEach()` over an enhanced for-each loop when iterating a stream.
 
 ---
 
