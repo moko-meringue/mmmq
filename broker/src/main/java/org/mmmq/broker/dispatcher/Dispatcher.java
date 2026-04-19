@@ -10,8 +10,8 @@ import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.dlq.DeadLetter;
 import org.mmmq.broker.dlq.DeadLetterQueue;
 import org.mmmq.broker.topicqueue.Offset;
+import org.mmmq.broker.topicqueue.RestoreCompletedEvent;
 import org.mmmq.broker.topicqueue.TopicQueue;
-import org.mmmq.broker.wal.TopicQueueRecoveredEvent;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Pattern;
@@ -48,13 +48,11 @@ public class Dispatcher {
         this.sender = Sender.from(host);
     }
 
-    @EventListener
-    void onTopicQueueRecovered(TopicQueueRecoveredEvent event) {
-        TopicQueue topicQueue = event.topicQueue();
-        subscriptions.computeIfPresent(topicQueue, (topic, subscription) -> {
-            subscription.submit(() -> drain(topicQueue, subscription));
-            return subscription;
-        });
+    @EventListener(RestoreCompletedEvent.class)
+    void onRestoreCompleted() {
+        subscriptions.forEach((topicQueue, subscription) ->
+                subscription.submit(() -> drain(topicQueue, subscription))
+        );
     }
 
     @EventListener

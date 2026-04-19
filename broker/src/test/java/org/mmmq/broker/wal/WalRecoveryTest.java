@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,9 +13,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mmmq.broker.fixture.NoOpTopicWal;
+import org.mmmq.broker.topicqueue.MessageRestorer;
 import org.mmmq.broker.topicqueue.Offset;
 import org.mmmq.broker.topicqueue.TopicQueue;
-import org.mmmq.broker.topicqueue.TopicQueueRegistry;
+import org.mmmq.broker.topicqueue.RestoreCompletedEvent;
 import org.mmmq.broker.wal.codec.JsonWalCodec;
 import org.mmmq.core.message.Topic;
 import org.springframework.context.ApplicationEventPublisher;
@@ -41,31 +41,27 @@ class WalRecoveryTest {
         );
 
         final WalDirectory walDirectory = createWalDirectory(walDir);
-        final TopicQueueRegistry registry = mock(TopicQueueRegistry.class);
-        final TopicQueue topicQueue = new TopicQueue(
-                new Topic("order"),
-                new NoOpTopicWal()
-        );
-        when(registry.get(new Topic("order"))).thenReturn(topicQueue);
+        final TopicQueue topicQueue = new TopicQueue(new Topic("order"), new NoOpTopicWal());
+        final MessageRestorer restorer = message -> topicQueue.restore(message);
         final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
-        new WalRecovery(registry, publisher, walDirectory).afterSingletonsInstantiated();
+        new WalRecovery(restorer, walDirectory, publisher).afterSingletonsInstantiated();
 
         final Offset offset = topicQueue.getNewOffset();
         assertThat(((Map<?, ?>) topicQueue.poll(offset).content()).get("id")).isEqualTo(1);
         assertThat(((Map<?, ?>) topicQueue.poll(offset).content()).get("id")).isEqualTo(2);
         assertThat(((Map<?, ?>) topicQueue.poll(offset).content()).get("id")).isEqualTo(3);
-        verify(publisher, times(1)).publishEvent(any(TopicQueueRecoveredEvent.class));
+        verify(publisher, times(1)).publishEvent(any(RestoreCompletedEvent.class));
     }
 
     @Test
     @DisplayName("WAL 디렉터리가 비어있으면 이벤트를 발행하지 않는다")
     void emitsNothingWhenDirEmpty(@TempDir Path walDir) {
         final WalDirectory walDirectory = createWalDirectory(walDir);
-        final TopicQueueRegistry registry = mock(TopicQueueRegistry.class);
+        final MessageRestorer restorer = mock(MessageRestorer.class);
         final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
-        new WalRecovery(registry, publisher, walDirectory).afterSingletonsInstantiated();
+        new WalRecovery(restorer, walDirectory, publisher).afterSingletonsInstantiated();
 
         verify(publisher, times(0)).publishEvent(any());
     }
@@ -77,10 +73,10 @@ class WalRecoveryTest {
         Files.writeString(walDir.resolve("order-abc.wal"), "garbage");
 
         final WalDirectory walDirectory = createWalDirectory(walDir);
-        final TopicQueueRegistry registry = mock(TopicQueueRegistry.class);
+        final MessageRestorer restorer = mock(MessageRestorer.class);
         final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
-        new WalRecovery(registry, publisher, walDirectory).afterSingletonsInstantiated();
+        new WalRecovery(restorer, walDirectory, publisher).afterSingletonsInstantiated();
 
         verify(publisher, times(0)).publishEvent(any());
     }
