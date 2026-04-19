@@ -8,13 +8,13 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 @Component
-public class TopicQueueRegistry implements MessageRestorer {
+public class TopicQueueContainer implements MessageRestorer {
 
     private final MessagePersistenceFactory persistenceFactory;
     private final ObjectProvider<Dispatcher> dispatcherProvider;
     private final ConcurrentHashMap<Topic, TopicQueue> queues = new ConcurrentHashMap<>();
 
-    public TopicQueueRegistry(
+    public TopicQueueContainer(
             MessagePersistenceFactory persistenceFactory,
             ObjectProvider<Dispatcher> dispatcherProvider
     ) {

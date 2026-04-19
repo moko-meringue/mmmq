@@ -12,7 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mmmq.broker.topicqueue.TopicQueue;
-import org.mmmq.broker.topicqueue.TopicQueueRegistry;
+import org.mmmq.broker.topicqueue.TopicQueueContainer;
 import org.mmmq.core.Host;
 import org.mmmq.core.WebProtocol;
 import org.mmmq.core.message.Message;
@@ -26,7 +26,7 @@ import org.springframework.context.ApplicationEventPublisher;
 class FrontDispatcherTest {
 
     @Mock
-    TopicQueueRegistry registry;
+    TopicQueueContainer registry;
     ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
     Host host = new Host(WebProtocol.HTTP, "localhost", 8080);

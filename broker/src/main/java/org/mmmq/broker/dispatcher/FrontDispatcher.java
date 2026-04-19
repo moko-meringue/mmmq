@@ -3,7 +3,7 @@ package org.mmmq.broker.dispatcher;
 import jakarta.annotation.PreDestroy;
 import java.util.List;
 import org.mmmq.broker.topicqueue.TopicQueue;
-import org.mmmq.broker.topicqueue.TopicQueueRegistry;
+import org.mmmq.broker.topicqueue.TopicQueueContainer;
 import org.mmmq.core.message.Message;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -12,12 +12,12 @@ import org.springframework.stereotype.Component;
 public class FrontDispatcher {
 
     final List<Dispatcher> dispatchers;
-    final TopicQueueRegistry registry;
+    final TopicQueueContainer registry;
     private final ApplicationEventPublisher publisher;
 
     public FrontDispatcher(
             List<Dispatcher> dispatchers,
-            TopicQueueRegistry registry,
+            TopicQueueContainer registry,
             ApplicationEventPublisher publisher
     ) {
         this.dispatchers = dispatchers;
