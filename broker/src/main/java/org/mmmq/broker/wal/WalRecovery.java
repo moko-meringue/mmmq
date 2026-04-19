@@ -12,25 +12,25 @@ import org.springframework.stereotype.Component;
 public class WalRecovery implements SmartInitializingSingleton {
 
     private final MessageRestorer restorer;
-    private final WalStore walStore;
+    private final WalFileStore walFileStore;
     private final WalCodec codec;
     private final ApplicationEventPublisher publisher;
 
     public WalRecovery(
             MessageRestorer restorer,
-            WalStore walStore,
+            WalFileStore walFileStore,
             WalCodec codec,
             ApplicationEventPublisher publisher
     ) {
         this.restorer = restorer;
-        this.walStore = walStore;
+        this.walFileStore = walFileStore;
         this.codec = codec;
         this.publisher = publisher;
     }
 
     @Override
     public void afterSingletonsInstantiated() {
-        try (Stream<WalEntry> entries = walStore.segmentFiles().stream()
+        try (Stream<WalEntry> entries = walFileStore.segmentFiles().stream()
                 .flatMap(segmentFile -> segmentFile.read(codec))) {
             entries.forEach(entry -> restorer.restore(entry.message()));
         }

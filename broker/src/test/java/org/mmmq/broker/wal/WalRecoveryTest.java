@@ -23,13 +23,13 @@ import org.springframework.context.ApplicationEventPublisher;
 
 class WalRecoveryTest {
 
-    private WalStore createWalStore(Path walDir) {
-        return new WalStore(walDir.toString());
+    private WalFileStore createWalStore(Path walDir) {
+        return new WalFileStore(walDir.toString());
     }
 
     private WalRecovery createWalRecovery(
             MessageRestorer restorer,
-            WalStore walDirectory,
+            WalFileStore walDirectory,
             ApplicationEventPublisher publisher
     ) {
         return new WalRecovery(restorer, walDirectory, new JsonWalCodec(), publisher);
@@ -48,7 +48,7 @@ class WalRecoveryTest {
                         + "{\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":2}}}\n"
         );
 
-        final WalStore walDirectory = createWalStore(walDir);
+        final WalFileStore walDirectory = createWalStore(walDir);
         final TopicQueue topicQueue = new TopicQueue(new Topic("order"), new NoOpTopicWal());
         final MessageRestorer restorer = message -> topicQueue.restore(message);
         final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
@@ -65,7 +65,7 @@ class WalRecoveryTest {
     @Test
     @DisplayName("WAL 디렉터리가 비어있으면 이벤트를 발행한다")
     void emitsEventEvenWhenDirEmpty(@TempDir Path walDir) {
-        final WalStore walDirectory = createWalStore(walDir);
+        final WalFileStore walDirectory = createWalStore(walDir);
         final MessageRestorer restorer = mock(MessageRestorer.class);
         final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
@@ -80,7 +80,7 @@ class WalRecoveryTest {
         Files.writeString(walDir.resolve("README.md"), "hello");
         Files.writeString(walDir.resolve("order-abc.wal"), "garbage");
 
-        final WalStore walDirectory = createWalStore(walDir);
+        final WalFileStore walDirectory = createWalStore(walDir);
         final MessageRestorer restorer = mock(MessageRestorer.class);
         final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 

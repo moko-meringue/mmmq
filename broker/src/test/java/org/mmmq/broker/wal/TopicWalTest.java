@@ -17,7 +17,7 @@ import org.mmmq.core.message.Topic;
 class MessagePersistenceTest {
 
     private MessagePersistence createMessagePersistence(Path tempDir, String topicName) {
-        WalStore directory = new WalStore(tempDir.toString());
+        WalFileStore directory = new WalFileStore(tempDir.toString());
         WalMessagePersistenceFactory factory = new WalMessagePersistenceFactory(
                 directory, new JsonWalCodec(), "page_cache"
         );

@@ -12,23 +12,24 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
-public class WalStore {
+public class WalFileStore implements WalFileCreator {
 
     private final Path path;
-    private final List<WalFile> segmentFiles;
+    private final List<WalFile> walFiles;
 
-    public WalStore(@Value("${mmmq.broker.wal.dir:./wal}") String walDir) {
+    public WalFileStore(@Value("${mmmq.broker.wal.dir:./wal}") String walDir) {
         this.path = Paths.get(walDir);
         createDirectory();
-        this.segmentFiles = loadWalFiles();
+        this.walFiles = loadWalFiles();
     }
 
     public List<WalFile> segmentFiles() {
-        return segmentFiles;
+        return walFiles;
     }
 
-    WalFile createWalFile(String topicName, int segmentIndex) {
-        return WalFile.of(path, topicName, segmentIndex);
+    @Override
+    public WalFile create(String topicName, int index) {
+        return WalFile.of(path, topicName, index);
     }
 
     private void createDirectory() {

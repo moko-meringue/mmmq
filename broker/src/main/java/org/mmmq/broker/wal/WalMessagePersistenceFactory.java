@@ -12,11 +12,11 @@ import org.springframework.stereotype.Component;
 class WalMessagePersistenceFactory implements MessagePersistenceFactory {
 
     private final WalCodec codec;
-    private final WalStore walDirectory;
+    private final WalFileStore walDirectory;
     private final WalFlushPolicy flushPolicy;
 
     WalMessagePersistenceFactory(
-            WalStore walDirectory,
+            WalFileStore walDirectory,
             WalCodec codec,
             @Value("${mmmq.broker.wal.flush-policy:page_cache}") String flushPolicyName
     ) {

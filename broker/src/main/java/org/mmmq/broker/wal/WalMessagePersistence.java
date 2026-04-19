@@ -8,15 +8,15 @@ import org.mmmq.core.message.Message;
 
 class WalMessagePersistence implements MessagePersistence {
 
-    private final WalStore directory;
+    private final WalFileCreator walFileStore;
     private final String topicName;
     private final WalCodec codec;
     private final WalFlushPolicy flushPolicy;
     @Nullable
     private WalFileChannel currentChannel;
 
-    WalMessagePersistence(WalStore directory, String topicName, WalCodec codec, WalFlushPolicy flushPolicy) {
-        this.directory = directory;
+    WalMessagePersistence(WalFileCreator walFileStore, String topicName, WalCodec codec, WalFlushPolicy flushPolicy) {
+        this.walFileStore = walFileStore;
         this.topicName = topicName;
         this.codec = codec;
         this.flushPolicy = flushPolicy;
@@ -28,7 +28,7 @@ class WalMessagePersistence implements MessagePersistence {
             if (currentChannel != null) {
                 currentChannel.close();
             }
-            WalFile next = directory.createWalFile(topicName, index);
+            WalFile next = walFileStore.create(topicName, index);
             currentChannel = new WalFileChannel(next, flushPolicy);
         }
         currentChannel.write(codec.encode(new WalEntry(message)));
@@ -40,6 +40,6 @@ class WalMessagePersistence implements MessagePersistence {
             currentChannel.close();
             currentChannel = null;
         }
-        directory.createWalFile(topicName, index).delete();
+        walFileStore.create(topicName, index).delete();
     }
 }
