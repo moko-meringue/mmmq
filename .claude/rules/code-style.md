@@ -12,12 +12,12 @@ All rules in this document are non-negotiable. Apply them in full.
 - Class/Interface: insert a blank line immediately after the opening brace `{`. Do NOT insert a blank line before the closing brace `}`.
 - Record: place each component on a new line. Insert a blank line after `{` if the record has methods.
 - Annotation stacking: pyramid order (shortest → longest, top → bottom). Length is measured as the full annotation text including any internal content (e.g., `@Service` vs `@RequiredArgsConstructor` vs `@EventListener(condition = "...")`), not just the annotation name.
-- ALWAYS insert a blank line before a `return` statement.
+- NEVER insert a blank line before a `return` statement.
 - Do NOT use `this` unless resolving a naming conflict.
 - Stream chaining: place each intermediate/terminal operation on its own line, indented 8 spaces from the base expression.
 - Multi-line parameter lists: the closing `)` or `) {` must be on its own line at the base indentation level.
 - One blank line between methods, regardless of visibility (public/private/package-private).
-- Field declaration order: `static` fields first, then instance fields, then constructors. (All fields are `private`, so no further ordering by visibility is needed.)
+- Field declaration order: group fields by (access modifier + `static` + `final`) — any difference in these three makes a separate group. Group order: `private static final` → `private final` → `private`. Within each group, sort by full declaration line length (shortest → longest), excluding annotations from the length calculation. Constructor parameter order must match field declaration order exactly.
 - Import grouping: `java.*` → third-party (`com.*`, `org.spring*`, etc.) → project (`org.mmmq.*`). No blank lines between groups.
 
 ---
