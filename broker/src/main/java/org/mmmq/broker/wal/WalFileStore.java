@@ -15,24 +15,9 @@ import org.springframework.stereotype.Component;
 public class WalFileStore implements WalFileCreator {
 
     private final Path path;
-    private final List<WalFile> walFiles;
 
     public WalFileStore(@Value("${mmmq.broker.wal.dir:./wal}") String walDir) {
         this.path = Paths.get(walDir);
-        createDirectory();
-        this.walFiles = loadWalFiles();
-    }
-
-    public List<WalFile> segmentFiles() {
-        return walFiles;
-    }
-
-    @Override
-    public WalFile create(String topicName, int index) {
-        return WalFile.of(path, topicName, index);
-    }
-
-    private void createDirectory() {
         try {
             Files.createDirectories(path);
         } catch (IOException exception) {
@@ -40,7 +25,12 @@ public class WalFileStore implements WalFileCreator {
         }
     }
 
-    private List<WalFile> loadWalFiles() {
+    @Override
+    public WalFile create(String topicName, int index) {
+        return WalFile.of(path, topicName, index);
+    }
+
+    public List<WalFile> segmentFiles() {
         try (Stream<Path> files = Files.list(path)) {
             return files
                     .map(WalFile::parse)
