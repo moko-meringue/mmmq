@@ -1,4 +1,4 @@
-package org.mmmq.broker.wal;
+package org.mmmq.broker.wal.file;
 
 import jakarta.annotation.Nullable;
 import java.io.IOException;
@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import org.mmmq.broker.wal.WalEntry;
 import org.mmmq.broker.wal.codec.WalCodec;
 
 public class WalFile {
@@ -24,17 +25,21 @@ public class WalFile {
     }
 
     static WalFile of(Path walDirectory, String topicName, int index) {
-        return new WalFile(walDirectory.resolve(FileName.of(topicName, index)), index);
+        return new WalFile(walDirectory.resolve(Name.of(topicName, index)), index);
+    }
+
+    static Path pathOf(String topicName, int index) {
+        return Path.of(Name.of(topicName, index));
     }
 
     @Nullable
     static WalFile parse(Path filePath) {
-        Matcher matcher = FileName.PATTERN.matcher(filePath.getFileName().toString());
-        if (!matcher.matches()) {
+        Integer index = Name.parseIndex(filePath.getFileName());
+        if (index == null) {
             return null;
         }
 
-        return new WalFile(filePath, Integer.parseInt(matcher.group(1)));
+        return new WalFile(filePath, index);
     }
 
     public int index() {
@@ -55,24 +60,20 @@ public class WalFile {
         }
     }
 
-    public void delete() {
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException exception) {
-            throw new RuntimeException("Failed to delete WAL segment file: " + path, exception);
-        }
-    }
-
     public FileChannel openAppendChannel() {
         try {
-            return FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.APPEND,
-                    StandardOpenOption.CREATE);
+            return FileChannel.open(
+                    path,
+                    StandardOpenOption.WRITE,
+                    StandardOpenOption.APPEND,
+                    StandardOpenOption.CREATE
+            );
         } catch (IOException exception) {
             throw new RuntimeException("Failed to open WAL segment channel: " + path, exception);
         }
     }
 
-    private static class FileName {
+    private static class Name {
 
         private static final String SUFFIX = ".wal";
         private static final String SEPARATOR = "-";
@@ -81,6 +82,16 @@ public class WalFile {
 
         static String of(String topicName, int index) {
             return topicName + SEPARATOR + index + SUFFIX;
+        }
+
+        @Nullable
+        static Integer parseIndex(Path fileName) {
+            Matcher matcher = PATTERN.matcher(fileName.toString());
+            if (!matcher.matches()) {
+                return null;
+            }
+
+            return Integer.parseInt(matcher.group(1));
         }
     }
 }

@@ -1,11 +1,11 @@
-package org.mmmq.broker.wal;
+package org.mmmq.broker.wal.file;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import org.mmmq.broker.wal.flush.WalFlushPolicy;
 
-class WalFileChannel {
+public class WalFileChannel {
 
     private static final byte[] NEWLINE = new byte[]{'\n'};
 

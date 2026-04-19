@@ -59,23 +59,4 @@ class WalFileTest {
         assertThat(entries).hasSize(2);
     }
 
-    @Test
-    @DisplayName("delete()는 파일을 삭제한다")
-    void deletesFile(@TempDir Path tempDir) throws Exception {
-        final Path file = tempDir.resolve("order-0.wal");
-        Files.writeString(file, "content");
-        final WalFile segmentFile = WalFile.of(tempDir, "order", 0);
-
-        segmentFile.delete();
-
-        assertThat(Files.exists(file)).isFalse();
-    }
-
-    @Test
-    @DisplayName("delete()는 파일이 없어도 예외를 던지지 않는다")
-    void deleteMissingFileDoesNotThrow(@TempDir Path tempDir) {
-        final WalFile segmentFile = WalFile.of(tempDir, "order", 0);
-
-        segmentFile.delete();
-    }
 }

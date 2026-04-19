@@ -1,4 +1,4 @@
-package org.mmmq.broker.wal;
+package org.mmmq.broker.wal.file;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,33 +12,41 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
-public class WalFileStore implements WalFileCreator {
+public class WalFileStore {
 
-    private final Path path;
+    private final Path rootPath;
 
     public WalFileStore(@Value("${mmmq.broker.wal.dir:./wal}") String walDir) {
-        this.path = Paths.get(walDir);
+        this.rootPath = Paths.get(walDir);
         try {
-            Files.createDirectories(path);
+            Files.createDirectories(rootPath);
         } catch (IOException exception) {
-            throw new RuntimeException("Failed to create WAL directory: " + path, exception);
+            throw new RuntimeException("Failed to create WAL directory: " + rootPath, exception);
         }
     }
 
-    @Override
     public WalFile create(String topicName, int index) {
-        return WalFile.of(path, topicName, index);
+        return WalFile.of(rootPath, topicName, index);
+    }
+
+    public void delete(String topicName, int index) {
+        try {
+            Path walFilePath = rootPath.resolve(WalFile.pathOf(topicName, index));
+            Files.deleteIfExists(walFilePath);
+        } catch (IOException exception) {
+            throw new RuntimeException("Failed to delete WAL segment file: " + topicName + "-" + index, exception);
+        }
     }
 
     public List<WalFile> segmentFiles() {
-        try (Stream<Path> files = Files.list(path)) {
+        try (Stream<Path> files = Files.list(rootPath)) {
             return files
                     .map(WalFile::parse)
                     .filter(Objects::nonNull)
                     .sorted(Comparator.comparingInt(WalFile::index))
                     .toList();
         } catch (IOException exception) {
-            throw new RuntimeException("Failed to list WAL directory: " + path, exception);
+            throw new RuntimeException("Failed to list WAL directory: " + rootPath, exception);
         }
     }
 }
