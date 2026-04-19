@@ -5,8 +5,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-import org.mmmq.broker.wal.WalAppender;
-import org.mmmq.broker.wal.WalEntry;
+import org.mmmq.broker.wal.TopicWal;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 
@@ -19,13 +18,13 @@ public class TopicQueue {
     private final Map<Integer, Segment> segments = new ConcurrentHashMap<>();
     private final int segmentCapacity;
     private final Set<Offset> offsets = ConcurrentHashMap.newKeySet();
-    private final WalAppender walWriter;
+    private final TopicWal topicWal;
     private int headIndex = 0;
     private int tailIndex = 0;
 
-    public TopicQueue(Topic topic, WalAppender walWriter) {
+    public TopicQueue(Topic topic, TopicWal topicWal) {
         this.topic = topic;
-        this.walWriter = walWriter;
+        this.topicWal = topicWal;
         segmentCapacity = DEFAULT_SEGMENT_CAPACITY;
         segments.put(tailIndex, new Segment(segmentCapacity));
     }
@@ -40,7 +39,7 @@ public class TopicQueue {
     public void offer(Message message) {
         lock.lock();
         try {
-            walWriter.write(new WalEntry(tailIndex, message));
+            topicWal.write(tailIndex, message);
             appendToTail(message);
         } finally {
             lock.unlock();
@@ -112,7 +111,7 @@ public class TopicQueue {
         if (headIndex < limit) {
             for (int i = headIndex; i < limit; i++) {
                 segments.remove(i);
-                walWriter.deleteSegmentFile(i);
+                topicWal.deleteSegment(i);
             }
             headIndex = limit;
         }

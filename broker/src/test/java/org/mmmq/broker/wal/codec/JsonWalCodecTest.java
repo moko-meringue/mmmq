@@ -16,24 +16,14 @@ class JsonWalCodecTest {
     @Test
     @DisplayName("encode한 결과를 decode하면 원본 엔트리와 동일하다")
     void encodeDecodeTripReturnsOriginalEntry() {
-        final WalEntry original = new WalEntry(3, new Message(new Topic("order"), Map.of("id", 42)));
+        final WalEntry original = new WalEntry(new Message(new Topic("order"), Map.of("id", 42)));
 
         final byte[] encoded = codec.encode(original);
         final WalEntry decoded = codec.decode(new String(encoded));
 
         assertThat(decoded).isNotNull();
-        assertThat(decoded.segmentIndex()).isEqualTo(3);
         assertThat(decoded.message().topic().name()).isEqualTo("order");
-    }
-
-    @Test
-    @DisplayName("encode 결과에 segmentIndex 필드가 포함된다")
-    void encodedJsonContainsSegmentIndex() {
-        final WalEntry entry = new WalEntry(5, new Message(new Topic("payment"), Map.of()));
-
-        final String json = new String(codec.encode(entry));
-
-        assertThat(json).contains("\"segmentIndex\":5");
+        assertThat(decoded.message().content()).isEqualTo(Map.of("id", 42));
     }
 
     @Test

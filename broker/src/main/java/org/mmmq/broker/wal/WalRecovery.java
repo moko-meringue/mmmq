@@ -1,12 +1,11 @@
 package org.mmmq.broker.wal;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.broker.topicqueue.TopicQueueRegistry;
-import org.mmmq.broker.wal.codec.WalCodec;
 import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,40 +20,39 @@ public class WalRecovery implements SmartInitializingSingleton {
 
     private final TopicQueueRegistry registry;
     private final ApplicationEventPublisher publisher;
-
-    private final TopicWalReader topicWalReader;
+    private final WalDirectory walDirectory;
 
     public WalRecovery(
             TopicQueueRegistry registry,
             ApplicationEventPublisher publisher,
-            WalCodec walCodec
+            WalDirectory walDirectory
     ) {
         this.registry = registry;
         this.publisher = publisher;
-        this.topicWalReader = new TopicWalReader(new WalReader(walCodec));
+        this.walDirectory = walDirectory;
     }
 
     @Override
     public void afterSingletonsInstantiated() {
-        Path walDir = registry.walDir();
-        if (!Files.isDirectory(walDir)) {
-            return;
-        }
-        try (Stream<String> topicNames = topicWalReader.topicNames(walDir)) {
-            topicNames.forEach(topicName -> recoverTopic(walDir, topicName));
+        Map<String, List<WalFile>> segmentsByTopic = walDirectory.segmentFiles().stream()
+                .collect(Collectors.groupingBy(WalFile::topicName));
+        for (Map.Entry<String, List<WalFile>> entry : segmentsByTopic.entrySet()) {
+            recoverTopic(entry.getKey(), entry.getValue());
         }
     }
 
-    private void recoverTopic(Path walDir, String topicName) {
+    private void recoverTopic(String topicName, List<WalFile> segmentFiles) {
         TopicQueue topicQueue = registry.get(new Topic(topicName));
-        AtomicLong replayed = new AtomicLong();
-        try (Stream<WalEntry> entries = topicWalReader.stream(walDir, topicName)) {
-            entries.forEach(entry -> {
-                topicQueue.restore(entry.message());
-                replayed.incrementAndGet();
-            });
+        long replayed = 0;
+        for (WalFile segmentFile : segmentFiles) {
+            try (Stream<WalEntry> entries = walDirectory.read(segmentFile)) {
+                for (WalEntry entry : (Iterable<WalEntry>) entries::iterator) {
+                    topicQueue.restore(entry.message());
+                    replayed++;
+                }
+            }
         }
-        if (replayed.get() > 0) {
+        if (replayed > 0) {
             log.info("Recovered {} messages for topic '{}' from WAL", replayed, topicName);
             publisher.publishEvent(new TopicQueueRecoveredEvent(topicQueue));
         }

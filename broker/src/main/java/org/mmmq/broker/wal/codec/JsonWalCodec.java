@@ -26,7 +26,7 @@ public class JsonWalCodec implements WalCodec {
             return mapper.writeValueAsBytes(entry);
         } catch (JsonProcessingException exception) {
             throw new RuntimeException(
-                    "Failed to encode WAL entry at segmentIndex: " + entry.segmentIndex(),
+                    "Failed to encode WAL entry for topic: " + entry.message().topic().name(),
                     exception
             );
         }

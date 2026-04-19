@@ -3,14 +3,16 @@ package org.mmmq.broker.dispatcher;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mmmq.broker.dispatcher.sender.Sender;
-import org.mmmq.broker.fixture.NoOpWalWriter;
+import org.mmmq.broker.fixture.NoOpTopicWal;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.core.Host;
 import org.mmmq.core.WebProtocol;
@@ -19,6 +21,9 @@ import org.mmmq.core.message.Pattern;
 import org.mmmq.core.message.Topic;
 
 class DispatcherTest {
+
+    @TempDir
+    Path tempDir;
 
     Host host = new Host(WebProtocol.HTTP, "localhost", 8080);
     Dispatcher dispatcher;
@@ -40,7 +45,7 @@ class DispatcherTest {
             }
         };
 
-        TopicQueue topicQueue = new TopicQueue(new Topic("test"), new NoOpWalWriter());
+        TopicQueue topicQueue = new TopicQueue(new Topic("test"), NoOpTopicWal.create(tempDir, "test"));
         dispatcher.subscribe(topicQueue);
         topicQueue.offer(new Message(new Topic("test"), Map.of("key", "value")));
         dispatcher.onMessageArrived(new MessageArrivedEvent(topicQueue));
@@ -61,8 +66,11 @@ class DispatcherTest {
             }
         };
 
-        TopicQueue orderQueue = new TopicQueue(new Topic("order.new"), new NoOpWalWriter());
-        TopicQueue paymentQueue = new TopicQueue(new Topic("payment.kakao"), new NoOpWalWriter());
+        TopicQueue orderQueue = new TopicQueue(new Topic("order.new"), NoOpTopicWal.create(tempDir, "order.new"));
+        TopicQueue paymentQueue = new TopicQueue(
+                new Topic("payment.kakao"),
+                NoOpTopicWal.create(tempDir, "payment.kakao")
+        );
         dispatcher.subscribe(orderQueue);
         dispatcher.subscribe(paymentQueue);
 
@@ -87,8 +95,8 @@ class DispatcherTest {
             }
         };
 
-        TopicQueue topicA = new TopicQueue(new Topic("topicA"), new NoOpWalWriter());
-        TopicQueue topicB = new TopicQueue(new Topic("topicB"), new NoOpWalWriter());
+        TopicQueue topicA = new TopicQueue(new Topic("topicA"), NoOpTopicWal.create(tempDir, "topicA"));
+        TopicQueue topicB = new TopicQueue(new Topic("topicB"), NoOpTopicWal.create(tempDir, "topicB"));
         dispatcher.subscribe(topicA);
         dispatcher.subscribe(topicB);
 
@@ -113,7 +121,10 @@ class DispatcherTest {
             }
         };
 
-        TopicQueue paymentQueue = new TopicQueue(new Topic("payment.kakao"), new NoOpWalWriter());
+        TopicQueue paymentQueue = new TopicQueue(
+                new Topic("payment.kakao"),
+                NoOpTopicWal.create(tempDir, "payment.kakao")
+        );
         dispatcher.subscribe(paymentQueue);
         paymentQueue.offer(new Message(new Topic("payment.kakao"), Map.of("id", 1)));
         dispatcher.onMessageArrived(new MessageArrivedEvent(paymentQueue));
