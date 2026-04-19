@@ -8,14 +8,14 @@ import org.mmmq.core.message.Message;
 
 class WalMessagePersistence implements MessagePersistence {
 
-    private final WalDirectory directory;
+    private final WalStore directory;
     private final String topicName;
     private final WalCodec codec;
     private final WalFlushPolicy flushPolicy;
     @Nullable
     private WalFileChannel currentChannel;
 
-    WalMessagePersistence(WalDirectory directory, String topicName, WalCodec codec, WalFlushPolicy flushPolicy) {
+    WalMessagePersistence(WalStore directory, String topicName, WalCodec codec, WalFlushPolicy flushPolicy) {
         this.directory = directory;
         this.topicName = topicName;
         this.codec = codec;

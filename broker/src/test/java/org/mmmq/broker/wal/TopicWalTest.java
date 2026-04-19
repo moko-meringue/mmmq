@@ -17,9 +17,12 @@ import org.mmmq.core.message.Topic;
 class MessagePersistenceTest {
 
     private MessagePersistence createMessagePersistence(Path tempDir, String topicName) {
-        WalDirectory directory = new WalDirectory(new JsonWalCodec(), tempDir.toString(), "page_cache");
+        WalStore directory = new WalStore(tempDir.toString());
+        WalMessagePersistenceFactory factory = new WalMessagePersistenceFactory(
+                directory, new JsonWalCodec(), "page_cache"
+        );
 
-        return directory.create(topicName);
+        return factory.create(topicName);
     }
 
     @Test

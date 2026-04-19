@@ -16,17 +16,15 @@ import org.mmmq.broker.wal.codec.WalCodec;
 public class WalFile {
 
     private final Path path;
-    private final String topicName;
     private final int index;
 
-    private WalFile(Path path, String topicName, int index) {
+    private WalFile(Path path, int index) {
         this.path = path;
-        this.topicName = topicName;
         this.index = index;
     }
 
     static WalFile of(Path walDirectory, String topicName, int index) {
-        return new WalFile(walDirectory.resolve(FileName.of(topicName, index)), topicName, index);
+        return new WalFile(walDirectory.resolve(FileName.of(topicName, index)), index);
     }
 
     @Nullable
@@ -36,15 +34,11 @@ public class WalFile {
             return null;
         }
 
-        return new WalFile(filePath, matcher.group(1), Integer.parseInt(matcher.group(2)));
+        return new WalFile(filePath, Integer.parseInt(matcher.group(1)));
     }
 
     public int index() {
         return index;
-    }
-
-    public String topicName() {
-        return topicName;
     }
 
     public Stream<WalEntry> read(WalCodec codec) {
@@ -83,7 +77,7 @@ public class WalFile {
         private static final String SUFFIX = ".wal";
         private static final String SEPARATOR = "-";
         private static final Pattern PATTERN =
-                Pattern.compile("^(.+)" + SEPARATOR + "(\\d+)" + Pattern.quote(SUFFIX) + "$");
+                Pattern.compile("^.+" + SEPARATOR + "(\\d+)" + Pattern.quote(SUFFIX) + "$");
 
         static String of(String topicName, int index) {
             return topicName + SEPARATOR + index + SUFFIX;

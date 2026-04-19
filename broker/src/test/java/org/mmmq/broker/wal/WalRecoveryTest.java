@@ -15,16 +15,24 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mmmq.broker.fixture.NoOpTopicWal;
 import org.mmmq.broker.topicqueue.MessageRestorer;
 import org.mmmq.broker.topicqueue.Offset;
-import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.broker.topicqueue.RestoreCompletedEvent;
+import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.broker.wal.codec.JsonWalCodec;
 import org.mmmq.core.message.Topic;
 import org.springframework.context.ApplicationEventPublisher;
 
 class WalRecoveryTest {
 
-    private WalDirectory createWalDirectory(Path walDir) {
-        return new WalDirectory(new JsonWalCodec(), walDir.toString(), "page_cache");
+    private WalStore createWalStore(Path walDir) {
+        return new WalStore(walDir.toString());
+    }
+
+    private WalRecovery createWalRecovery(
+            MessageRestorer restorer,
+            WalStore walDirectory,
+            ApplicationEventPublisher publisher
+    ) {
+        return new WalRecovery(restorer, walDirectory, new JsonWalCodec(), publisher);
     }
 
     @Test
@@ -40,12 +48,12 @@ class WalRecoveryTest {
                         + "{\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":2}}}\n"
         );
 
-        final WalDirectory walDirectory = createWalDirectory(walDir);
+        final WalStore walDirectory = createWalStore(walDir);
         final TopicQueue topicQueue = new TopicQueue(new Topic("order"), new NoOpTopicWal());
         final MessageRestorer restorer = message -> topicQueue.restore(message);
         final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
-        new WalRecovery(restorer, walDirectory, publisher).afterSingletonsInstantiated();
+        createWalRecovery(restorer, walDirectory, publisher).afterSingletonsInstantiated();
 
         final Offset offset = topicQueue.getNewOffset();
         assertThat(((Map<?, ?>) topicQueue.poll(offset).content()).get("id")).isEqualTo(1);
@@ -55,15 +63,15 @@ class WalRecoveryTest {
     }
 
     @Test
-    @DisplayName("WAL 디렉터리가 비어있으면 이벤트를 발행하지 않는다")
-    void emitsNothingWhenDirEmpty(@TempDir Path walDir) {
-        final WalDirectory walDirectory = createWalDirectory(walDir);
+    @DisplayName("WAL 디렉터리가 비어있으면 이벤트를 발행한다")
+    void emitsEventEvenWhenDirEmpty(@TempDir Path walDir) {
+        final WalStore walDirectory = createWalStore(walDir);
         final MessageRestorer restorer = mock(MessageRestorer.class);
         final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
-        new WalRecovery(restorer, walDirectory, publisher).afterSingletonsInstantiated();
+        createWalRecovery(restorer, walDirectory, publisher).afterSingletonsInstantiated();
 
-        verify(publisher, times(0)).publishEvent(any());
+        verify(publisher, times(1)).publishEvent(any(RestoreCompletedEvent.class));
     }
 
     @Test
@@ -72,12 +80,12 @@ class WalRecoveryTest {
         Files.writeString(walDir.resolve("README.md"), "hello");
         Files.writeString(walDir.resolve("order-abc.wal"), "garbage");
 
-        final WalDirectory walDirectory = createWalDirectory(walDir);
+        final WalStore walDirectory = createWalStore(walDir);
         final MessageRestorer restorer = mock(MessageRestorer.class);
         final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
-        new WalRecovery(restorer, walDirectory, publisher).afterSingletonsInstantiated();
+        createWalRecovery(restorer, walDirectory, publisher).afterSingletonsInstantiated();
 
-        verify(publisher, times(0)).publishEvent(any());
+        verify(publisher, times(1)).publishEvent(any(RestoreCompletedEvent.class));
     }
 }
