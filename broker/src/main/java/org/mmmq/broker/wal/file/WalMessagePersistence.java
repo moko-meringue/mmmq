@@ -9,17 +9,18 @@ import org.mmmq.core.message.Message;
 
 class WalMessagePersistence implements MessagePersistence {
 
-    private final WalFileStore walFileStore;
-    private final String topicName;
     private final WalCodec codec;
+    private final String topicName;
+    private final WalFileStore walFileStore;
     private final WalFlushPolicy flushPolicy;
+    
     @Nullable
     private WalFileChannel currentChannel;
 
-    WalMessagePersistence(WalFileStore walFileStore, String topicName, WalCodec codec, WalFlushPolicy flushPolicy) {
-        this.walFileStore = walFileStore;
-        this.topicName = topicName;
+    WalMessagePersistence(WalCodec codec, String topicName, WalFileStore walFileStore, WalFlushPolicy flushPolicy) {
         this.codec = codec;
+        this.topicName = topicName;
+        this.walFileStore = walFileStore;
         this.flushPolicy = flushPolicy;
     }
 

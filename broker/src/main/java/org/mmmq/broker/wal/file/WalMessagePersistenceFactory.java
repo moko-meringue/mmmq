@@ -20,13 +20,13 @@ class WalMessagePersistenceFactory implements MessagePersistenceFactory {
             WalFileStore walDirectory,
             @Value("${mmmq.broker.wal.flush-policy:page_cache}") String flushPolicyName
     ) {
-        this.walDirectory = walDirectory;
         this.codec = codec;
+        this.walDirectory = walDirectory;
         this.flushPolicy = WalFlushPolicyFactory.create(flushPolicyName);
     }
 
     @Override
     public MessagePersistence create(String topicName) {
-        return new WalMessagePersistence(walDirectory, topicName, codec, flushPolicy);
+        return new WalMessagePersistence(codec, topicName, walDirectory, flushPolicy);
     }
 }
