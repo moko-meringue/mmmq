@@ -55,7 +55,7 @@ public class WalFile {
         }
     }
 
-    FileChannel openAppendChannel() {
+    FileChannel openChannel() {
         try {
             return FileChannel.open(
                     path,
