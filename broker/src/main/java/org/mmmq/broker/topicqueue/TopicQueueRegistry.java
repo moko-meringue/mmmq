@@ -2,8 +2,6 @@ package org.mmmq.broker.topicqueue;
 
 import java.util.concurrent.ConcurrentHashMap;
 import org.mmmq.broker.dispatcher.Dispatcher;
-import org.mmmq.broker.wal.TopicWal;
-import org.mmmq.broker.wal.WalDirectory;
 import org.mmmq.core.message.Topic;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
@@ -13,14 +11,14 @@ public class TopicQueueRegistry {
 
     private final ConcurrentHashMap<Topic, TopicQueue> queues = new ConcurrentHashMap<>();
     private final ObjectProvider<Dispatcher> dispatcherProvider;
-    private final WalDirectory walDirectory;
+    private final MessagePersistenceFactory persistenceFactory;
 
     public TopicQueueRegistry(
             ObjectProvider<Dispatcher> dispatcherProvider,
-            WalDirectory walDirectory
+            MessagePersistenceFactory persistenceFactory
     ) {
         this.dispatcherProvider = dispatcherProvider;
-        this.walDirectory = walDirectory;
+        this.persistenceFactory = persistenceFactory;
     }
 
     public TopicQueue get(Topic topic) {
@@ -28,9 +26,9 @@ public class TopicQueueRegistry {
     }
 
     private TopicQueue create(Topic topic) {
-        TopicWal topicWal = walDirectory.topicWalFor(topic.name());
-        TopicQueue topicQueue = new TopicQueue(topic, topicWal);
-        for (Dispatcher dispatcher : (Iterable<Dispatcher>) dispatcherProvider::iterator) {
+        MessagePersistence persistence = persistenceFactory.create(topic.name());
+        TopicQueue topicQueue = new TopicQueue(topic, persistence);
+        for (Dispatcher dispatcher : dispatcherProvider) {
             dispatcher.subscribe(topicQueue);
         }
 

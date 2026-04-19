@@ -5,7 +5,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-import org.mmmq.broker.wal.TopicWal;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 
@@ -18,13 +17,13 @@ public class TopicQueue {
     private final Map<Integer, Segment> segments = new ConcurrentHashMap<>();
     private final int segmentCapacity;
     private final Set<Offset> offsets = ConcurrentHashMap.newKeySet();
-    private final TopicWal topicWal;
+    private final MessagePersistence messagePersistence;
     private int headIndex = 0;
     private int tailIndex = 0;
 
-    public TopicQueue(Topic topic, TopicWal topicWal) {
+    public TopicQueue(Topic topic, MessagePersistence messagePersistence) {
         this.topic = topic;
-        this.topicWal = topicWal;
+        this.messagePersistence = messagePersistence;
         segmentCapacity = DEFAULT_SEGMENT_CAPACITY;
         segments.put(tailIndex, new Segment(segmentCapacity));
     }
@@ -39,7 +38,7 @@ public class TopicQueue {
     public void offer(Message message) {
         lock.lock();
         try {
-            topicWal.write(tailIndex, message);
+            messagePersistence.persist(message, tailIndex);
             appendToTail(message);
         } finally {
             lock.unlock();
@@ -111,7 +110,7 @@ public class TopicQueue {
         if (headIndex < limit) {
             for (int i = headIndex; i < limit; i++) {
                 segments.remove(i);
-                topicWal.deleteSegment(i);
+                messagePersistence.evict(i);
             }
             headIndex = limit;
         }

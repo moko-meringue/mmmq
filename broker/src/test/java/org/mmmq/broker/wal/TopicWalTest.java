@@ -9,25 +9,26 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mmmq.broker.topicqueue.MessagePersistence;
 import org.mmmq.broker.wal.codec.JsonWalCodec;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 
-class TopicWalTest {
+class MessagePersistenceTest {
 
-    private TopicWal createTopicWal(Path tempDir, String topicName) {
+    private MessagePersistence createMessagePersistence(Path tempDir, String topicName) {
         WalDirectory directory = new WalDirectory(new JsonWalCodec(), tempDir.toString(), "page_cache");
 
-        return directory.topicWalFor(topicName);
+        return directory.create(topicName);
     }
 
     @Test
     @DisplayName("동일한 세그먼트 인덱스에 대해 여러 엔트리를 라인 단위로 append한다")
     void appendsMultipleEntriesToSameSegment(@TempDir Path tempDir) throws Exception {
-        final TopicWal topicWal = createTopicWal(tempDir, "order");
+        final MessagePersistence topicWal = createMessagePersistence(tempDir, "order");
 
-        topicWal.write(0, new Message(new Topic("order"), Map.of("id", 1)));
-        topicWal.write(0, new Message(new Topic("order"), Map.of("id", 2)));
+        topicWal.persist(new Message(new Topic("order"), Map.of("id", 1)), 0);
+        topicWal.persist(new Message(new Topic("order"), Map.of("id", 2)), 0);
 
         final List<String> lines = Files.readAllLines(tempDir.resolve("order-0.wal"));
         assertThat(lines).hasSize(2);
@@ -38,10 +39,10 @@ class TopicWalTest {
     @Test
     @DisplayName("세그먼트 인덱스가 바뀌면 새 파일로 교체하여 기록한다")
     void rotatesToNewWalFile(@TempDir Path tempDir) throws Exception {
-        final TopicWal topicWal = createTopicWal(tempDir, "order");
+        final MessagePersistence topicWal = createMessagePersistence(tempDir, "order");
 
-        topicWal.write(0, new Message(new Topic("order"), Map.of("id", 1)));
-        topicWal.write(1, new Message(new Topic("order"), Map.of("id", 2)));
+        topicWal.persist(new Message(new Topic("order"), Map.of("id", 1)), 0);
+        topicWal.persist(new Message(new Topic("order"), Map.of("id", 2)), 1);
 
         assertThat(Files.readAllLines(tempDir.resolve("order-0.wal"))).hasSize(1);
         assertThat(Files.readAllLines(tempDir.resolve("order-1.wal"))).hasSize(1);
@@ -50,10 +51,10 @@ class TopicWalTest {
     @Test
     @DisplayName("deleteSegment()는 현재 열린 채널을 닫고 파일을 삭제한다")
     void deletesCurrentSegment(@TempDir Path tempDir) throws Exception {
-        final TopicWal topicWal = createTopicWal(tempDir, "order");
-        topicWal.write(0, new Message(new Topic("order"), Map.of("id", 1)));
+        final MessagePersistence topicWal = createMessagePersistence(tempDir, "order");
+        topicWal.persist(new Message(new Topic("order"), Map.of("id", 1)), 0);
 
-        topicWal.deleteSegment(0);
+        topicWal.evict(0);
 
         assertThat(Files.exists(tempDir.resolve("order-0.wal"))).isFalse();
     }
@@ -61,12 +62,12 @@ class TopicWalTest {
     @Test
     @DisplayName("deleteSegment()는 현재 열린 채널이 아닌 세그먼트에 대해 현재 채널에 영향을 주지 않는다")
     void deleteSegmentDoesNotAffectCurrentChannel(@TempDir Path tempDir) throws Exception {
-        final TopicWal topicWal = createTopicWal(tempDir, "order");
-        topicWal.write(0, new Message(new Topic("order"), Map.of("id", 1)));
+        final MessagePersistence topicWal = createMessagePersistence(tempDir, "order");
+        topicWal.persist(new Message(new Topic("order"), Map.of("id", 1)), 0);
 
-        topicWal.deleteSegment(1);
+        topicWal.evict(1);
 
-        topicWal.write(0, new Message(new Topic("order"), Map.of("id", 2)));
+        topicWal.persist(new Message(new Topic("order"), Map.of("id", 2)), 0);
         final List<String> lines = Files.readAllLines(tempDir.resolve("order-0.wal"));
         assertThat(lines).hasSize(2);
     }

@@ -1,15 +1,15 @@
 package org.mmmq.broker.fixture;
 
-import java.nio.file.Path;
-import org.mmmq.broker.wal.TopicWal;
-import org.mmmq.broker.wal.WalDirectory;
-import org.mmmq.broker.wal.codec.JsonWalCodec;
+import org.mmmq.broker.topicqueue.MessagePersistence;
+import org.mmmq.core.message.Message;
 
-public class NoOpTopicWal {
+public class NoOpTopicWal implements MessagePersistence {
 
-    public static TopicWal create(Path tempDir, String topicName) {
-        WalDirectory walDirectory = new WalDirectory(new JsonWalCodec(), tempDir.toString(), "page_cache");
+    @Override
+    public void persist(Message message, int index) {
+    }
 
-        return walDirectory.topicWalFor(topicName);
+    @Override
+    public void evict(int index) {
     }
 }

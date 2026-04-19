@@ -44,7 +44,7 @@ class WalRecoveryTest {
         final TopicQueueRegistry registry = mock(TopicQueueRegistry.class);
         final TopicQueue topicQueue = new TopicQueue(
                 new Topic("order"),
-                NoOpTopicWal.create(walDir, "order-recovery")
+                new NoOpTopicWal()
         );
         when(registry.get(new Topic("order"))).thenReturn(topicQueue);
         final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);

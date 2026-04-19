@@ -8,6 +8,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
+import org.mmmq.broker.topicqueue.MessagePersistence;
+import org.mmmq.broker.topicqueue.MessagePersistenceFactory;
 import org.mmmq.broker.wal.codec.WalCodec;
 import org.mmmq.broker.wal.flush.WalFlushPolicy;
 import org.mmmq.broker.wal.flush.WalFlushPolicyFactory;
@@ -15,7 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
-public class WalDirectory {
+public class WalDirectory implements MessagePersistenceFactory {
 
     private final Path path;
     private final WalCodec codec;
@@ -34,8 +36,9 @@ public class WalDirectory {
         this.segmentFiles = loadWalFiles();
     }
 
-    public TopicWal topicWalFor(String topicName) {
-        return new TopicWal(this, topicName, codec, flushPolicy);
+    @Override
+    public MessagePersistence create(String topicName) {
+        return new WalMessagePersistence(this, topicName, codec, flushPolicy);
     }
 
     public List<WalFile> segmentFiles() {
