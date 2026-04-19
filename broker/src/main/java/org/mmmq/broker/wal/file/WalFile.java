@@ -38,12 +38,7 @@ public class WalFile {
         if (index == null) {
             return null;
         }
-
         return new WalFile(filePath, index);
-    }
-
-    public int index() {
-        return index;
     }
 
     public Stream<WalEntry> read(WalCodec codec) {
@@ -60,7 +55,7 @@ public class WalFile {
         }
     }
 
-    public FileChannel openAppendChannel() {
+    FileChannel openAppendChannel() {
         try {
             return FileChannel.open(
                     path,
@@ -71,6 +66,10 @@ public class WalFile {
         } catch (IOException exception) {
             throw new RuntimeException("Failed to open WAL segment channel: " + path, exception);
         }
+    }
+
+    int index() {
+        return index;
     }
 
     private static class Name {
@@ -90,7 +89,6 @@ public class WalFile {
             if (!matcher.matches()) {
                 return null;
             }
-
             return Integer.parseInt(matcher.group(1));
         }
     }
