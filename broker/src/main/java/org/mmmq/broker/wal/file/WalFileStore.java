@@ -25,20 +25,21 @@ public class WalFileStore {
         }
     }
 
-    public WalFile create(String topicName, int index) {
-        return WalFile.of(rootPath, topicName, index);
+    public WalFile create(String topicName, int walFileIndex) {
+        return WalFile.of(rootPath, topicName, walFileIndex);
     }
 
-    public void delete(String topicName, int index) {
+    public void delete(String topicName, int walFileIndex) {
         try {
-            Path walFilePath = rootPath.resolve(WalFile.pathOf(topicName, index));
+            Path walFilePath = rootPath.resolve(WalFile.pathOf(topicName, walFileIndex));
             Files.deleteIfExists(walFilePath);
         } catch (IOException exception) {
-            throw new RuntimeException("Failed to delete WAL segment file: " + topicName + "-" + index, exception);
+            throw new RuntimeException("Failed to delete WAL segment file: " + topicName + "-" + walFileIndex,
+                    exception);
         }
     }
 
-    public List<WalFile> segmentFiles() {
+    public List<WalFile> walFiles() {
         try (Stream<Path> files = Files.list(rootPath)) {
             return files
                     .map(WalFile::parse)

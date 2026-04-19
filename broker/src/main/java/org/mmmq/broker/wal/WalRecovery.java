@@ -31,7 +31,7 @@ public class WalRecovery implements SmartInitializingSingleton {
 
     @Override
     public void afterSingletonsInstantiated() {
-        try (Stream<WalEntry> entries = walFileStore.segmentFiles().stream()
+        try (Stream<WalEntry> entries = walFileStore.walFiles().stream()
                 .flatMap(segmentFile -> segmentFile.read(codec))) {
             entries.forEach(entry -> restorer.restore(entry.message()));
         }
