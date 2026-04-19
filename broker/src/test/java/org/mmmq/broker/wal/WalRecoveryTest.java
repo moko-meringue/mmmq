@@ -33,7 +33,7 @@ class WalRecoveryTest {
             WalFileStore walDirectory,
             ApplicationEventPublisher publisher
     ) {
-        return new WalRecovery(restorer, walDirectory, new JsonWalCodec(), publisher);
+        return new WalRecovery(new JsonWalCodec(), restorer, walDirectory, publisher);
     }
 
     @Test

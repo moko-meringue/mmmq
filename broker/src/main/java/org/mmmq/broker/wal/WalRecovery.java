@@ -1,9 +1,11 @@
 package org.mmmq.broker.wal;
 
+import java.util.List;
 import java.util.stream.Stream;
 import org.mmmq.broker.topicqueue.MessageRestorer;
 import org.mmmq.broker.topicqueue.RestoreCompletedEvent;
 import org.mmmq.broker.wal.codec.WalCodec;
+import org.mmmq.broker.wal.file.WalFile;
 import org.mmmq.broker.wal.file.WalFileStore;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.ApplicationEventPublisher;
@@ -12,28 +14,28 @@ import org.springframework.stereotype.Component;
 @Component
 public class WalRecovery implements SmartInitializingSingleton {
 
+    private final WalCodec codec;
     private final MessageRestorer restorer;
     private final WalFileStore walFileStore;
-    private final WalCodec codec;
     private final ApplicationEventPublisher publisher;
 
     public WalRecovery(
-            MessageRestorer restorer,
+            WalCodec codec, MessageRestorer restorer,
             WalFileStore walFileStore,
-            WalCodec codec,
             ApplicationEventPublisher publisher
     ) {
+        this.codec = codec;
         this.restorer = restorer;
         this.walFileStore = walFileStore;
-        this.codec = codec;
         this.publisher = publisher;
     }
 
     @Override
     public void afterSingletonsInstantiated() {
-        try (Stream<WalEntry> entries = walFileStore.walFiles().stream()
-                .flatMap(segmentFile -> segmentFile.read(codec))) {
-            entries.forEach(entry -> restorer.restore(entry.message()));
+        List<WalFile> walFiles = walFileStore.walFiles();
+        try (Stream<WalEntry> walEntryStream = walFiles.stream()
+                .flatMap(walFile -> walFile.read(codec))) {
+            walEntryStream.forEach(entry -> restorer.restore(entry.message()));
         }
         publisher.publishEvent(new RestoreCompletedEvent());
     }
