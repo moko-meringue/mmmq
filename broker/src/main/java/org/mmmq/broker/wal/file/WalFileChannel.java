@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import org.mmmq.broker.wal.flush.WalFlushPolicy;
 
-public class WalFileChannel {
+class WalFileChannel {
 
     private static final byte[] NEWLINE = new byte[]{'\n'};
 
