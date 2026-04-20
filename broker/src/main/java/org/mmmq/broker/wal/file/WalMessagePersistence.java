@@ -13,7 +13,7 @@ class WalMessagePersistence implements MessagePersistence {
     private final String topicName;
     private final WalFileStore walFileStore;
     private final WalFlushPolicy flushPolicy;
-    
+
     @Nullable
     private WalFileChannel currentChannel;
 
