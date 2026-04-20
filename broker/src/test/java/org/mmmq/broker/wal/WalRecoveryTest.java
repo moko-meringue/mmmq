@@ -17,6 +17,7 @@ import org.mmmq.broker.topicqueue.MessageRestorer;
 import org.mmmq.broker.topicqueue.Offset;
 import org.mmmq.broker.topicqueue.RestoreCompletedEvent;
 import org.mmmq.broker.topicqueue.TopicQueue;
+import org.mmmq.broker.topicqueue.TopicQueueRestorer;
 import org.mmmq.broker.wal.codec.JsonWalCodec;
 import org.mmmq.broker.wal.file.WalFileStore;
 import org.mmmq.core.message.Topic;
@@ -33,29 +34,28 @@ class WalRecoveryTest {
             WalFileStore walDirectory,
             ApplicationEventPublisher publisher
     ) {
-        return new WalRecovery(new JsonWalCodec(), restorer, walDirectory, publisher);
+        return new WalRecovery(new JsonWalCodec(), walDirectory, restorer, publisher);
     }
 
     @Test
     @DisplayName("WAL 파일에서 토픽별로 세그먼트 순서대로 복구하고 이벤트를 발행한다")
     void recoversTopicsInSegmentOrder(@TempDir Path walDir) throws Exception {
         Files.writeString(
-                walDir.resolve("order-1.wal"),
-                "{\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":3}}}\n"
-        );
-        Files.writeString(
                 walDir.resolve("order-0.wal"),
                 "{\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":1}}}\n"
                         + "{\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":2}}}\n"
+                        + "{\"message\":{\"topic\":{\"name\":\"order\"},\"content\":{\"id\":3}}}\n"
         );
 
         final WalFileStore walDirectory = createWalStore(walDir);
-        final TopicQueue topicQueue = new TopicQueue(new Topic("order"), new NoOpTopicWal());
-        final MessageRestorer restorer = message -> topicQueue.restore(message);
+        final TopicQueueRestorer restorer = new TopicQueueRestorer(
+                new TopicQueue(new Topic("order"), new NoOpTopicWal())
+        );
         final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 
         createWalRecovery(restorer, walDirectory, publisher).afterSingletonsInstantiated();
 
+        final TopicQueue topicQueue = restorer.getTopicQueue();
         final Offset offset = topicQueue.getNewOffset();
         assertThat(((Map<?, ?>) topicQueue.poll(offset).content()).get("id")).isEqualTo(1);
         assertThat(((Map<?, ?>) topicQueue.poll(offset).content()).get("id")).isEqualTo(2);

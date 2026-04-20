@@ -4,12 +4,8 @@ public class Offset implements Comparable<Offset> {
 
     private long value;
 
-    private Offset(long value) {
+    Offset(long value) {
         this.value = value;
-    }
-
-    Offset() {
-        this(0);
     }
 
     int getRelativeIndex(long unitSize) {

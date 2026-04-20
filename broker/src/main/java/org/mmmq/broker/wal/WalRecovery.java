@@ -34,10 +34,11 @@ public class WalRecovery implements SmartInitializingSingleton {
     @Override
     public void afterSingletonsInstantiated() {
         List<WalFile> walFiles = walFileStore.walFiles();
-        try (Stream<WalEntry> walEntryStream = walFiles.stream()
-                .flatMap(walFile -> walFile.read(codec))) {
-            walEntryStream.forEach(entry -> messageRestorer.restore(entry.message()));
-        }
+        walFiles.forEach(walFile -> {
+            try (Stream<WalEntry> entries = walFile.read(codec)) {
+                entries.forEach(entry -> messageRestorer.restore(entry.message(), walFile.index()));
+            }
+        });
         applicationEventPublisher.publishEvent(new RestoreCompletedEvent());
     }
 }

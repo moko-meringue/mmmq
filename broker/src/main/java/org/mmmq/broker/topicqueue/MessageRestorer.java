@@ -4,5 +4,5 @@ import org.mmmq.core.message.Message;
 
 public interface MessageRestorer {
 
-    void restore(Message message);
+    void restore(Message message, int segmentIndex);
 }

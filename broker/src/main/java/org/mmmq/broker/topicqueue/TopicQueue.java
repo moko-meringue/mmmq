@@ -25,13 +25,11 @@ public class TopicQueue {
         this.topic = topic;
         this.messagePersistence = messagePersistence;
         segmentCapacity = DEFAULT_SEGMENT_CAPACITY;
-        segments.put(tailIndex, new Segment(segmentCapacity));
     }
 
     public Offset getNewOffset() {
-        Offset offset = new Offset();
+        Offset offset = new Offset((long) headIndex * segmentCapacity);
         offsets.add(offset);
-
         return offset;
     }
 
@@ -45,10 +43,14 @@ public class TopicQueue {
         }
     }
 
-    public void restore(Message message) {
+    void restore(Message message, int segmentIndex) {
         lock.lock();
         try {
-            appendToTail(message);
+            if (segments.isEmpty()) {
+                headIndex = segmentIndex;
+            }
+            tailIndex = Math.max(tailIndex, segmentIndex);
+            segments.computeIfAbsent(segmentIndex, index -> new Segment(segmentCapacity)).put(message);
         } finally {
             lock.unlock();
         }
@@ -82,7 +84,10 @@ public class TopicQueue {
 
     private void appendToTail(Message message) {
         Segment tail = segments.get(tailIndex);
-        if (tail == null || tail.isFull()) {
+        if (tail == null) {
+            tail = new Segment(segmentCapacity);
+            segments.put(tailIndex, tail);
+        } else if (tail.isFull()) {
             tailIndex++;
             tail = new Segment(segmentCapacity);
             segments.put(tailIndex, tail);

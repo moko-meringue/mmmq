@@ -68,7 +68,7 @@ public class WalFile {
         }
     }
 
-    int index() {
+    public int index() {
         return index;
     }
 

@@ -9,9 +9,10 @@ import java.util.concurrent.TimeUnit;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.dlq.DeadLetter;
 import org.mmmq.broker.dlq.DeadLetterQueue;
+import org.mmmq.broker.topicqueue.DispatchReadyEvent;
 import org.mmmq.broker.topicqueue.Offset;
-import org.mmmq.broker.topicqueue.RestoreCompletedEvent;
 import org.mmmq.broker.topicqueue.TopicQueue;
+import org.mmmq.broker.topicqueue.TopicQueueInitializedEvent;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Pattern;
@@ -48,8 +49,15 @@ public class Dispatcher {
         this.sender = Sender.from(host);
     }
 
-    @EventListener(RestoreCompletedEvent.class)
-    void onRestoreCompleted() {
+    @EventListener
+    void onTopicQueueInitialized(TopicQueueInitializedEvent event) {
+        if (matches(event.topicQueue().getTopic())) {
+            subscribe(event.topicQueue());
+        }
+    }
+
+    @EventListener(DispatchReadyEvent.class)
+    void onDispatchReady() {
         subscriptions.forEach((topicQueue, subscription) ->
                 subscription.submit(() -> drain(topicQueue, subscription))
         );
