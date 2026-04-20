@@ -51,9 +51,11 @@ public class Dispatcher {
 
     @EventListener
     void onTopicQueueInitialized(TopicQueueInitializedEvent event) {
-        if (matches(event.topicQueue().getTopic())) {
-            subscribe(event.topicQueue());
+        TopicQueue topicQueue = event.topicQueue();
+        if (!matches(topicQueue.getTopic())) {
+            return;
         }
+        subscriptions.computeIfAbsent(topicQueue, topic -> new Subscription(topicQueue));
     }
 
     @EventListener(DispatchReadyEvent.class)
@@ -80,6 +82,7 @@ public class Dispatcher {
         }
     }
 
+    // TODO: 테스트에서만 사용되므로 지워야 함.
     public void subscribe(TopicQueue topicQueue) {
         if (!matches(topicQueue.getTopic())) {
             return;

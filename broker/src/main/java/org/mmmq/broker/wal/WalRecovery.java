@@ -2,8 +2,9 @@ package org.mmmq.broker.wal;
 
 import java.util.List;
 import java.util.stream.Stream;
+import org.mmmq.broker.topicqueue.DispatchReadyEvent;
 import org.mmmq.broker.topicqueue.MessageRestorer;
-import org.mmmq.broker.topicqueue.RestoreCompletedEvent;
+import org.mmmq.broker.topicqueue.TopicQueueReadyEvent;
 import org.mmmq.broker.wal.codec.WalCodec;
 import org.mmmq.broker.wal.file.WalFile;
 import org.mmmq.broker.wal.file.WalFileStore;
@@ -39,6 +40,7 @@ public class WalRecovery implements SmartInitializingSingleton {
                 entries.forEach(entry -> messageRestorer.restore(entry.message(), walFile.index()));
             }
         });
-        applicationEventPublisher.publishEvent(new RestoreCompletedEvent());
+        applicationEventPublisher.publishEvent(new TopicQueueReadyEvent());
+        applicationEventPublisher.publishEvent(new DispatchReadyEvent());
     }
 }

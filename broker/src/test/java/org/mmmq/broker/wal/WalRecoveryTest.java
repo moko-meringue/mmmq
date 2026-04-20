@@ -15,8 +15,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mmmq.broker.fixture.NoOpTopicWal;
 import org.mmmq.broker.topicqueue.MessageRestorer;
 import org.mmmq.broker.topicqueue.Offset;
-import org.mmmq.broker.topicqueue.RestoreCompletedEvent;
 import org.mmmq.broker.topicqueue.TopicQueue;
+import org.mmmq.broker.topicqueue.TopicQueueReadyEvent;
 import org.mmmq.broker.topicqueue.TopicQueueRestorer;
 import org.mmmq.broker.wal.codec.JsonWalCodec;
 import org.mmmq.broker.wal.file.WalFileStore;
@@ -60,7 +60,7 @@ class WalRecoveryTest {
         assertThat(((Map<?, ?>) topicQueue.poll(offset).content()).get("id")).isEqualTo(1);
         assertThat(((Map<?, ?>) topicQueue.poll(offset).content()).get("id")).isEqualTo(2);
         assertThat(((Map<?, ?>) topicQueue.poll(offset).content()).get("id")).isEqualTo(3);
-        verify(publisher, times(1)).publishEvent(any(RestoreCompletedEvent.class));
+        verify(publisher, times(1)).publishEvent(any(TopicQueueReadyEvent.class));
     }
 
     @Test
@@ -72,7 +72,7 @@ class WalRecoveryTest {
 
         createWalRecovery(restorer, walDirectory, publisher).afterSingletonsInstantiated();
 
-        verify(publisher, times(1)).publishEvent(any(RestoreCompletedEvent.class));
+        verify(publisher, times(1)).publishEvent(any(TopicQueueReadyEvent.class));
     }
 
     @Test
@@ -87,6 +87,6 @@ class WalRecoveryTest {
 
         createWalRecovery(restorer, walDirectory, publisher).afterSingletonsInstantiated();
 
-        verify(publisher, times(1)).publishEvent(any(RestoreCompletedEvent.class));
+        verify(publisher, times(1)).publishEvent(any(TopicQueueReadyEvent.class));
     }
 }
