@@ -91,10 +91,9 @@ public class TopicQueue {
     }
 
     private void updateOffset(Offset offset) {
-        Segment oldSegment = getSegment(offset);
+        int oldUnitIndex = offset.getUnitIndex(segmentCapacity);
         offset.increment();
-        Segment newSegment = getSegment(offset);
-        if (oldSegment != newSegment) {
+        if (oldUnitIndex != offset.getUnitIndex(segmentCapacity)) {
             cleanupOldSegments();
         }
     }
@@ -114,15 +113,5 @@ public class TopicQueue {
             }
             headIndex = limit;
         }
-    }
-
-    private Segment getSegment(Offset offset) {
-        int index = offset.getUnitIndex(segmentCapacity);
-        Segment segment = segments.get(index);
-        if (segment == null) {
-            throw new IllegalArgumentException("Invalid offset: " + offset);
-        }
-
-        return segment;
     }
 }
