@@ -2,7 +2,7 @@ package org.mmmq.broker.wal;
 
 import java.util.List;
 import java.util.stream.Stream;
-import org.mmmq.broker.topicqueue.DispatchReadyEvent;
+import org.mmmq.broker.dispatcher.DispatchReadyEvent;
 import org.mmmq.broker.topicqueue.MessageRestorer;
 import org.mmmq.broker.topicqueue.TopicQueueReadyEvent;
 import org.mmmq.broker.wal.codec.WalCodec;

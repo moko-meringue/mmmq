@@ -9,7 +9,6 @@ import java.util.concurrent.TimeUnit;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.dlq.DeadLetter;
 import org.mmmq.broker.dlq.DeadLetterQueue;
-import org.mmmq.broker.topicqueue.DispatchReadyEvent;
 import org.mmmq.broker.topicqueue.Offset;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.broker.topicqueue.TopicQueueInitializedEvent;

@@ -1,4 +1,4 @@
-package org.mmmq.broker.topicqueue;
+package org.mmmq.broker.dispatcher;
 
 public record DispatchReadyEvent() {
 
