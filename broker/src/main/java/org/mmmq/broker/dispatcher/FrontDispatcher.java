@@ -30,14 +30,17 @@ public class FrontDispatcher {
         dispatchers.forEach(Dispatcher::stop);
     }
 
-    public void dispatch(Message message) {
+    public boolean dispatch(Message message) {
         boolean anyMatch = dispatchers.stream()
                 .anyMatch(dispatcher -> dispatcher.matches(message.topic()));
         if (!anyMatch) {
-            return;
+            return true;
         }
         TopicQueue queue = registry.get(message.topic());
-        queue.offer(message);
-        publisher.publishEvent(new MessageArrivedEvent(queue));
+        boolean offered = queue.offer(message);
+        if (offered) {
+            publisher.publishEvent(new MessageArrivedEvent(queue));
+        }
+        return offered;
     }
 }

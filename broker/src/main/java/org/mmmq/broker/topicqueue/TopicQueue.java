@@ -5,12 +5,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 
 public class TopicQueue {
 
     private static final int DEFAULT_SEGMENT_CAPACITY = 1000;
+    private static final Logger log = LoggerFactory.getLogger(TopicQueue.class);
 
     private final Topic topic;
     private final ReentrantLock lock = new ReentrantLock();
@@ -33,11 +36,15 @@ public class TopicQueue {
         return offset;
     }
 
-    public void offer(Message message) {
+    public boolean offer(Message message) {
         lock.lock();
         try {
             messagePersistence.persist(message, tailIndex);
             appendToTail(message);
+            return true;
+        } catch (Exception exception) {
+            log.warn("Failed to offer message to topic queue: {}", topic, exception);
+            return false;
         } finally {
             lock.unlock();
         }
