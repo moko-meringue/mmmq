@@ -23,6 +23,9 @@ public class WalFileStore {
         } catch (IOException exception) {
             throw new RuntimeException("Failed to create WAL directory: " + rootPath, exception);
         }
+        if (!Files.isWritable(rootPath)) {
+            throw new RuntimeException("WAL directory is not writable: " + rootPath);
+        }
     }
 
     public WalFile create(String topicName, int walFileIndex) {
