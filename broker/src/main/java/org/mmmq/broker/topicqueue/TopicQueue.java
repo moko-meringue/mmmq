@@ -5,10 +5,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TopicQueue {
 
@@ -39,8 +39,10 @@ public class TopicQueue {
     public boolean offer(Message message) {
         lock.lock();
         try {
-            messagePersistence.persist(message, tailIndex);
-            appendToTail(message);
+            int segmentIndex = nextTailIndex();
+            messagePersistence.persist(message, segmentIndex);
+            segments.computeIfAbsent(segmentIndex, index -> new Segment(segmentCapacity)).put(message);
+            tailIndex = segmentIndex;
             return true;
         } catch (Exception exception) {
             log.warn("Failed to offer message to topic queue: {}", topic, exception);
@@ -89,17 +91,12 @@ public class TopicQueue {
         return topic;
     }
 
-    private void appendToTail(Message message) {
+    private int nextTailIndex() {
         Segment tail = segments.get(tailIndex);
-        if (tail == null) {
-            tail = new Segment(segmentCapacity);
-            segments.put(tailIndex, tail);
-        } else if (tail.isFull()) {
-            tailIndex++;
-            tail = new Segment(segmentCapacity);
-            segments.put(tailIndex, tail);
+        if (tail != null && tail.isFull()) {
+            return tailIndex + 1;
         }
-        tail.put(message);
+        return tailIndex;
     }
 
     private void updateOffset(Offset offset) {
