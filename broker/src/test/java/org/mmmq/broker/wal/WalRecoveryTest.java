@@ -56,7 +56,7 @@ class WalRecoveryTest {
         createWalRecovery(restorer, walDirectory, publisher).afterSingletonsInstantiated();
 
         final TopicQueue topicQueue = restorer.getTopicQueue();
-        final Offset offset = topicQueue.getNewOffset();
+        final Offset offset = topicQueue.getOffsetAtHead();
         assertThat(((Map<?, ?>) topicQueue.poll(offset).content()).get("id")).isEqualTo(1);
         assertThat(((Map<?, ?>) topicQueue.poll(offset).content()).get("id")).isEqualTo(2);
         assertThat(((Map<?, ?>) topicQueue.poll(offset).content()).get("id")).isEqualTo(3);

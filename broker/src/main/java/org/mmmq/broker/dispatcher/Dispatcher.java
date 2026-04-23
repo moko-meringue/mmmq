@@ -129,7 +129,7 @@ public class Dispatcher {
 
         Subscription(TopicQueue topicQueue) {
             this(
-                    topicQueue.getNewOffset(),
+                    topicQueue.getOffsetAtTail(),
                     new ThreadPoolExecutor(
                             0, 1, 60L, TimeUnit.SECONDS,
                             new ArrayBlockingQueue<>(1),

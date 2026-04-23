@@ -8,12 +8,8 @@ public class Offset implements Comparable<Offset> {
         this.value = value;
     }
 
-    int getRelativeIndex(long unitSize) {
-        return (int) (value % unitSize);
-    }
-
-    int getUnitIndex(long unitSize) {
-        return (int) (value / unitSize);
+    long getValue() {
+        return value;
     }
 
     void increment() {
