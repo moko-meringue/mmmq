@@ -120,7 +120,7 @@ public Dispatcher orderDispatcher() {
 
 ### Immutability
 - Use `private final` fields with `@RequiredArgsConstructor` for DI.
-- Use `final` for local variables when reassignment is not needed.
+- NEVER use `final` for local variables.
 - Return immutable collections (`Stream.toList()`, `List.copyOf()`).
 
 ### Optional & Streams
