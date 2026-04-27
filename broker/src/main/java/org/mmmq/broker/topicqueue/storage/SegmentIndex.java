@@ -3,10 +3,9 @@ package org.mmmq.broker.topicqueue.storage;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import org.mmmq.broker.topicqueue.storage.FileChannels.FlushMode;
+import org.mmmq.broker.topicqueue.storage.FileHandle.FlushMode;
 
 final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐화. 각 엔트리는 8바이트 long으로 .mmm 파일 내 위치를 저장
 
@@ -14,24 +13,24 @@ final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐
     private static final int SEGMENT_POSITION_BYTES = Long.BYTES; // .mmm 파일 내 물리 주소를 저장하는 크기: long = 8 bytes
 
     private final Path path; // 에러 메시지에 파일 경로를 포함하기 위해 보존
-    private final FileChannel channel; // positional read/write를 지원하는 NIO 채널
+    private final FileHandle fileHandle; // positional read/write를 지원하는 NIO 채널
 
-    private SegmentIndex(Path path, FileChannel channel) { // 외부에서 직접 생성하지 않도록 생성자를 private으로 제한
+    private SegmentIndex(Path path, FileHandle fileHandle) { // 외부에서 직접 생성하지 않도록 생성자를 private으로 제한
         this.path = path;
-        this.channel = channel;
+        this.fileHandle = fileHandle;
     }
 
     static SegmentIndex openOrCreate(Path dir, String baseName) { // 파일이 없으면 생성, 있으면 기존 엔트리를 유지하며 열기
         Path path = dir.resolve(baseName + EXTENSION);
         try {
-            FileChannel channel = FileChannel.open(
+            FileHandle fileHandle = FileHandle.open(
                     path,
                     StandardOpenOption.CREATE,  // 파일이 없으면 새로 생성
                     StandardOpenOption.READ,    // readPositionAt, count에 필요
                     StandardOpenOption.WRITE    // appendAndForce에 필요
             );
 
-            return new SegmentIndex(path, channel);
+            return new SegmentIndex(path, fileHandle);
         } catch (IOException exception) {
             throw new StorageException("Failed to open segment index: " + path, exception);
         }
@@ -42,7 +41,7 @@ final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐
             ByteBuffer buffer = ByteBuffer.allocate(SEGMENT_POSITION_BYTES);
             buffer.putLong(segmentPosition);
             buffer.flip();
-            FileChannels.writeFully(channel, channel.size(), buffer, FlushMode.FSYNC);
+            fileHandle.writeFully(fileHandle.size(), buffer, FlushMode.FSYNC);
         } catch (IOException exception) {
             throw new StorageException("Failed to append to segment index: " + path, exception);
         }
@@ -52,7 +51,7 @@ final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐
         try {
             long startPosition = relativeOffset * SEGMENT_POSITION_BYTES; // 인덱스 파일 내 해당 엔트리의 바이트 위치
 
-            return ByteBuffer.wrap(FileChannels.readFully(channel, startPosition, SEGMENT_POSITION_BYTES)).getLong();
+            return ByteBuffer.wrap(fileHandle.readFully(startPosition, SEGMENT_POSITION_BYTES)).getLong();
         } catch (IOException exception) {
             throw new StorageException("Failed to read segment index: " + path, exception);
         }
@@ -60,16 +59,16 @@ final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐
 
     long count() { // 현재 인덱스에 기록된 엔트리 수를 반환. 파일 크기 ÷ 8 = 커밋된 메시지 수
         try {
-            return channel.size() / SEGMENT_POSITION_BYTES; // 8바이트 단위이므로 정확히 나누어 떨어짐
+            return fileHandle.size() / SEGMENT_POSITION_BYTES; // 8바이트 단위이므로 정확히 나누어 떨어짐
         } catch (IOException exception) {
             throw new StorageException("Failed to read size of segment index: " + path, exception);
         }
     }
 
     @Override
-    public void close() { // 사용 완료 후 FileChannel을 닫아 fd 누수 방지
+    public void close() { // 사용 완료 후 fd 누수 방지
         try {
-            channel.close();
+            fileHandle.close();
         } catch (IOException exception) {
             throw new StorageException("Failed to close segment index: " + path, exception);
         }

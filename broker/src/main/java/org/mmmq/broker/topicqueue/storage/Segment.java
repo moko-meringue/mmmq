@@ -5,10 +5,9 @@ import jakarta.annotation.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import org.mmmq.broker.topicqueue.storage.FileChannels.FlushMode;
+import org.mmmq.broker.topicqueue.storage.FileHandle.FlushMode;
 import org.mmmq.core.message.Message;
 
 final class Segment implements Closeable {
@@ -18,12 +17,12 @@ final class Segment implements Closeable {
     private static final int LENGTH_HEADER_SIZE = Integer.BYTES; // 레코드 앞에 붙는 길이 헤더 크기 (4 bytes)
 
     private final Path path; // 에러 메시지에 파일 경로를 포함하기 위해 보존
-    private final FileChannel channel; // positional read/write를 지원하는 NIO 채널. channel.read(buf, pos)는 채널의 position을 변경하지 않아 thread-safe
+    private final FileHandle fileHandle; // positional read/write를 지원하는 NIO 채널. read(buf, pos)는 채널의 position을 변경하지 않아 thread-safe
     private final SegmentIndex index; // .idx 파일 핸들
 
-    private Segment(Path path, FileChannel channel, SegmentIndex index) {
+    private Segment(Path path, FileHandle fileHandle, SegmentIndex index) {
         this.path = path;
-        this.channel = channel;
+        this.fileHandle = fileHandle;
         this.index = index;
     }
 
@@ -31,7 +30,7 @@ final class Segment implements Closeable {
         String baseName = String.format(FILE_NAME_FORMAT, startOffset);
         Path segmentPath = dir.resolve(baseName + EXTENSION);
         try {
-            FileChannel channel = FileChannel.open(
+            FileHandle fileHandle = FileHandle.open(
                     segmentPath,
                     StandardOpenOption.CREATE,  // 파일이 없으면 새로 생성
                     StandardOpenOption.READ,    // recoverActiveSegment에서 읽기도 필요
@@ -39,7 +38,7 @@ final class Segment implements Closeable {
             );
             SegmentIndex index = SegmentIndex.openOrCreate(dir, baseName);
 
-            return new Segment(segmentPath, channel, index);
+            return new Segment(segmentPath, fileHandle, index);
         } catch (IOException exception) {
             throw new StorageException("Failed to open segment: " + segmentPath, exception);
         }
@@ -51,7 +50,7 @@ final class Segment implements Closeable {
 
     long size() { // 현재 .mmm 파일 크기. SegmentDirectory가 rotate 여부를 판단할 때 사용
         try {
-            return channel.size();
+            return fileHandle.size();
         } catch (IOException exception) {
             throw new StorageException("Failed to read size of segment: " + path, exception);
         }
@@ -65,8 +64,8 @@ final class Segment implements Closeable {
         buffer.put(payload);
 
         try {
-            long position = channel.size(); // .mmm 쓰기 + fsync #1. 반환값은 record 시작 위치
-            FileChannels.writeFully(channel, position, ByteBuffer.wrap(buffer.array()), FlushMode.FSYNC);
+            long position = fileHandle.size(); // .mmm 쓰기 + fsync #1. 반환값은 record 시작 위치
+            fileHandle.writeFully(position, ByteBuffer.wrap(buffer.array()), FlushMode.FSYNC);
             index.appendAndForce(position); // .idx 쓰기 + fsync #2. segment fsync 완료 후 실행해야 불변식 유지
         } catch (IOException exception) {
             throw new StorageException("Failed to append to segment: " + path, exception);
@@ -83,8 +82,9 @@ final class Segment implements Closeable {
         }
         long position = index.readPositionAt(offset); // .idx에서 .mmm 내 record 시작 위치 조회
         try {
-            int payloadLength = ByteBuffer.wrap(FileChannels.readFully(channel, position, LENGTH_HEADER_SIZE)).getInt();
-            byte[] payload = FileChannels.readFully(channel, position + LENGTH_HEADER_SIZE, payloadLength);
+            int payloadLength = ByteBuffer.wrap(fileHandle.readFully(position, LENGTH_HEADER_SIZE)).getInt();
+            byte[] payload = fileHandle.readFully(position + LENGTH_HEADER_SIZE, payloadLength);
+
             return MessageCodec.decode(payload);
         } catch (IOException exception) {
             throw new StorageException("Failed to read from segment: " + path, exception);
@@ -95,9 +95,6 @@ final class Segment implements Closeable {
         long entryCount = index.count();
         long actualSegmentSize = size();
         if (entryCount == 0) {
-            // MERINGUE: 애플리케이션이 마음대로 파일 내용을 조작하면 안됨.
-            // 조작 없이 종료하도록 변경해야 함.
-            // ~가 잘못되었으니 ~ 파일 내용 비워주세요 정도로 로그 남기고 종료하도록 변경해야 함.
             if (actualSegmentSize > 0) {
                 truncate(0);
             }
@@ -111,7 +108,7 @@ final class Segment implements Closeable {
         }
         byte[] header;
         try {
-            header = FileChannels.readFully(channel, lastIdxEntry, LENGTH_HEADER_SIZE);
+            header = fileHandle.readFully(lastIdxEntry, LENGTH_HEADER_SIZE);
         } catch (IOException exception) {
             throw new StorageException("Failed to read from segment: " + path, exception);
         }
@@ -133,8 +130,7 @@ final class Segment implements Closeable {
 
     private void truncate(long newSize) { // 파일을 newSize bytes로 잘라내고 fsync. 부팅 복구 시 미커밋 trailing bytes 제거에 사용
         try {
-            channel.truncate(newSize);
-            channel.force(true);
+            fileHandle.truncate(newSize, FlushMode.FSYNC);
         } catch (IOException exception) {
             throw new StorageException("Failed to truncate segment: " + path, exception);
         }
@@ -143,7 +139,7 @@ final class Segment implements Closeable {
     @Override
     public void close() {
         try {
-            channel.close();
+            fileHandle.close();
         } catch (IOException exception) {
             throw new StorageException("Failed to close segment: " + path, exception);
         }
