@@ -10,7 +10,6 @@ import java.nio.file.StandardOpenOption;
 
 final class Segment implements Closeable { // .mmm 파일 한 개를 캡슐화. append-only 쓰기와 position 기반 읽기만 허용
 
-    private static final byte LINE_TERMINATOR = (byte) '\n'; // 엔트리 경계 식별에 사용하는 줄 구분자
     private static final int READ_CHUNK_SIZE = 4096; // 한 번에 읽는 버퍼 크기: 시스템 콜 횟수를 줄이기 위해 4KB 단위로 읽음
 
     private final Path path; // 에러 메시지에 파일 경로를 포함하기 위해 보존
@@ -52,7 +51,7 @@ final class Segment implements Closeable { // .mmm 파일 한 개를 캡슐화. 
         }
     }
 
-    byte[] readLineAt(long position) { // position부터 '\n'까지 bytes를 읽어 반환. '\n' 포함
+    byte[] readAt(long position) { // position부터 레코드 구분자까지 bytes를 읽어 반환. 구분자 포함
         try {
             final long fileSize = channel.size();
             if (position < 0 || position >= fileSize) { // 유효 범위 밖 위치 접근은 즉시 실패
@@ -72,13 +71,13 @@ final class Segment implements Closeable { // .mmm 파일 한 개를 캡슐화. 
                     final byte current = buffer.get();
                     output.write(current); // 읽은 바이트를 누적 버퍼에 추가
                     readPosition++;
-                    if (current == LINE_TERMINATOR) { // '\n'을 만나면 하나의 엔트리를 다 읽은 것
+                    if (current == MessageCodec.RECORD_TERMINATOR) { // 구분자를 만나면 하나의 레코드를 다 읽은 것
                         return output.toByteArray();
                     }
                 }
             }
 
-            return output.toByteArray(); // '\n' 없이 EOF에 도달한 경우: 부팅 복구 중 잘린 라인
+            return output.toByteArray(); // 구분자 없이 EOF에 도달한 경우: 부팅 복구 중 잘린 레코드
         } catch (IOException exception) {
             throw new StorageException("Failed to read from segment: " + path, exception);
         }

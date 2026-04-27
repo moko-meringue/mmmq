@@ -65,7 +65,7 @@ final class SegmentFile implements Closeable { // .mmm 파일과 .idx 파일 한
         }
         final long position = index.readPositionAt(relativeLong); // .idx에서 .mmm 내 실제 위치를 조회
         try {
-            return Optional.of(MessageCodec.decode(segment.readLineAt(position))); // .mmm에서 해당 위치의 라인을 읽어 Message로 역직렬화
+            return Optional.of(MessageCodec.decode(segment.readAt(position))); // .mmm에서 해당 위치의 라인을 읽어 Message로 역직렬화
         } catch (MessageCodecException exception) {
             throw new StorageException("Failed to decode message at offset: " + absoluteOffset, exception);
         }
@@ -89,10 +89,11 @@ final class SegmentFile implements Closeable { // .mmm 파일과 .idx 파일 한
                     "Index points beyond segment end. segmentSize=" + actualSegmentSize + ", lastEntry=" + lastIdxEntry
             );
         }
-        final byte[] lastLine = segment.readLineAt(lastIdxEntry); // 마지막 커밋 엔트리를 읽어 길이를 측정
-        if (lastLine[lastLine.length - 1] != '\n') { // '\n' 미발견: .idx는 있는데 .mmm의 해당 라인이 incomplete
+        final byte[] lastLine = segment.readAt(lastIdxEntry); // 마지막 커밋 엔트리를 읽어 길이를 측정
+        if (!MessageCodec.isComplete(lastLine)) { // 레코드 구분자 미발견: .idx는 있는데 .mmm의 해당 레코드가 incomplete
             throw new StorageException(
-                    "Index points to incomplete line. segmentSize=" + actualSegmentSize + ", lastEntry=" + lastIdxEntry
+                    "Index points to incomplete record. segmentSize=" + actualSegmentSize + ", lastEntry="
+                            + lastIdxEntry
             );
         }
         final long expectedSegmentEnd = lastIdxEntry + lastLine.length; // 마지막 커밋 엔트리가 끝나는 위치 = 정상 .mmm의 기대 크기

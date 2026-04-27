@@ -22,13 +22,13 @@ class SegmentTest {
     }
 
     @Test
-    @DisplayName("append 후 readLineAt으로 동일한 line을 읽을 수 있다")
-    void readLineAtReturnsAppendedLine(@TempDir Path tempDir) {
+    @DisplayName("append 후 readAt으로 동일한 line을 읽을 수 있다")
+    void readAtReturnsAppendedLine(@TempDir Path tempDir) {
         try (Segment segmentFile = Segment.openOrCreate(tempDir.resolve("test.mmm"))) {
             final byte[] payload = "hello\n".getBytes();
             final long position = segmentFile.appendAndForce(payload); // 쓰기 완료 후 반환된 position
 
-            final byte[] read = segmentFile.readLineAt(position); // 저장된 position으로 읽기
+            final byte[] read = segmentFile.readAt(position); // 저장된 position으로 읽기
 
             assertThat(read).isEqualTo(payload); // 쓴 내용과 읽은 내용이 byte 단위로 일치해야 함
         }
@@ -41,7 +41,7 @@ class SegmentTest {
             segmentFile.appendAndForce("line1\n".getBytes()); // 첫 번째 엔트리 (position=0, length=6)
             final long secondPos = segmentFile.appendAndForce("line2\n".getBytes()); // 두 번째 엔트리 시작 위치
 
-            final byte[] read = segmentFile.readLineAt(secondPos); // 두 번째 엔트리만 정확히 읽어야 함
+            final byte[] read = segmentFile.readAt(secondPos); // 두 번째 엔트리만 정확히 읽어야 함
 
             assertThat(new String(read)).isEqualTo("line2\n"); // 첫 번째 엔트리와 혼동 없이 두 번째만 반환
         }
