@@ -43,7 +43,7 @@ public final class SegmentDirectory implements Closeable { // 한 토픽의 세�
     }
 
     public void append(Message message) { // 메시지를 active 세그먼트에 추가. 필요하면 먼저 회전
-        if (active.size() > 0 && active.size() >= segmentMaxBytes) { // 빈 세그먼트는 메시지 크기와 무관하게 항상 수용 (무한 rotate 방지)
+        if (active.size() >= segmentMaxBytes) {
             rotate();
         }
         active.append(message); // .mmm 쓰기 + fsync, .idx 쓰기 + fsync
