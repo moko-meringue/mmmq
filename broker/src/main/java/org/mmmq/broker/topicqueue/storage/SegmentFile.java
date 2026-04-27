@@ -1,15 +1,17 @@
 package org.mmmq.broker.topicqueue.storage;
 
 import java.io.Closeable;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.Optional;
 import org.mmmq.core.message.Message;
 
-final class SegmentFile implements Closeable { // .mmm 파일과 .idx 파일 한 쌍을 묶어 하나의 세그먼트를 표현
+final class SegmentFile implements Closeable { // .mmm 파일과 .idx 파일 한 쌍을 묶어 하나의 세그먼트를 표현. 레코드 구획(framing) 책임을 가짐
 
     private static final String SEGMENT_SUFFIX = ".mmm"; // 세그먼트 파일 확장자
     private static final String INDEX_SUFFIX = ".idx"; // 인덱스 파일 확장자
     private static final String FILE_NAME_FORMAT = "segment-%020d"; // 20자리 zero-padding: lexicographic 정렬 = numeric 정렬 보장
+    private static final int LENGTH_HEADER_SIZE = Integer.BYTES; // 레코드 앞에 붙는 길이 헤더 크기 (4 bytes)
 
     private final long startOffset; // 이 세그먼트의 첫 메시지가 갖는 절대 offset. 파일명에서 파싱됨
     private final Segment segment; // .mmm 파일 핸들
@@ -47,14 +49,17 @@ final class SegmentFile implements Closeable { // .mmm 파일과 .idx 파일 한
 
     void append(Message message) { // 메시지를 인코딩해 .mmm에 쓰고, 그 위치를 .idx에 기록
         try {
-            append(MessageCodec.encode(message)); // Message → JSON bytes + '\n' → byte[] 버전으로 위임
+            append(MessageCodec.encode(message)); // Message → JSON bytes → byte[] 버전으로 위임
         } catch (MessageCodecException exception) {
             throw new StorageException("Failed to encode message: " + message, exception);
         }
     }
 
-    void append(byte[] payload) { // 인코딩된 payload를 .mmm에 쓰고 .idx에 위치를 기록. fsync 순서: segment → index
-        final long position = segment.appendAndForce(payload); // .mmm 쓰기 + fsync #1. 반환값은 .idx에 저장될 위치
+    void append(byte[] payload) { // payload 앞에 4 bytes 길이 헤더를 붙여 .mmm에 쓰고 .idx에 record 시작 위치를 기록
+        final ByteBuffer record = ByteBuffer.allocate(LENGTH_HEADER_SIZE + payload.length); // 헤더 + payload 한 번에 쓰기 위해 합쳐 둠
+        record.putInt(payload.length); // 4 bytes BIG_ENDIAN 길이 헤더 (ByteBuffer 기본 endian)
+        record.put(payload); // 헤더 뒤에 실제 payload 붙임
+        final long position = segment.appendAndForce(record.array()); // .mmm 쓰기 + fsync #1. 반환값은 record 시작 위치
         index.appendAndForce(position); // .idx 쓰기 + fsync #2. segment fsync 완료 후 실행해야 불변식 유지
     }
 
@@ -63,9 +68,11 @@ final class SegmentFile implements Closeable { // .mmm 파일과 .idx 파일 한
         if (relativeLong < 0 || relativeLong >= index.count()) { // 이 세그먼트에 해당 offset이 없으면 empty
             return Optional.empty();
         }
-        final long position = index.readPositionAt(relativeLong); // .idx에서 .mmm 내 실제 위치를 조회
+        final long position = index.readPositionAt(relativeLong); // .idx에서 .mmm 내 record 시작 위치 조회
+        final int payloadLength = ByteBuffer.wrap(segment.readAt(position, LENGTH_HEADER_SIZE)).getInt(); // 헤더 4 bytes를 읽어 payload 길이 파악
+        final byte[] payload = segment.readAt(position + LENGTH_HEADER_SIZE, payloadLength); // 헤더 다음부터 정확히 payloadLength bytes만 읽기
         try {
-            return Optional.of(MessageCodec.decode(segment.readAt(position))); // .mmm에서 해당 위치의 라인을 읽어 Message로 역직렬화
+            return Optional.of(MessageCodec.decode(payload));
         } catch (MessageCodecException exception) {
             throw new StorageException("Failed to decode message at offset: " + absoluteOffset, exception);
         }
@@ -83,20 +90,21 @@ final class SegmentFile implements Closeable { // .mmm 파일과 .idx 파일 한
             }
             return;
         }
-        final long lastIdxEntry = index.readPositionAt(entryCount - 1); // .idx 마지막 엔트리 = 마지막 커밋 메시지의 .mmm 위치
-        if (lastIdxEntry >= actualSegmentSize) { // .idx가 .mmm 끝을 넘어서 가리키면 심각한 디스크 손상
+        final long lastIdxEntry = index.readPositionAt(entryCount - 1); // .idx 마지막 엔트리 = 마지막 커밋 record의 시작 위치
+        if (lastIdxEntry + LENGTH_HEADER_SIZE > actualSegmentSize) { // 헤더조차 다 들어있지 않으면 .idx가 .mmm 끝을 넘어 가리키는 손상
             throw new StorageException(
                     "Index points beyond segment end. segmentSize=" + actualSegmentSize + ", lastEntry=" + lastIdxEntry
             );
         }
-        final byte[] lastLine = segment.readAt(lastIdxEntry); // 마지막 커밋 엔트리를 읽어 길이를 측정
-        if (!MessageCodec.isComplete(lastLine)) { // 레코드 구분자 미발견: .idx는 있는데 .mmm의 해당 레코드가 incomplete
+        final byte[] header = segment.readAt(lastIdxEntry, LENGTH_HEADER_SIZE); // 마지막 record의 길이 헤더 읽기
+        final int payloadLength = ByteBuffer.wrap(header).getInt(); // 헤더에서 payload 길이 추출
+        final long expectedSegmentEnd = lastIdxEntry + LENGTH_HEADER_SIZE + payloadLength; // 마지막 record가 끝나는 위치 = 정상 .mmm의 기대 크기
+        if (expectedSegmentEnd > actualSegmentSize) { // payload가 다 들어있지 않으면 incomplete record
             throw new StorageException(
-                    "Index points to incomplete record. segmentSize=" + actualSegmentSize + ", lastEntry="
-                            + lastIdxEntry
+                    "Index points to incomplete record. segmentSize=" + actualSegmentSize
+                            + ", lastEntry=" + lastIdxEntry + ", expectedEnd=" + expectedSegmentEnd
             );
         }
-        final long expectedSegmentEnd = lastIdxEntry + lastLine.length; // 마지막 커밋 엔트리가 끝나는 위치 = 정상 .mmm의 기대 크기
         if (actualSegmentSize > expectedSegmentEnd) { // 기대 크기보다 크면 .idx에 반영되지 않은 trailing bytes가 존재
             // MERINGUE: 애플리케이션이 마음대로 파일 내용을 조작하면 안됨.
             // 조작 없이 종료하도록 변경해야 함.

@@ -1,6 +1,5 @@
 package org.mmmq.broker.topicqueue.storage;
 
-import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -8,9 +7,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-final class Segment implements Closeable { // .mmm 파일 한 개를 캡슐화. append-only 쓰기와 position 기반 읽기만 허용
-
-    private static final int READ_CHUNK_SIZE = 4096; // 한 번에 읽는 버퍼 크기: 시스템 콜 횟수를 줄이기 위해 4KB 단위로 읽음
+final class Segment implements Closeable { // .mmm 파일 한 개를 캡슐화. position 기반 read/write만 지원하며 직렬화 포맷이나 레코드 구획은 모름
 
     private final Path path; // 에러 메시지에 파일 경로를 포함하기 위해 보존
     private final FileChannel channel; // positional read/write를 지원하는 NIO 채널. channel.read(buf, pos)는 채널의 position을 변경하지 않아 thread-safe
@@ -51,33 +48,29 @@ final class Segment implements Closeable { // .mmm 파일 한 개를 캡슐화. 
         }
     }
 
-    byte[] readAt(long position) { // position부터 레코드 구분자까지 bytes를 읽어 반환. 구분자 포함
+    byte[] readAt(long position, int length) { // position부터 정확히 length bytes를 읽어 반환
         try {
             final long fileSize = channel.size();
-            if (position < 0 || position >= fileSize) { // 유효 범위 밖 위치 접근은 즉시 실패
-                throw new StorageException("Read position out of bounds: " + position + " for segment: " + path);
+            if (position < 0 || length < 0 || position + length > fileSize) { // 유효 범위 밖 read는 즉시 실패
+                throw new StorageException(
+                        "Read range out of bounds: position=" + position + ", length=" + length
+                                + ", fileSize=" + fileSize + " for segment: " + path
+                );
             }
-            final ByteArrayOutputStream output = new ByteArrayOutputStream(); // 크기를 미리 알 수 없어 동적으로 누적
-            final ByteBuffer buffer = ByteBuffer.allocate(READ_CHUNK_SIZE); // 매번 새 버퍼를 할당하지 않고 재사용
-            long readPosition = position;
-            while (readPosition < fileSize) {
-                buffer.clear(); // 이전 읽기 결과를 지우고 버퍼를 초기 상태로 리셋
-                final int read = channel.read(buffer, readPosition); // positional read: 채널 position 변경 없이 읽음
-                if (read <= 0) { // EOF이거나 읽을 데이터가 없으면 루프 종료
-                    break;
+            final ByteBuffer buffer = ByteBuffer.allocate(length); // 정확한 크기만 선행 할당
+            int totalRead = 0; // partial read 가능성이 있어 length 바이트 전부 채울 때까지 반복
+            while (totalRead < length) {
+                final int read = channel.read(buffer, position + totalRead); // positional read: 채널 position 변경 없이 읽음
+                if (read <= 0) { // 위에서 범위 검사를 했으므로 EOF가 나오면 안 됨
+                    throw new StorageException(
+                            "Unexpected EOF while reading segment: position=" + position
+                                    + ", length=" + length + ", read=" + totalRead + " for segment: " + path
+                    );
                 }
-                buffer.flip(); // write 모드 → read 모드 전환
-                while (buffer.hasRemaining()) {
-                    final byte current = buffer.get();
-                    output.write(current); // 읽은 바이트를 누적 버퍼에 추가
-                    readPosition++;
-                    if (current == MessageCodec.RECORD_TERMINATOR) { // 구분자를 만나면 하나의 레코드를 다 읽은 것
-                        return output.toByteArray();
-                    }
-                }
+                totalRead += read;
             }
 
-            return output.toByteArray(); // 구분자 없이 EOF에 도달한 경우: 부팅 복구 중 잘린 레코드
+            return buffer.array(); // allocate된 backing array는 정확히 length 크기
         } catch (IOException exception) {
             throw new StorageException("Failed to read from segment: " + path, exception);
         }
