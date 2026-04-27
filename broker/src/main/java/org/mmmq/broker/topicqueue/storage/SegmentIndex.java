@@ -41,7 +41,7 @@ final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐
             ByteBuffer buffer = ByteBuffer.allocate(SEGMENT_POSITION_BYTES);
             buffer.putLong(segmentPosition);
             buffer.flip();
-            fileHandle.writeFully(fileHandle.size(), buffer, FlushMode.FSYNC);
+            fileHandle.appendFully(buffer, FlushMode.FSYNC);
         } catch (IOException exception) {
             throw new StorageException("Failed to append to segment index: " + path, exception);
         }

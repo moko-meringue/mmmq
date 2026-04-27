@@ -19,6 +19,13 @@ final class FileHandle implements Closeable {
         return new FileHandle(FileChannel.open(path, options));
     }
 
+    long appendFully(ByteBuffer buffer, FlushMode flushMode) throws IOException {
+        long position = channel.size();
+        writeFully(position, buffer, flushMode);
+
+        return position;
+    }
+
     void writeFully(long position, ByteBuffer buffer, FlushMode flushMode) throws IOException {
         long writePosition = position;
         while (buffer.hasRemaining()) {
