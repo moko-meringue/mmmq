@@ -4,9 +4,9 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,8 +21,8 @@ public final class SegmentDirectory implements Closeable { // 한 토픽의 세�
 
     private final Path topicDir; // data/{topic}/ 디렉토리 경로
     private final long segmentMaxBytes; // 세그먼트 회전 임계값. active 세그먼트 크기가 이 값 이상이면 새 세그먼트 생성
-    private final ConcurrentSkipListMap<Long, SegmentFile> segmentsByStartOffset = new ConcurrentSkipListMap<>(); // startOffset → SegmentFile 맵. floorEntry로 임의 offset의 세그먼트를 O(log n)에 조회
-    private SegmentFile active; // 현재 쓰기 중인 세그먼트. 항상 segmentsByStartOffset의 마지막 엔트리
+    private final ConcurrentSkipListMap<Long, Segment> segmentsByStartOffset = new ConcurrentSkipListMap<>(); // startOffset → Segment 맵. floorEntry로 임의 offset의 세그먼트를 O(log n)에 조회
+    private Segment active; // 현재 쓰기 중인 세그먼트. 항상 segmentsByStartOffset의 마지막 엔트리
 
     private SegmentDirectory(Path topicDir, long segmentMaxBytes) { // 외부에서 직접 생성하지 않도록 private
         this.topicDir = topicDir;
@@ -36,37 +36,30 @@ public final class SegmentDirectory implements Closeable { // 한 토픽의 세�
         } catch (IOException exception) {
             throw new StorageException("Failed to create topic directory: " + topicDir, exception);
         }
-        final SegmentDirectory directory = new SegmentDirectory(topicDir, segmentMaxBytes);
+        SegmentDirectory directory = new SegmentDirectory(topicDir, segmentMaxBytes);
         directory.bootstrap(); // 기존 세그먼트 파일 스캔 및 마지막 세그먼트 정합성 복구
 
         return directory;
     }
 
     public void append(Message message) { // 메시지를 active 세그먼트에 추가. 필요하면 먼저 회전
-        final byte[] payload;
-        try {
-            payload = MessageCodec.encode(message);
-        } catch (MessageCodecException exception) {
-            throw new StorageException("Failed to encode message: " + message, exception);
-        }
-        if (active.size() > 0 && active.size() + payload.length > segmentMaxBytes) { // 빈 세그먼트는 메시지 크기와 무관하게 항상 수용 (무한 rotate 방지)
+        if (active.size() > 0 && active.size() >= segmentMaxBytes) { // 빈 세그먼트는 메시지 크기와 무관하게 항상 수용 (무한 rotate 방지)
             rotate();
         }
-        active.append(payload); // .mmm 쓰기 + fsync, .idx 쓰기 + fsync
+        active.append(message); // .mmm 쓰기 + fsync, .idx 쓰기 + fsync
     }
 
-    public Optional<Message> readAt(long absoluteOffset) { // absoluteOffset에 해당하는 세그먼트를 찾아 메시지를 읽어 반환
-        final Map.Entry<Long, SegmentFile> entry = segmentsByStartOffset.floorEntry(
+    @Nullable
+    public Message readAt(long absoluteOffset) { // absoluteOffset에 해당하는 세그먼트를 찾아 메시지를 읽어 반환
+        Map.Entry<Long, Segment> entry = segmentsByStartOffset.floorEntry(
                 absoluteOffset); // startOffset <= absoluteOffset인 가장 큰 세그먼트를 O(log n)에 조회
         if (entry == null) { // 모든 세그먼트의 startOffset보다 작으면 해당 메시지는 없음
-            return Optional.empty();
+            return null;
         }
 
-        return entry.getValue().readAt(absoluteOffset); // 해당 세그먼트에서 absoluteOffset 위치의 메시지를 읽음
-    }
+        long relativeOffset = absoluteOffset - entry.getKey();
 
-    public long nextAbsoluteOffset() { // 다음 메시지가 받을 절대 offset. offer 후 곧바로 호출하면 방금 쓴 메시지의 다음 위치
-        return active.nextAbsoluteOffset();
+        return entry.getValue().readAt(relativeOffset);
     }
 
     public Path offsetsDir() { // data/{topic}/offsets/ 경로 반환. TopicQueue가 OffsetStore를 만들 때 사용
@@ -75,16 +68,16 @@ public final class SegmentDirectory implements Closeable { // 한 토픽의 세�
 
     // MERINGUE: 모든 파일 정합성 검사 하도록
     private void bootstrap() { // 디렉토리에서 기존 세그먼트를 스캔해 맵에 등록하고 active 설정
-        final List<Long> startOffsets = scanStartOffsets(); // 파일명 기준으로 정렬된 startOffset 목록
+        List<Long> startOffsets = scanStartOffsets(); // 파일명 기준으로 정렬된 startOffset 목록
         if (startOffsets.isEmpty()) { // 기존 세그먼트가 없으면 startOffset=0으로 첫 세그먼트를 새로 생성
-            final SegmentFile first = SegmentFile.openOrCreate(topicDir, 0L);
+            Segment first = Segment.openOrCreate(topicDir, 0L);
             segmentsByStartOffset.put(0L, first);
             active = first;
 
             return;
         }
         for (Long startOffset : startOffsets) { // 스캔된 세그먼트를 순서대로 맵에 등록
-            final SegmentFile segment = SegmentFile.openOrCreate(topicDir, startOffset);
+            Segment segment = Segment.openOrCreate(topicDir, startOffset);
             segmentsByStartOffset.put(startOffset, segment);
         }
         active = segmentsByStartOffset.lastEntry().getValue(); // 가장 큰 startOffset을 가진 세그먼트가 active
@@ -106,8 +99,8 @@ public final class SegmentDirectory implements Closeable { // 한 토픽의 세�
     }
 
     private void rotate() { // 새 세그먼트를 생성해 active로 교체
-        final long nextStart = active.nextAbsoluteOffset(); // 새 세그먼트의 startOffset = 이전 세그먼트의 다음 절대 offset
-        final SegmentFile next = SegmentFile.openOrCreate(topicDir, nextStart); // 새 .mmm/.idx 파일 생성
+        long nextStart = segmentsByStartOffset.lastKey() + active.count();
+        Segment next = Segment.openOrCreate(topicDir, nextStart); // 새 .mmm/.idx 파일 생성
         segmentsByStartOffset.put(nextStart, next); // 맵에 등록해 readAt에서 조회 가능하도록
         active = next; // 이후 쓰기는 새 세그먼트로
     }
@@ -115,6 +108,6 @@ public final class SegmentDirectory implements Closeable { // 한 토픽의 세�
     @Override
     public void close() { // 모든 세그먼트의 .mmm/.idx 채널을 닫아 fd 누수 방지
         segmentsByStartOffset.values()
-                .forEach(SegmentFile::close);
+                .forEach(Segment::close);
     }
 }

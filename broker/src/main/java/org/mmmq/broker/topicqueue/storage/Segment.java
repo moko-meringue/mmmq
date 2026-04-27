@@ -1,82 +1,55 @@
 package org.mmmq.broker.topicqueue.storage;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import org.mmmq.broker.topicqueue.storage.FileChannels.FlushMode;
+import org.mmmq.core.message.Message;
 
-final class Segment implements Closeable { // .mmm 파일 한 개를 캡슐화. position 기반 read/write만 지원하며 직렬화 포맷이나 레코드 구획은 모름
+final class Segment implements Closeable {
+
+    private static final String EXTENSION = ".mmm";
+    private static final String FILE_NAME_FORMAT = "segment-%020d"; // 20자리 zero-padding: lexicographic 정렬 = numeric 정렬 보장
+    private static final int LENGTH_HEADER_SIZE = Integer.BYTES; // 레코드 앞에 붙는 길이 헤더 크기 (4 bytes)
 
     private final Path path; // 에러 메시지에 파일 경로를 포함하기 위해 보존
     private final FileChannel channel; // positional read/write를 지원하는 NIO 채널. channel.read(buf, pos)는 채널의 position을 변경하지 않아 thread-safe
+    private final SegmentIndex index; // .idx 파일 핸들
 
-    private Segment(Path path, FileChannel channel) { // 외부에서 직접 생성하지 않도록 생성자를 private으로 제한
+    private Segment(Path path, FileChannel channel, SegmentIndex index) {
         this.path = path;
         this.channel = channel;
+        this.index = index;
     }
 
-    static Segment openOrCreate(Path path) { // 파일이 없으면 생성, 있으면 기존 내용을 유지하며 열기
+    static Segment openOrCreate(Path dir, long startOffset) { // startOffset으로 파일명을 결정하고 .mmm/.idx를 각각 열거나 생성
+        String baseName = String.format(FILE_NAME_FORMAT, startOffset);
+        Path segmentPath = dir.resolve(baseName + EXTENSION);
         try {
-            final FileChannel channel = FileChannel.open(
-                    path,
+            FileChannel channel = FileChannel.open(
+                    segmentPath,
                     StandardOpenOption.CREATE,  // 파일이 없으면 새로 생성
                     StandardOpenOption.READ,    // recoverActiveSegment에서 읽기도 필요
                     StandardOpenOption.WRITE    // append 쓰기에 필요
             );
+            SegmentIndex index = SegmentIndex.openOrCreate(dir, baseName);
 
-            return new Segment(path, channel);
+            return new Segment(segmentPath, channel, index);
         } catch (IOException exception) {
-            throw new StorageException("Failed to open segment: " + path, exception);
+            throw new StorageException("Failed to open segment: " + segmentPath, exception);
         }
     }
 
-    long appendAndForce(byte[] payload) { // payload를 파일 끝에 쓰고 fsync를 완료한 뒤 기록 시작 위치를 반환
-        try {
-            final long position = channel.size(); // 현재 파일 끝 = 이번 쓰기가 시작될 위치. SegmentIndex에 저장될 값
-            final ByteBuffer buffer = ByteBuffer.wrap(payload); // 배열을 직접 래핑해 불필요한 복사 방지
-            long writePosition = position; // partial write 가능성이 있어 루프로 전체 bytes를 모두 쓸 때까지 반복
-            while (buffer.hasRemaining()) {
-                writePosition += channel.write(buffer, writePosition); // positional write: 채널의 현재 position에 영향 없음
-            }
-            channel.force(true); // fsync #1: 메타데이터 포함 디스크에 강제 플러시. SegmentIndex.force 전에 반드시 완료되어야 함
-
-            return position; // 이 엔트리가 시작된 파일 위치를 반환. SegmentIndex의 엔트리 값으로 저장됨
-        } catch (IOException exception) {
-            throw new StorageException("Failed to append to segment: " + path, exception);
-        }
+    long count() {
+        return index.count();
     }
 
-    byte[] readAt(long position, int length) { // position부터 정확히 length bytes를 읽어 반환
-        try {
-            final long fileSize = channel.size();
-            if (position < 0 || length < 0 || position + length > fileSize) { // 유효 범위 밖 read는 즉시 실패
-                throw new StorageException(
-                        "Read range out of bounds: position=" + position + ", length=" + length
-                                + ", fileSize=" + fileSize + " for segment: " + path
-                );
-            }
-            final ByteBuffer buffer = ByteBuffer.allocate(length); // 정확한 크기만 선행 할당
-            int totalRead = 0; // partial read 가능성이 있어 length 바이트 전부 채울 때까지 반복
-            while (totalRead < length) {
-                final int read = channel.read(buffer, position + totalRead); // positional read: 채널 position 변경 없이 읽음
-                if (read <= 0) { // 위에서 범위 검사를 했으므로 EOF가 나오면 안 됨
-                    throw new StorageException(
-                            "Unexpected EOF while reading segment: position=" + position
-                                    + ", length=" + length + ", read=" + totalRead + " for segment: " + path
-                    );
-                }
-                totalRead += read;
-            }
-
-            return buffer.array(); // allocate된 backing array는 정확히 length 크기
-        } catch (IOException exception) {
-            throw new StorageException("Failed to read from segment: " + path, exception);
-        }
-    }
-
-    long size() { // 현재 파일 크기를 반환. shouldRotate 판단과 recoverActiveSegment에서 사용
+    long size() { // 현재 .mmm 파일 크기. SegmentDirectory가 rotate 여부를 판단할 때 사용
         try {
             return channel.size();
         } catch (IOException exception) {
@@ -84,21 +57,120 @@ final class Segment implements Closeable { // .mmm 파일 한 개를 캡슐화. 
         }
     }
 
-    void truncate(long newSize) { // 파일을 newSize bytes로 잘라내고 fsync. 부팅 복구 시 미커밋 trailing bytes 제거에 사용
+    void append(Message message) {
+        byte[] payload = MessageCodec.encode(message);
+        int length = payload.length;
+        ByteBuffer buffer = ByteBuffer.allocate(LENGTH_HEADER_SIZE + length);
+        buffer.putInt(length);
+        buffer.put(payload);
+
         try {
-            channel.truncate(newSize); // newSize 이후 bytes를 제거
-            channel.force(true); // truncate 후 즉시 fsync해서 디스크에 반영
+            long position = channel.size(); // .mmm 쓰기 + fsync #1. 반환값은 record 시작 위치
+            FileChannels.writeFully(channel, position, ByteBuffer.wrap(buffer.array()), FlushMode.FSYNC);
+            index.appendAndForce(position); // .idx 쓰기 + fsync #2. segment fsync 완료 후 실행해야 불변식 유지
+        } catch (IOException exception) {
+            throw new StorageException("Failed to append to segment: " + path, exception);
+        }
+    }
+
+    @Nullable
+    Message readAt(long offset) {
+        if (offset < 0) {
+            throw new IllegalArgumentException("offset must be non-negative: " + offset);
+        }
+        if (offset >= index.count()) {
+            return null;
+        }
+        long position = index.readPositionAt(offset); // .idx에서 .mmm 내 record 시작 위치 조회
+        try {
+            int payloadLength = ByteBuffer.wrap(FileChannels.readFully(channel, position, LENGTH_HEADER_SIZE)).getInt();
+            byte[] payload = FileChannels.readFully(channel, position + LENGTH_HEADER_SIZE, payloadLength);
+            return MessageCodec.decode(payload);
+        } catch (IOException exception) {
+            throw new StorageException("Failed to read from segment: " + path, exception);
+        }
+    }
+
+    void recoverActiveSegment() { // 부팅 시 마지막 세그먼트의 정합성을 검사하고 미커밋 trailing bytes를 제거
+        long entryCount = index.count();
+        long actualSegmentSize = size();
+        if (entryCount == 0) {
+            // MERINGUE: 애플리케이션이 마음대로 파일 내용을 조작하면 안됨.
+            // 조작 없이 종료하도록 변경해야 함.
+            // ~가 잘못되었으니 ~ 파일 내용 비워주세요 정도로 로그 남기고 종료하도록 변경해야 함.
+            if (actualSegmentSize > 0) {
+                truncate(0);
+            }
+            return;
+        }
+        long lastIdxEntry = index.readPositionAt(entryCount - 1);
+        if (lastIdxEntry + LENGTH_HEADER_SIZE > actualSegmentSize) {
+            throw new StorageException(
+                    "Index points beyond segment end. segmentSize=" + actualSegmentSize + ", lastEntry=" + lastIdxEntry
+            );
+        }
+        byte[] header;
+        try {
+            header = FileChannels.readFully(channel, lastIdxEntry, LENGTH_HEADER_SIZE);
+        } catch (IOException exception) {
+            throw new StorageException("Failed to read from segment: " + path, exception);
+        }
+        int payloadLength = ByteBuffer.wrap(header).getInt();
+        long expectedSegmentEnd = lastIdxEntry + LENGTH_HEADER_SIZE + payloadLength;
+        if (expectedSegmentEnd > actualSegmentSize) {
+            throw new StorageException(
+                    "Index points to incomplete record. segmentSize=" + actualSegmentSize
+                            + ", lastEntry=" + lastIdxEntry + ", expectedEnd=" + expectedSegmentEnd
+            );
+        }
+        if (actualSegmentSize > expectedSegmentEnd) {
+            // MERINGUE: 애플리케이션이 마음대로 파일 내용을 조작하면 안됨.
+            // 조작 없이 종료하도록 변경해야 함.
+            // ~가 잘못되었으니 ~ 파일 내용 고쳐주세요 정도로 로그 남기고 종료하도록 변경해야 함.
+            truncate(expectedSegmentEnd);
+        }
+    }
+
+    private void truncate(long newSize) { // 파일을 newSize bytes로 잘라내고 fsync. 부팅 복구 시 미커밋 trailing bytes 제거에 사용
+        try {
+            channel.truncate(newSize);
+            channel.force(true);
         } catch (IOException exception) {
             throw new StorageException("Failed to truncate segment: " + path, exception);
         }
     }
 
     @Override
-    public void close() { // 사용 완료 후 FileChannel을 닫아 fd 누수 방지
+    public void close() {
         try {
             channel.close();
         } catch (IOException exception) {
             throw new StorageException("Failed to close segment: " + path, exception);
+        }
+        index.close();
+    }
+
+    private static final class MessageCodec {
+
+        private static final ObjectMapper MAPPER = new ObjectMapper(); // ObjectMapper는 thread-safe이므로 공유 인스턴스 하나로 재사용
+
+        private MessageCodec() {
+        }
+
+        static byte[] encode(Message message) throws StorageException {
+            try {
+                return MAPPER.writeValueAsBytes(message);
+            } catch (Exception exception) {
+                throw new StorageException("Failed to encode message: " + message, exception);
+            }
+        }
+
+        static Message decode(byte[] payload) throws StorageException {
+            try {
+                return MAPPER.readValue(payload, Message.class);
+            } catch (Exception exception) {
+                throw new StorageException("Failed to decode message", exception);
+            }
         }
     }
 }

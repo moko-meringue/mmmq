@@ -6,9 +6,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import org.mmmq.broker.topicqueue.storage.FileChannels.FlushMode;
 
 final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐화. 각 엔트리는 8바이트 long으로 .mmm 파일 내 위치를 저장
 
+    private static final String EXTENSION = ".idx";
     private static final int SEGMENT_POSITION_BYTES = Long.BYTES; // .mmm 파일 내 물리 주소를 저장하는 크기: long = 8 bytes
 
     private final Path path; // 에러 메시지에 파일 경로를 포함하기 위해 보존
@@ -19,9 +21,10 @@ final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐
         this.channel = channel;
     }
 
-    static SegmentIndex openOrCreate(Path path) { // 파일이 없으면 생성, 있으면 기존 엔트리를 유지하며 열기
+    static SegmentIndex openOrCreate(Path dir, String baseName) { // 파일이 없으면 생성, 있으면 기존 엔트리를 유지하며 열기
+        Path path = dir.resolve(baseName + EXTENSION);
         try {
-            final FileChannel channel = FileChannel.open(
+            FileChannel channel = FileChannel.open(
                     path,
                     StandardOpenOption.CREATE,  // 파일이 없으면 새로 생성
                     StandardOpenOption.READ,    // readPositionAt, count에 필요
@@ -36,14 +39,10 @@ final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐
 
     void appendAndForce(long segmentPosition) { // segmentPosition(8 bytes)를 파일 끝에 쓰고 fsync. Segment.force 후에 호출해야 함
         try {
-            final ByteBuffer buffer = ByteBuffer.allocate(SEGMENT_POSITION_BYTES); // 8바이트 버퍼 할당
-            buffer.putLong(segmentPosition); // big-endian으로 long 값을 버퍼에 기록
-            buffer.flip(); // write 모드 → read 모드 전환
-            long writePosition = channel.size(); // 현재 파일 끝에 이어서 씀
-            while (buffer.hasRemaining()) {
-                writePosition += channel.write(buffer, writePosition); // partial write 방어: 8바이트 모두 쓸 때까지 반복
-            }
-            channel.force(true); // fsync #2: .mmm fsync 이후에 실행되어야 불변식(segment >= idx)이 성립
+            ByteBuffer buffer = ByteBuffer.allocate(SEGMENT_POSITION_BYTES);
+            buffer.putLong(segmentPosition);
+            buffer.flip();
+            FileChannels.writeFully(channel, channel.size(), buffer, FlushMode.FSYNC);
         } catch (IOException exception) {
             throw new StorageException("Failed to append to segment index: " + path, exception);
         }
@@ -51,19 +50,9 @@ final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐
 
     long readPositionAt(long relativeOffset) { // relativeOffset 번째 엔트리의 .mmm 파일 위치를 반환
         try {
-            final long startPosition = relativeOffset * SEGMENT_POSITION_BYTES; // 인덱스 파일 내 해당 엔트리의 바이트 위치
-            final ByteBuffer buffer = ByteBuffer.allocate(SEGMENT_POSITION_BYTES);
-            int totalRead = 0;
-            while (totalRead < SEGMENT_POSITION_BYTES) { // 8바이트 미만으로 읽힌 경우(partial read) 나머지를 다시 읽음
-                final int read = channel.read(buffer, startPosition + totalRead); // positional read: 채널 position 변경 없음
-                if (read <= 0) { // EOF에 도달했는데 8바이트를 다 못 읽었으면 인덱스 손상
-                    throw new StorageException("Failed to read full index entry at offset: " + relativeOffset);
-                }
-                totalRead += read;
-            }
-            buffer.flip(); // write 모드 → read 모드 전환
+            long startPosition = relativeOffset * SEGMENT_POSITION_BYTES; // 인덱스 파일 내 해당 엔트리의 바이트 위치
 
-            return buffer.getLong(); // big-endian long 값을 .mmm 파일 position으로 반환
+            return ByteBuffer.wrap(FileChannels.readFully(channel, startPosition, SEGMENT_POSITION_BYTES)).getLong();
         } catch (IOException exception) {
             throw new StorageException("Failed to read segment index: " + path, exception);
         }

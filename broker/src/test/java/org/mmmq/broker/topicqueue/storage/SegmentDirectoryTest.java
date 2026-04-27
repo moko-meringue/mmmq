@@ -10,7 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
-import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -25,7 +24,7 @@ class SegmentDirectoryTest {
     @DisplayName("빈 디렉토리에서 첫 segment 가 startOffset=0 으로 생성된다")
     void createsFirstSegmentAtZero(@TempDir Path tempDir) {
         try (SegmentDirectory directory = SegmentDirectory.openOrCreate(tempDir, DEFAULT_MAX_BYTES)) {
-            assertThat(directory.nextAbsoluteOffset()).isZero(); // 비어있는 첫 세그먼트: startOffset=0, entryCount=0 → nextAbsoluteOffset=0
+            assertThat(directory.readAt(0L)).isNull(); // 비어있는 첫 세그먼트: 아직 아무 메시지도 없음
         }
     }
 
@@ -35,10 +34,11 @@ class SegmentDirectoryTest {
         try (SegmentDirectory directory = SegmentDirectory.openOrCreate(tempDir, 1L)) { // 1 byte 한계: 기존 데이터가 있으면 다음 메시지 전에 rotate
             final Message message = new Message(new Topic("topic"), Map.of("k", "v"));
             directory.append(message); // 빈 세그먼트이므로 rotate 없이 쓰기. 이후 size > 1
-            final long firstNext = directory.nextAbsoluteOffset(); // 첫 세그먼트 nextAbsoluteOffset = 1
-            directory.append(message); // size > 0 && size + payload > 1 → rotate 후 새 세그먼트에 쓰기
+            directory.append(message); // size > 0 && size >= 1 → rotate 후 새 세그먼트에 쓰기
 
-            assertThat(directory.nextAbsoluteOffset()).isEqualTo(firstNext + 1); // 회전 후 새 세그먼트에 1개 추가됐으므로 2
+            assertThat(directory.readAt(0L)).isEqualTo(message); // offset=0: 첫 세그먼트
+            assertThat(directory.readAt(1L)).isEqualTo(message); // offset=1: rotate 후 새 세그먼트
+            assertThat(directory.readAt(2L)).isNull();         // 그 이상은 없음
         }
     }
 
@@ -54,9 +54,9 @@ class SegmentDirectoryTest {
             directory.append(second); // segment-1 에 저장, offset=1
             directory.append(third);  // segment-2 에 저장, offset=2
 
-            assertThat(directory.readAt(0L)).contains(first);  // floorEntry(0) → segment-0
-            assertThat(directory.readAt(1L)).contains(second); // floorEntry(1) → segment-1
-            assertThat(directory.readAt(2L)).contains(third);  // floorEntry(2) → segment-2
+            assertThat(directory.readAt(0L)).isEqualTo(first);  // floorEntry(0) → segment-0
+            assertThat(directory.readAt(1L)).isEqualTo(second); // floorEntry(1) → segment-1
+            assertThat(directory.readAt(2L)).isEqualTo(third);  // floorEntry(2) → segment-2
         }
     }
 
@@ -76,7 +76,8 @@ class SegmentDirectoryTest {
 
         try (SegmentDirectory directory = SegmentDirectory.openOrCreate(tempDir, DEFAULT_MAX_BYTES)) { // 재시작 시뮬레이션
             assertThat(Files.size(segmentFile)).isEqualTo(beforeSize); // recoverActiveSegment가 trailing bytes를 제거했는지 확인
-            assertThat(directory.nextAbsoluteOffset()).isEqualTo(1L); // 커밋된 메시지 1개는 유지됨
+            assertThat(directory.readAt(0L)).isNotNull(); // 커밋된 메시지 1개는 유지됨
+            assertThat(directory.readAt(1L)).isNull();   // 그 이상은 없음
         }
     }
 
@@ -105,11 +106,11 @@ class SegmentDirectoryTest {
         } // 브로커 종료 시뮬레이션
 
         try (SegmentDirectory reopened = SegmentDirectory.openOrCreate(tempDir, 1L)) { // 재시작 시뮬레이션
-            final Optional<Message> first = reopened.readAt(0L); // segment-0에서 읽기
-            final Optional<Message> last = reopened.readAt(2L);  // segment-2에서 읽기
-            assertThat(first).isPresent(); // 첫 번째 세그먼트도 정상 로드됨
-            assertThat(last).isPresent();  // 마지막 세그먼트도 정상 로드됨
-            assertThat(reopened.nextAbsoluteOffset()).isEqualTo(3L); // 3개 메시지가 모두 복원됨
+            final Message first = reopened.readAt(0L); // segment-0에서 읽기
+            final Message last = reopened.readAt(2L);  // segment-2에서 읽기
+            assertThat(first).isNotNull();              // 첫 번째 세그먼트도 정상 로드됨
+            assertThat(last).isNotNull();               // 마지막 세그먼트도 정상 로드됨
+            assertThat(reopened.readAt(3L)).isNull();  // 3개 메시지가 모두 복원됨 (그 이상은 없음)
         }
     }
 }

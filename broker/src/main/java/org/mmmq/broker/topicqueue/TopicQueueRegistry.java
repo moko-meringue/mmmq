@@ -36,7 +36,7 @@ public class TopicQueueRegistry implements
 
     @Override
     public void afterSingletonsInstantiated() {// data/ 디렉토리를 스캔해 기존 토픽 큐를 모두 복원. 브로커 재시작 시 dispatcher가 중단 지점부터 재개
-        final Path root = Path.of(properties.dataDir()); // 세그먼트 파일 루트 디렉토리
+        Path root = Path.of(properties.dataDir()); // 세그먼트 파일 루트 디렉토리
         if (!Files.isDirectory(root)) { // 첫 실행이거나 data/가 없으면 복원할 큐가 없음
             return;
         }
@@ -51,10 +51,10 @@ public class TopicQueueRegistry implements
     }
 
     private TopicQueue create(Topic topic) { // TopicQueue를 새로 생성하고 등록된 모든 Dispatcher에 구독을 연결
-        final Path topicDir = Path.of(properties.dataDir(), topic.name()); // data/{topic}/ 경로
-        final SegmentDirectory directory = SegmentDirectory.openOrCreate(topicDir,
+        Path topicDir = Path.of(properties.dataDir(), topic.name()); // data/{topic}/ 경로
+        SegmentDirectory directory = SegmentDirectory.openOrCreate(topicDir,
                 properties.segmentMaxBytes()); // 세그먼트 파일 열기/생성 + 마지막 세그먼트 정합성 복구
-        final TopicQueue queue = new TopicQueue(topic, directory);
+        TopicQueue queue = new TopicQueue(topic, directory);
         log.info("Restored topic queue: {}", topic.name());
         dispatcherProvider.stream()
                 .forEach(dispatcher -> dispatcher.subscribe(queue)); // 각 Dispatcher가 자신의 패턴과 비교해 매칭되는 토픽만 구독
