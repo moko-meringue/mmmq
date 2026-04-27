@@ -31,14 +31,6 @@ final class SegmentFile implements Closeable { // .mmm 파일과 .idx 파일 한
         return new SegmentFile(startOffset, segment, index);
     }
 
-    static String segmentFileName(long startOffset) { // SegmentDirectory에서 파일명으로 startOffset을 파싱할 때 포맷 재사용 목적
-        return String.format(FILE_NAME_FORMAT, startOffset) + SEGMENT_SUFFIX;
-    }
-
-    long startOffset() { // 이 세그먼트가 시작하는 절대 offset. floorEntry 키로 사용됨
-        return startOffset;
-    }
-
     long nextAbsoluteOffset() { // 다음 메시지가 받을 절대 offset = 이 세그먼트 startOffset + 현재 엔트리 수
         return startOffset + index.count();
     }
