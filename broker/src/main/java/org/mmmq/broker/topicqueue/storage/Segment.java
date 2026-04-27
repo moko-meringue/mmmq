@@ -64,8 +64,8 @@ final class Segment implements Closeable {
         buffer.put(payload);
 
         try {
-            long position = fileHandle.size(); // .mmm 쓰기 + fsync #1. 반환값은 record 시작 위치
-            fileHandle.writeFully(position, ByteBuffer.wrap(buffer.array()), FlushMode.FSYNC);
+            long position = fileHandle.appendFully(ByteBuffer.wrap(buffer.array()),
+                    FlushMode.FSYNC); // .mmm 쓰기 + fsync #1
             index.appendAndForce(position); // .idx 쓰기 + fsync #2. segment fsync 완료 후 실행해야 불변식 유지
         } catch (IOException exception) {
             throw new StorageException("Failed to append to segment: " + path, exception);
@@ -77,12 +77,12 @@ final class Segment implements Closeable {
         if (offset < 0) {
             throw new IllegalArgumentException("offset must be non-negative: " + offset);
         }
-        if (offset >= index.count()) {
+        if (offset >= count()) {
             return null;
         }
         long position = index.readPositionAt(offset); // .idx에서 .mmm 내 record 시작 위치 조회
         try {
-            int payloadLength = ByteBuffer.wrap(fileHandle.readFully(position, LENGTH_HEADER_SIZE)).getInt();
+            int payloadLength = getPayloadLengthAt(position);
             byte[] payload = fileHandle.readFully(position + LENGTH_HEADER_SIZE, payloadLength);
 
             return MessageCodec.decode(payload);
@@ -91,40 +91,34 @@ final class Segment implements Closeable {
         }
     }
 
-    void recoverActiveSegment() { // 부팅 시 마지막 세그먼트의 정합성을 검사하고 미커밋 trailing bytes를 제거
-        long entryCount = index.count();
-        long actualSegmentSize = size();
+    void recover() { // 부팅 시 마지막 세그먼트의 정합성을 검사하고 미커밋 trailing bytes를 제거
+        long entryCount = count();
+        long segmentSize = size();
         if (entryCount == 0) {
-            if (actualSegmentSize > 0) {
+            if (segmentSize > 0) {
                 truncate(0);
             }
             return;
         }
-        long lastIdxEntry = index.readPositionAt(entryCount - 1);
-        if (lastIdxEntry + LENGTH_HEADER_SIZE > actualSegmentSize) {
+        long lastPosition = index.readPositionAt(entryCount - 1);
+        long expectedSegmentSize = lastPosition + LENGTH_HEADER_SIZE + getPayloadLengthAt(lastPosition);
+        if (expectedSegmentSize > segmentSize) {
             throw new StorageException(
-                    "Index points beyond segment end. segmentSize=" + actualSegmentSize + ", lastEntry=" + lastIdxEntry
+                    "Last record is truncated: " + path
+                            + ", recordStart=" + lastPosition + ", requiredEnd=" + expectedSegmentSize
+                            + ", actualSize=" + segmentSize
             );
         }
-        byte[] header;
+        if (segmentSize > expectedSegmentSize) {
+            truncate(expectedSegmentSize);
+        }
+    }
+
+    private int getPayloadLengthAt(long position) { // position에서 레코드 길이 헤더(4 bytes)를 읽어 payload 길이를 반환
         try {
-            header = fileHandle.readFully(lastIdxEntry, LENGTH_HEADER_SIZE);
+            return ByteBuffer.wrap(fileHandle.readFully(position, LENGTH_HEADER_SIZE)).getInt();
         } catch (IOException exception) {
-            throw new StorageException("Failed to read from segment: " + path, exception);
-        }
-        int payloadLength = ByteBuffer.wrap(header).getInt();
-        long expectedSegmentEnd = lastIdxEntry + LENGTH_HEADER_SIZE + payloadLength;
-        if (expectedSegmentEnd > actualSegmentSize) {
-            throw new StorageException(
-                    "Index points to incomplete record. segmentSize=" + actualSegmentSize
-                            + ", lastEntry=" + lastIdxEntry + ", expectedEnd=" + expectedSegmentEnd
-            );
-        }
-        if (actualSegmentSize > expectedSegmentEnd) {
-            // MERINGUE: 애플리케이션이 마음대로 파일 내용을 조작하면 안됨.
-            // 조작 없이 종료하도록 변경해야 함.
-            // ~가 잘못되었으니 ~ 파일 내용 고쳐주세요 정도로 로그 남기고 종료하도록 변경해야 함.
-            truncate(expectedSegmentEnd);
+            throw new StorageException("Failed to read payload length from segment: " + path, exception);
         }
     }
 

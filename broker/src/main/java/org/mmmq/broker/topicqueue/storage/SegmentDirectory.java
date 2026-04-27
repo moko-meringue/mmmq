@@ -1,10 +1,10 @@
 package org.mmmq.broker.topicqueue.storage;
 
+import jakarta.annotation.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -81,7 +81,7 @@ public final class SegmentDirectory implements Closeable { // 한 토픽의 세�
             segmentsByStartOffset.put(startOffset, segment);
         }
         active = segmentsByStartOffset.lastEntry().getValue(); // 가장 큰 startOffset을 가진 세그먼트가 active
-        active.recoverActiveSegment(); // 마지막 세그먼트의 미커밋 trailing bytes를 제거하고 정합성 복구
+        active.recover(); // 마지막 세그먼트의 미커밋 trailing bytes를 제거하고 정합성 복구
     }
 
     private List<Long> scanStartOffsets() { // 토픽 디렉토리의 .mmm 파일을 스캔해 startOffset 목록을 정렬된 순서로 반환
