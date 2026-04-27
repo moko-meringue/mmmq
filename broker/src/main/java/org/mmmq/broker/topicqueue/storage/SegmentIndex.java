@@ -7,9 +7,9 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐화. 각 엔트리는 8바이트 long으로 .log 파일 내 위치를 저장
+final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐화. 각 엔트리는 8바이트 long으로 .mmm 파일 내 위치를 저장
 
-    private static final int LOG_POSITION_BYTES = Long.BYTES; // .log 파일 내 물리 주소를 저장하는 크기: long = 8 bytes
+    private static final int SEGMENT_POSITION_BYTES = Long.BYTES; // .mmm 파일 내 물리 주소를 저장하는 크기: long = 8 bytes
 
     private final Path path; // 에러 메시지에 파일 경로를 포함하기 위해 보존
     private final FileChannel channel; // positional read/write를 지원하는 NIO 채널
@@ -24,7 +24,7 @@ final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐
             final FileChannel channel = FileChannel.open(
                     path,
                     StandardOpenOption.CREATE,  // 파일이 없으면 새로 생성
-                    StandardOpenOption.READ,    // readPositionAt, entryCount에 필요
+                    StandardOpenOption.READ,    // readPositionAt, count에 필요
                     StandardOpenOption.WRITE    // appendAndForce에 필요
             );
 
@@ -34,27 +34,27 @@ final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐
         }
     }
 
-    void appendAndForce(long logPosition) { // logPosition(8 bytes)를 파일 끝에 쓰고 fsync. SegmentLog.force 후에 호출해야 함
+    void appendAndForce(long segmentPosition) { // segmentPosition(8 bytes)를 파일 끝에 쓰고 fsync. Segment.force 후에 호출해야 함
         try {
-            final ByteBuffer buffer = ByteBuffer.allocate(LOG_POSITION_BYTES); // 8바이트 버퍼 할당
-            buffer.putLong(logPosition); // big-endian으로 long 값을 버퍼에 기록
+            final ByteBuffer buffer = ByteBuffer.allocate(SEGMENT_POSITION_BYTES); // 8바이트 버퍼 할당
+            buffer.putLong(segmentPosition); // big-endian으로 long 값을 버퍼에 기록
             buffer.flip(); // write 모드 → read 모드 전환
             long writePosition = channel.size(); // 현재 파일 끝에 이어서 씀
             while (buffer.hasRemaining()) {
                 writePosition += channel.write(buffer, writePosition); // partial write 방어: 8바이트 모두 쓸 때까지 반복
             }
-            channel.force(true); // fsync #2: .log fsync 이후에 실행되어야 불변식(log >= idx)이 성립
+            channel.force(true); // fsync #2: .mmm fsync 이후에 실행되어야 불변식(segment >= idx)이 성립
         } catch (IOException exception) {
             throw new StorageException("Failed to append to segment index: " + path, exception);
         }
     }
 
-    long readPositionAt(int relativeOffset) { // relativeOffset 번째 엔트리의 .log 파일 위치를 반환
+    long readPositionAt(long relativeOffset) { // relativeOffset 번째 엔트리의 .mmm 파일 위치를 반환
         try {
-            final long startPosition = (long) relativeOffset * LOG_POSITION_BYTES; // 인덱스 파일 내 해당 엔트리의 바이트 위치
-            final ByteBuffer buffer = ByteBuffer.allocate(LOG_POSITION_BYTES);
+            final long startPosition = relativeOffset * SEGMENT_POSITION_BYTES; // 인덱스 파일 내 해당 엔트리의 바이트 위치
+            final ByteBuffer buffer = ByteBuffer.allocate(SEGMENT_POSITION_BYTES);
             int totalRead = 0;
-            while (totalRead < LOG_POSITION_BYTES) { // 8바이트 미만으로 읽힌 경우(partial read) 나머지를 다시 읽음
+            while (totalRead < SEGMENT_POSITION_BYTES) { // 8바이트 미만으로 읽힌 경우(partial read) 나머지를 다시 읽음
                 final int read = channel.read(buffer, startPosition + totalRead); // positional read: 채널 position 변경 없음
                 if (read <= 0) { // EOF에 도달했는데 8바이트를 다 못 읽었으면 인덱스 손상
                     throw new StorageException("Failed to read full index entry at offset: " + relativeOffset);
@@ -63,7 +63,7 @@ final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐
             }
             buffer.flip(); // write 모드 → read 모드 전환
 
-            return buffer.getLong(); // big-endian long 값을 .log 파일 position으로 반환
+            return buffer.getLong(); // big-endian long 값을 .mmm 파일 position으로 반환
         } catch (IOException exception) {
             throw new StorageException("Failed to read segment index: " + path, exception);
         }
@@ -71,7 +71,7 @@ final class SegmentIndex implements Closeable { // .idx 파일 한 개를 캡슐
 
     long count() { // 현재 인덱스에 기록된 엔트리 수를 반환. 파일 크기 ÷ 8 = 커밋된 메시지 수
         try {
-            return channel.size() / LOG_POSITION_BYTES; // 8바이트 단위이므로 정확히 나누어 떨어짐
+            return channel.size() / SEGMENT_POSITION_BYTES; // 8바이트 단위이므로 정확히 나누어 떨어짐
         } catch (IOException exception) {
             throw new StorageException("Failed to read size of segment index: " + path, exception);
         }

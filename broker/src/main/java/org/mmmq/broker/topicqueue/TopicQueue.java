@@ -2,116 +2,70 @@ package org.mmmq.broker.topicqueue;
 
 import jakarta.annotation.Nullable;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import org.mmmq.broker.topicqueue.storage.OffsetStore;
+import org.mmmq.broker.topicqueue.storage.SegmentDirectory;
+import org.mmmq.broker.topicqueue.storage.StorageException;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class TopicQueue {
+public class TopicQueue { // 한 토픽의 메시지를 디스크에 저장하고 dispatcher에게 제공하는 단일 진실 저장소
 
-    private static final int DEFAULT_SEGMENT_CAPACITY = 1000;
+    private static final Logger log = LoggerFactory.getLogger(TopicQueue.class);
+    private static final String OFFSET_FILE_SUFFIX = ".offset"; // dispatcher offset 파일명: {dispatcherName}.offset
 
-    private final Topic topic;
-    private final ReentrantLock lock = new ReentrantLock();
-    private final Map<Integer, Segment> segments = new ConcurrentHashMap<>();
-    private final int segmentCapacity;
-    private final Set<Offset> offsets = ConcurrentHashMap.newKeySet();
-    private int headIndex = 0;
-    private int tailIndex = 0;
+    private final Topic topic; // 이 큐가 속한 토픽
+    private final SegmentDirectory directory; // 세그먼트 파일 관리 객체. 실제 디스크 I/O를 담당
+    private final Map<String, OffsetStore> offsetStores = new ConcurrentHashMap<>(); // dispatcher 이름 → OffsetStore. 여러 dispatcher가 동시에 독립적으로 offset을 관리
+    private final ReentrantLock writeLock = new ReentrantLock(); // offer는 단일 writer만 허용. reader(peek)는 lock 없이 FileChannel positional read
 
-    public TopicQueue(Topic topic) {
-        this(topic, DEFAULT_SEGMENT_CAPACITY);
-    }
-
-    public TopicQueue(Topic topic, int segmentCapacity) {
+    public TopicQueue(Topic topic, SegmentDirectory directory) { // TopicQueueRegistry에서 생성. SegmentDirectory는 이미 열려 있는 상태로 전달됨
         this.topic = topic;
-        this.segmentCapacity = segmentCapacity;
-        segments.put(tailIndex, new Segment(this.segmentCapacity));
+        this.directory = directory;
     }
 
-    public void offer(Message message) {
-        lock.lock();
+    public boolean offer(Message message) { // 메시지를 디스크에 기록. fsync 완료 후 true 반환. IOException 발생 시 false 반환 → NACK
+        writeLock.lock(); // 동시에 여러 producer가 쓰면 세그먼트 회전 타이밍이 꼬일 수 있어 직렬화
         try {
-            Segment tail = segments.get(tailIndex);
-            if (tail == null || tail.isFull()) {
-                tailIndex++;
-                tail = new Segment(this.segmentCapacity);
-                segments.put(tailIndex, tail);
-            }
-            tail.put(message);
+            directory.append(message); // .mmm 쓰기 + fsync, .idx 쓰기 + fsync
+
+            return true; // 두 fsync가 모두 완료된 시점에만 true를 반환 → Producer에 ACK
+        } catch (StorageException exception) {
+            log.error("Failed to persist message for topic {}", topic, exception);
+
+            return false; // 디스크 쓰기 실패: Producer에 NACK를 보내 재시도 유도
         } finally {
-            lock.unlock();
+            writeLock.unlock(); // 성공/실패 모두 lock 해제
         }
     }
 
-    public Offset getNewOffset() {
-        Offset offset = new Offset();
-        offsets.add(offset);
+    public Offset subscribe(String dispatcherName) { // dispatcher 최초 등록 시 호출. OffsetStore를 열고 마지막 커밋 위치에서 시작하는 Offset을 반환
+        final OffsetStore store = offsetStores.computeIfAbsent(
+                dispatcherName,
+                name -> OffsetStore.openOrCreate(directory.offsetsDir().resolve(name + OFFSET_FILE_SUFFIX)) // 파일 없으면 생성(초기값 0), 있으면 기존 값 유지
+        );
 
-        return offset;
+        return new Offset(store.read()); // 저장된 마지막 commit 위치에서 재개. 브로커 재시작 시 중단 지점부터 다시 시작
     }
 
     @Nullable
-    public Message poll(Offset offset) {
-        lock.lock();
-        try {
-            int index = offset.getUnitIndex(this.segmentCapacity);
-            Segment segment = segments.get(index);
-            if (segment == null) {
-                return null;
-            }
-
-            int relativeOffset = offset.getRelativeIndex(this.segmentCapacity);
-            if (!segment.existsAt(relativeOffset)) {
-                return null;
-            }
-
-            Message message = segment.get(relativeOffset);
-            updateOffset(offset);
-
-            return message;
-        } finally {
-            lock.unlock();
-        }
+    public Message peek(Offset offset) { // offset 위치의 메시지를 읽어 반환하되 offset을 증가시키지 않음. at-least-once의 핵심: commit 전에 브로커가 죽으면 재시작 후 같은 메시지를 다시 읽음
+        return directory.readAt(offset.value()).orElse(null); // lock 없음: FileChannel.read(buf, pos)는 thread-safe
     }
 
-    public Topic getTopic() {
+    public void commit(String dispatcherName, Offset offset) { // 메시지 처리 완료 후 호출. offset을 1 증가시키고 파일에 fsync
+        offset.increment(); // 다음 peek에서 이 메시지가 아닌 다음 메시지를 읽도록 전진
+        final OffsetStore store = offsetStores.get(dispatcherName);
+        if (store == null) { // subscribe 없이 commit을 호출하면 프로그래밍 오류
+            throw new IllegalStateException("Dispatcher not subscribed: " + dispatcherName);
+        }
+        store.writeAndForce(offset.value()); // fsync #3: 이 시점 이후 브로커 재시작 시 증가된 offset부터 재개
+    }
+
+    public Topic getTopic() { // FrontDispatcher와 Dispatcher가 토픽 매칭 여부를 확인할 때 사용
         return topic;
-    }
-
-    private void updateOffset(Offset offset) {
-        Segment oldSegment = getSegment(offset);
-        offset.increment();
-        Segment newSegment = getSegment(offset);
-        if (oldSegment != newSegment) {
-            cleanupOldSegments();
-        }
-    }
-
-    private void cleanupOldSegments() {
-        Offset minOffset = offsets.stream()
-                .min(Offset::compareTo)
-                .orElse(null);
-        if (minOffset == null) {
-            return;
-        }
-        int limit = minOffset.getUnitIndex(this.segmentCapacity);
-        if (headIndex < limit) {
-            for (int i = headIndex; i < limit; i++) {
-                segments.remove(i);
-            }
-            headIndex = limit;
-        }
-    }
-
-    private Segment getSegment(Offset offset) {
-        int index = offset.getUnitIndex(this.segmentCapacity);
-        Segment segment = segments.get(index);
-        if (segment == null) {
-            throw new IllegalArgumentException("Invalid offset: " + offset);
-        }
-
-        return segment;
     }
 }
