@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import org.mmmq.broker.topicqueue.storage.OffsetStore;
-import org.mmmq.broker.topicqueue.storage.SegmentDirectory;
+import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.broker.topicqueue.storage.StorageException;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
@@ -16,12 +16,12 @@ public class TopicQueue { // 한 토픽의 메시지를 디스크에 저장하�
 
     private static final Logger log = LoggerFactory.getLogger(TopicQueue.class);
     private final Topic topic; // 이 큐가 속한 토픽
-    private final SegmentDirectory directory; // 세그먼트 파일 관리 객체. 실제 디스크 I/O를 담당
+    private final SegmentChain directory; // 세그먼트 파일 관리 객체. 실제 디스크 I/O를 담당
     private final Map<String, OffsetStore> offsetStores = new ConcurrentHashMap<>(); // dispatcher 이름 → OffsetStore. 여러 dispatcher가 동시에 독립적으로 offset을 관리
     private final ReentrantLock writeLock = new ReentrantLock(); // offer는 단일 writer만 허용. reader(peek)는 lock 없이 FileChannel positional read
 
     public TopicQueue(Topic topic,
-                      SegmentDirectory directory) { // TopicQueueRegistry에서 생성. SegmentDirectory는 이미 열려 있는 상태로 전달됨
+                      SegmentChain directory) { // TopicQueueRegistry에서 생성. SegmentChain는 이미 열려 있는 상태로 전달됨
         this.topic = topic;
         this.directory = directory;
     }
@@ -45,7 +45,7 @@ public class TopicQueue { // 한 토픽의 메시지를 디스크에 저장하�
             String dispatcherName) { // dispatcher 최초 등록 시 호출. OffsetStore를 열고 마지막 커밋 위치에서 시작하는 Offset을 반환
         OffsetStore store = offsetStores.computeIfAbsent(
                 dispatcherName,
-                name -> OffsetStore.openOrCreate(directory.offsetsDir(), name) // 파일 없으면 생성(초기값 0), 있으면 기존 값 유지
+                name -> OffsetStore.open(directory.offsetsDir(), name) // 파일 없으면 생성(초기값 0), 있으면 기존 값 유지
         );
 
         return new Offset(store.read()); // 저장된 마지막 commit 위치에서 재개. 브로커 재시작 시 중단 지점부터 다시 시작

@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mmmq.broker.config.TopicStorageProperties;
 import org.mmmq.broker.dispatcher.Dispatcher;
-import org.mmmq.broker.topicqueue.storage.SegmentDirectory;
+import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 import org.springframework.beans.factory.ObjectProvider;
@@ -47,7 +47,7 @@ class TopicQueueRegistryRestoreTest {
     @DisplayName("dispatcher가 마지막 commit 위치에서 재개한다")
     void resumesFromLastCommittedOffset(@TempDir Path tempDir) {
         final Path topicDir = tempDir.resolve("topic-a");
-        final SegmentDirectory directory = SegmentDirectory.openOrCreate(topicDir, DEFAULT_MAX_BYTES);
+        final SegmentChain directory = SegmentChain.open(topicDir, DEFAULT_MAX_BYTES);
         final TopicQueue queue = new TopicQueue(new Topic("topic-a"), directory);
         queue.offer(new Message(new Topic("topic-a"), Map.of("seq", 1))); // offset=0
         queue.offer(new Message(new Topic("topic-a"), Map.of("seq", 2))); // offset=1
@@ -84,7 +84,7 @@ class TopicQueueRegistryRestoreTest {
 
     private void seedTopic(Path baseDir, String topicName, Message message) { // 재시작 전 상태를 준비하는 헬퍼: 토픽 디렉토리와 세그먼트 파일 생성
         final Path topicDir = baseDir.resolve(topicName);
-        try (SegmentDirectory directory = SegmentDirectory.openOrCreate(topicDir, DEFAULT_MAX_BYTES)) {
+        try (SegmentChain directory = SegmentChain.open(topicDir, DEFAULT_MAX_BYTES)) {
             directory.append(message); // 메시지를 디스크에 기록하고 채널 닫기
         }
     }

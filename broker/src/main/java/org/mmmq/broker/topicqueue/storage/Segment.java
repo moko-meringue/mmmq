@@ -14,7 +14,6 @@ final class Segment implements Closeable {
 
     private static final String EXTENSION = ".mmm";
     private static final String FILE_NAME_FORMAT = "segment-%020d"; // 20자리 zero-padding: lexicographic 정렬 = numeric 정렬 보장
-    private static final int LENGTH_HEADER_SIZE = Integer.BYTES; // 레코드 앞에 붙는 길이 헤더 크기 (4 bytes)
 
     private final Path path; // 에러 메시지에 파일 경로를 포함하기 위해 보존
     private final FileHandle fileHandle; // positional read/write를 지원하는 NIO 채널. read(buf, pos)는 채널의 position을 변경하지 않아 thread-safe
@@ -24,21 +23,22 @@ final class Segment implements Closeable {
         this.path = path;
         this.fileHandle = fileHandle;
         this.index = index;
+        recover();
     }
 
-    static Segment openOrCreate(Path dir, long startOffset) { // startOffset으로 파일명을 결정하고 .mmm/.idx를 각각 열거나 생성
+    static Segment open(Path dir,
+                        long startOffset) { // startOffset으로 파일명을 결정하고 .mmm/.idx를 각각 열거나 생성. 반환된 segment는 즉시 사용 가능한 일관된 상태
         String baseName = String.format(FILE_NAME_FORMAT, startOffset);
         Path segmentPath = dir.resolve(baseName + EXTENSION);
         try {
             FileHandle fileHandle = FileHandle.open(
                     segmentPath,
                     StandardOpenOption.CREATE,  // 파일이 없으면 새로 생성
-                    StandardOpenOption.READ,    // recoverActiveSegment에서 읽기도 필요
+                    StandardOpenOption.READ,    // recover에서 읽기도 필요
                     StandardOpenOption.WRITE    // append 쓰기에 필요
             );
-            SegmentIndex index = SegmentIndex.openOrCreate(dir, baseName);
-
-            return new Segment(segmentPath, fileHandle, index);
+            SegmentIndex index = SegmentIndex.open(dir, baseName);
+            return new Segment(segmentPath, fileHandle, index); // 생성자가 recover까지 수행해 즉시 사용 가능 상태로 반환
         } catch (IOException exception) {
             throw new StorageException("Failed to open segment: " + segmentPath, exception);
         }
@@ -48,25 +48,19 @@ final class Segment implements Closeable {
         return index.count();
     }
 
-    long size() { // 현재 .mmm 파일 크기. SegmentDirectory가 rotate 여부를 판단할 때 사용
+    boolean reaches(long size) {
         try {
-            return fileHandle.size();
+            return fileHandle.size() >= size;
         } catch (IOException exception) {
             throw new StorageException("Failed to read size of segment: " + path, exception);
         }
     }
 
     void append(Message message) {
-        byte[] payload = MessageCodec.encode(message);
-        int length = payload.length;
-        ByteBuffer buffer = ByteBuffer.allocate(LENGTH_HEADER_SIZE + length);
-        buffer.putInt(length);
-        buffer.put(payload);
-
+        Entry entry = Entry.from(message);
         try {
-            long position = fileHandle.appendFully(ByteBuffer.wrap(buffer.array()),
-                    FlushMode.FSYNC); // .mmm 쓰기 + fsync #1
-            index.appendAndForce(position); // .idx 쓰기 + fsync #2. segment fsync 완료 후 실행해야 불변식 유지
+            long address = fileHandle.appendFully(entry.toBuffer(), FlushMode.FSYNC); // .mmm 쓰기 + fsync #1
+            index.appendAndForce(address); // .idx 쓰기 + fsync #2. segment fsync 완료 후 실행해야 불변식 유지
         } catch (IOException exception) {
             throw new StorageException("Failed to append to segment: " + path, exception);
         }
@@ -80,45 +74,39 @@ final class Segment implements Closeable {
         if (offset >= count()) {
             return null;
         }
-        long position = index.readPositionAt(offset); // .idx에서 .mmm 내 record 시작 위치 조회
+        long address = index.readAddressAt(offset); // .idx에서 .mmm 내 entry 시작 주소 조회
         try {
-            int payloadLength = getPayloadLengthAt(position);
-            byte[] payload = fileHandle.readFully(position + LENGTH_HEADER_SIZE, payloadLength);
-
-            return MessageCodec.decode(payload);
+            return Entry.readFrom(fileHandle, address).toMessage();
         } catch (IOException exception) {
             throw new StorageException("Failed to read from segment: " + path, exception);
         }
     }
 
-    void recover() { // 부팅 시 마지막 세그먼트의 정합성을 검사하고 미커밋 trailing bytes를 제거
-        long entryCount = count();
-        long segmentSize = size();
-        if (entryCount == 0) {
-            if (segmentSize > 0) {
-                truncate(0);
-            }
-            return;
-        }
-        long lastPosition = index.readPositionAt(entryCount - 1);
-        long expectedSegmentSize = lastPosition + LENGTH_HEADER_SIZE + getPayloadLengthAt(lastPosition);
-        if (expectedSegmentSize > segmentSize) {
-            throw new StorageException(
-                    "Last record is truncated: " + path
-                            + ", recordStart=" + lastPosition + ", requiredEnd=" + expectedSegmentSize
-                            + ", actualSize=" + segmentSize
-            );
-        }
-        if (segmentSize > expectedSegmentSize) {
-            truncate(expectedSegmentSize);
-        }
-    }
-
-    private int getPayloadLengthAt(long position) { // position에서 레코드 길이 헤더(4 bytes)를 읽어 payload 길이를 반환
+    private void recover() { // 생성자에서만 호출. 마지막 세그먼트의 정합성을 검사하고 미커밋 trailing bytes를 제거
         try {
-            return ByteBuffer.wrap(fileHandle.readFully(position, LENGTH_HEADER_SIZE)).getInt();
+            long entryCount = count();
+            long segmentSize = fileHandle.size();
+            if (entryCount == 0) {
+                if (segmentSize > 0) {
+                    truncate(0);
+                }
+                return;
+            }
+            long lastAddress = index.readAddressAt(entryCount - 1);
+            Entry lastEntry = Entry.readFrom(fileHandle, lastAddress);
+            long expectedSegmentSize = lastAddress + lastEntry.size();
+            if (expectedSegmentSize > segmentSize) {
+                throw new StorageException(
+                        "Last entry is truncated: " + path
+                                + ", entryStart=" + lastAddress + ", requiredEnd=" + expectedSegmentSize
+                                + ", actualSize=" + segmentSize
+                );
+            }
+            if (segmentSize > expectedSegmentSize) {
+                truncate(expectedSegmentSize);
+            }
         } catch (IOException exception) {
-            throw new StorageException("Failed to read payload length from segment: " + path, exception);
+            throw new StorageException("Failed to recover segment: " + path, exception);
         }
     }
 
@@ -140,14 +128,29 @@ final class Segment implements Closeable {
         index.close();
     }
 
-    private static final class MessageCodec {
+    private record Entry(
+            byte[] messageBytes
+    ) {
 
+        private static final int LENGTH_HEADER_SIZE = Integer.BYTES; // entry 앞에 붙는 길이 헤더 크기 (4 bytes)
         private static final ObjectMapper MAPPER = new ObjectMapper(); // ObjectMapper는 thread-safe이므로 공유 인스턴스 하나로 재사용
 
-        private MessageCodec() {
+        Entry {
+            if (messageBytes == null) {
+                throw new IllegalArgumentException("messageBytes must not be null");
+            }
         }
 
-        static byte[] encode(Message message) throws StorageException {
+        static Entry from(Message message) {
+            return new Entry(encode(message));
+        }
+
+        static Entry readFrom(FileHandle file, long address) throws IOException {
+            int length = ByteBuffer.wrap(file.readFully(address, LENGTH_HEADER_SIZE)).getInt();
+            return new Entry(file.readFully(address + LENGTH_HEADER_SIZE, length));
+        }
+
+        private static byte[] encode(Message message) {
             try {
                 return MAPPER.writeValueAsBytes(message);
             } catch (Exception exception) {
@@ -155,12 +158,29 @@ final class Segment implements Closeable {
             }
         }
 
-        static Message decode(byte[] payload) throws StorageException {
+        private static Message decode(byte[] messageBytes) {
             try {
-                return MAPPER.readValue(payload, Message.class);
+                return MAPPER.readValue(messageBytes, Message.class);
             } catch (Exception exception) {
                 throw new StorageException("Failed to decode message", exception);
             }
+        }
+
+        ByteBuffer toBuffer() {
+            ByteBuffer buffer = ByteBuffer.allocate(size());
+            buffer.putInt(messageBytes.length);
+            buffer.put(messageBytes);
+            buffer.flip();
+
+            return buffer;
+        }
+
+        Message toMessage() {
+            return decode(messageBytes);
+        }
+
+        int size() { // disk 상의 entry 전체 크기: 길이 헤더 + messageBytes
+            return LENGTH_HEADER_SIZE + messageBytes.length;
         }
     }
 }

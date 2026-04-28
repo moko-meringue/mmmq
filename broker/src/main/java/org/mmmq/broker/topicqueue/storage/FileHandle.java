@@ -20,29 +20,29 @@ final class FileHandle implements Closeable {
     }
 
     long appendFully(ByteBuffer buffer, FlushMode flushMode) throws IOException {
-        long position = channel.size();
-        writeFully(position, buffer, flushMode);
+        long address = channel.size();
+        writeFully(address, buffer, flushMode);
 
-        return position;
+        return address;
     }
 
-    void writeFully(long position, ByteBuffer buffer, FlushMode flushMode) throws IOException {
-        long writePosition = position;
+    void writeFully(long address, ByteBuffer buffer, FlushMode flushMode) throws IOException {
+        long writeAddress = address;
         while (buffer.hasRemaining()) {
-            writePosition += channel.write(buffer, writePosition);
+            writeAddress += channel.write(buffer, writeAddress);
         }
         flushMode.flush(channel);
     }
 
-    byte[] readFully(long position, int length) throws IOException {
-        if (position < 0 || length < 0) {
+    byte[] readFully(long address, int length) throws IOException {
+        if (address < 0 || length < 0) {
             throw new IllegalArgumentException(
-                    "position and length must be non-negative: position=" + position + ", length=" + length);
+                    "address and length must be non-negative: address=" + address + ", length=" + length);
         }
         ByteBuffer buffer = ByteBuffer.allocate(length);
         while (buffer.hasRemaining()) {
-            if (channel.read(buffer, position + buffer.position()) <= 0) {
-                throw new IOException("Unexpected EOF at position " + (position + buffer.position()));
+            if (channel.read(buffer, address + buffer.position()) <= 0) {
+                throw new IOException("Unexpected EOF at address " + (address + buffer.position()));
             }
         }
 

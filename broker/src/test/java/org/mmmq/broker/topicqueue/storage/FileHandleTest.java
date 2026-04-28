@@ -27,7 +27,7 @@ class FileHandleTest {
     }
 
     @Test
-    @DisplayName("readFully는 지정 position에서 length bytes를 모두 읽는다")
+    @DisplayName("readFully는 지정 address에서 length bytes를 모두 읽는다")
     void readFullyReadsAllBytes(@TempDir Path tempDir) throws IOException {
         try (FileHandle fileHandle = open(tempDir)) {
             byte[] data = "hello".getBytes();
@@ -53,8 +53,8 @@ class FileHandleTest {
     }
 
     @Test
-    @DisplayName("non-zero position에서 write/read가 정확히 동작한다")
-    void writeAndReadAtNonZeroPosition(@TempDir Path tempDir) throws IOException {
+    @DisplayName("non-zero address에서 write/read가 정확히 동작한다")
+    void writeAndReadAtNonZeroAddress(@TempDir Path tempDir) throws IOException {
         try (FileHandle fileHandle = open(tempDir)) {
             byte[] first = "hello".getBytes();
             byte[] second = "world".getBytes();

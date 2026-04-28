@@ -15,7 +15,7 @@ class SegmentTest {
     @Test
     @DisplayName("append 후 readAt 으로 같은 메시지를 읽을 수 있다")
     void roundTrip(@TempDir Path tempDir) {
-        try (Segment segment = Segment.openOrCreate(tempDir, 0L)) {
+        try (Segment segment = Segment.open(tempDir, 0L)) {
             final Message message = new Message(new Topic("topic"), Map.of("k", "v"));
 
             segment.append(message);
@@ -27,7 +27,7 @@ class SegmentTest {
     @Test
     @DisplayName("readAt에 존재하지 않는 offset이면 null 반환")
     void readAtNonExistentOffsetReturnsNull(@TempDir Path tempDir) {
-        try (Segment segment = Segment.openOrCreate(tempDir, 0L)) {
+        try (Segment segment = Segment.open(tempDir, 0L)) {
             assertThat(segment.readAt(0L)).isNull();
             assertThat(segment.readAt(100L)).isNull();
         }
@@ -36,7 +36,7 @@ class SegmentTest {
     @Test
     @DisplayName("readAt은 상대 offset 기준으로 동작한다")
     void readAtUsesRelativeOffset(@TempDir Path tempDir) {
-        try (Segment segment = Segment.openOrCreate(tempDir, 100L)) {
+        try (Segment segment = Segment.open(tempDir, 100L)) {
             final Message message = new Message(new Topic("topic"), Map.of("k", "v"));
             segment.append(message);
 
@@ -48,7 +48,7 @@ class SegmentTest {
     @Test
     @DisplayName("count는 append한 메시지 수를 반환한다")
     void count(@TempDir Path tempDir) {
-        try (Segment segment = Segment.openOrCreate(tempDir, 50L)) {
+        try (Segment segment = Segment.open(tempDir, 50L)) {
             assertThat(segment.count()).isZero();
 
             segment.append(new Message(new Topic("topic"), Map.of("k", "v")));

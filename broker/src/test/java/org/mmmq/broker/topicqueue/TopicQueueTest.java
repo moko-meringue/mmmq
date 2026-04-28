@@ -7,7 +7,7 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.mmmq.broker.topicqueue.storage.SegmentDirectory;
+import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 
@@ -106,7 +106,7 @@ class TopicQueueTest {
 
     private TopicQueue createQueue(Path baseDir, String topicName) { // 테스트용 TopicQueue 생성 헬퍼: @TempDir 기반 디렉토리 사용
         final Path topicDir = baseDir.resolve(topicName); // data/{topic}/ 역할
-        final SegmentDirectory directory = SegmentDirectory.openOrCreate(topicDir, DEFAULT_MAX_BYTES);
+        final SegmentChain directory = SegmentChain.open(topicDir, DEFAULT_MAX_BYTES);
 
         return new TopicQueue(new Topic(topicName), directory);
     }

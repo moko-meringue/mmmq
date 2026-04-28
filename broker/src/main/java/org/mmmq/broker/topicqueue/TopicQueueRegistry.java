@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import org.mmmq.broker.config.TopicStorageProperties;
 import org.mmmq.broker.dispatcher.Dispatcher;
-import org.mmmq.broker.topicqueue.storage.SegmentDirectory;
+import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +52,7 @@ public class TopicQueueRegistry implements
 
     private TopicQueue create(Topic topic) { // TopicQueue를 새로 생성하고 등록된 모든 Dispatcher에 구독을 연결
         Path topicDir = Path.of(properties.dataDir(), topic.name()); // data/{topic}/ 경로
-        SegmentDirectory directory = SegmentDirectory.openOrCreate(topicDir,
+        SegmentChain directory = SegmentChain.open(topicDir,
                 properties.segmentMaxBytes()); // 세그먼트 파일 열기/생성 + 마지막 세그먼트 정합성 복구
         TopicQueue queue = new TopicQueue(topic, directory);
         log.info("Restored topic queue: {}", topic.name());

@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.topicqueue.TopicQueue;
-import org.mmmq.broker.topicqueue.storage.SegmentDirectory;
+import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.core.Host;
 import org.mmmq.core.WebProtocol;
 import org.mmmq.core.message.Message;
@@ -141,7 +141,7 @@ class DispatcherTest {
 
     private TopicQueue createTopicQueue(Topic topic) { // @TempDir 내에 토픽 전용 서브디렉토리를 만들어 TopicQueue 생성
         final Path topicDir = tempDir.resolve(topic.name()); // 토픽마다 격리된 디렉토리
-        final SegmentDirectory directory = SegmentDirectory.openOrCreate(topicDir, SEGMENT_MAX_BYTES);
+        final SegmentChain directory = SegmentChain.open(topicDir, SEGMENT_MAX_BYTES);
 
         return new TopicQueue(topic, directory);
     }

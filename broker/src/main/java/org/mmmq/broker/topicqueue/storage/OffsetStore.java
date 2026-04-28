@@ -21,7 +21,7 @@ public final class OffsetStore implements Closeable { // dispatcher 이름별 �
         this.fileHandle = fileHandle;
     }
 
-    public static OffsetStore openOrCreate(Path base, String dispatcherName) {
+    public static OffsetStore open(Path base, String dispatcherName) {
         Path file = base.resolve(dispatcherName + EXTENSION);
         try {
             Files.createDirectories(base);
@@ -55,12 +55,12 @@ public final class OffsetStore implements Closeable { // dispatcher 이름별 �
         }
     }
 
-    public void write(long value) { // value를 파일에 덮어쓰고 fsync. at-least-once의 commit 지점: 이 호출 완료 후에만 offset이 전진
+    public void write(long offset) { // offset을 파일에 덮어쓰고 fsync. at-least-once의 commit 지점: 이 호출 완료 후에만 offset이 전진
         try {
             ByteBuffer buffer = ByteBuffer.allocate(VALUE_BYTES);
-            buffer.putLong(value);
+            buffer.putLong(offset);
             buffer.flip();
-            fileHandle.writeFully(0, buffer, FlushMode.FSYNC); // offset 파일은 항상 위치 0에 덮어씀. 파일 크기는 항상 8바이트
+            fileHandle.writeFully(0, buffer, FlushMode.FSYNC); // offset 파일은 항상 address 0에 덮어씀. 파일 크기는 항상 8바이트
         } catch (IOException exception) {
             throw new StorageException("Failed to write offset: " + file, exception);
         }

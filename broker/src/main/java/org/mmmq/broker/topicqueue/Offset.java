@@ -12,7 +12,7 @@ public final class Offset implements Comparable<Offset> { // 메시지 읽기 �
         this.value = value;
     }
 
-    public long value() { // 현재 offset 값 반환. SegmentDirectory.readAt() 호출 시 인자로 전달됨
+    public long value() { // 현재 offset 값 반환. SegmentChain.readAt() 호출 시 인자로 전달됨
         return value;
     }
 
