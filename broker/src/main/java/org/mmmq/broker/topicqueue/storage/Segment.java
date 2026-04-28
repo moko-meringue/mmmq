@@ -5,8 +5,14 @@ import jakarta.annotation.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.mmmq.broker.topicqueue.storage.FileHandle.FlushMode;
 import org.mmmq.core.message.Message;
 
@@ -14,20 +20,40 @@ final class Segment implements Closeable {
 
     private static final String EXTENSION = ".mmm";
     private static final String FILE_NAME_FORMAT = "segment-%020d"; // 20자리 zero-padding: lexicographic 정렬 = numeric 정렬 보장
+    private static final Pattern FILE_NAME_PATTERN = Pattern.compile("segment-(\\d{20})\\.mmm"); // FILE_NAME_FORMAT의 역방향 파싱용
 
     private final Path path; // 에러 메시지에 파일 경로를 포함하기 위해 보존
+    private final long startOffset; // 이 segment의 첫 메시지의 absolute offset. 파일명에 인코딩된 식별자
     private final FileHandle fileHandle; // positional read/write를 지원하는 NIO 채널. read(buf, pos)는 채널의 position을 변경하지 않아 thread-safe
     private final SegmentIndex index; // .idx 파일 핸들
 
-    private Segment(Path path, FileHandle fileHandle, SegmentIndex index) {
+    private Segment(Path path, long startOffset, FileHandle fileHandle, SegmentIndex index) {
         this.path = path;
+        this.startOffset = startOffset;
         this.fileHandle = fileHandle;
         this.index = index;
         recover();
     }
 
-    static Segment open(Path dir,
-                        long startOffset) { // startOffset으로 파일명을 결정하고 .mmm/.idx를 각각 열거나 생성. 반환된 segment는 즉시 사용 가능한 일관된 상태
+    static List<Segment> openAll(Path dir) { // dir 내의 모든 segment 파일을 스캔해 열어 반환. 식별자(파일명) 컨벤션을 Segment 안에 캡슐화
+        try (Stream<Path> entries = Files.list(dir)) {
+            return entries
+                    .filter(Files::isRegularFile)
+                    .map(file -> tryParseStartOffset(file).map(startOffset -> open(dir, startOffset)))
+                    .flatMap(Optional::stream)
+                    .toList();
+        } catch (IOException exception) {
+            throw new StorageException("Failed to list segments in: " + dir, exception);
+        }
+    }
+
+    private static Optional<Long> tryParseStartOffset(Path file) {
+        Matcher matcher = FILE_NAME_PATTERN.matcher(file.getFileName().toString());
+
+        return matcher.matches() ? Optional.of(Long.parseLong(matcher.group(1))) : Optional.empty();
+    }
+
+    static Segment open(Path dir, long startOffset) {
         String baseName = String.format(FILE_NAME_FORMAT, startOffset);
         Path segmentPath = dir.resolve(baseName + EXTENSION);
         try {
@@ -38,21 +64,37 @@ final class Segment implements Closeable {
                     StandardOpenOption.WRITE    // append 쓰기에 필요
             );
             SegmentIndex index = SegmentIndex.open(dir, baseName);
-            return new Segment(segmentPath, fileHandle, index); // 생성자가 recover까지 수행해 즉시 사용 가능 상태로 반환
+            return new Segment(segmentPath, startOffset, fileHandle, index); // 생성자가 recover까지 수행해 즉시 사용 가능 상태로 반환
         } catch (IOException exception) {
             throw new StorageException("Failed to open segment: " + segmentPath, exception);
         }
     }
 
-    long count() {
-        return index.count();
-    }
-
-    boolean reaches(long size) {
+    private void recover() { // 생성자에서만 호출. 마지막 세그먼트의 정합성을 검사하고 미커밋 trailing bytes를 제거
         try {
-            return fileHandle.size() >= size;
+            long entryCount = count();
+            long segmentSize = fileHandle.size();
+            if (entryCount == 0) {
+                if (segmentSize > 0) {
+                    fileHandle.truncate(0, FlushMode.FSYNC);
+                }
+                return;
+            }
+            long lastAddress = index.readAddressAt(entryCount - 1);
+            Entry lastEntry = Entry.readFrom(fileHandle, lastAddress);
+            long expectedSegmentSize = lastAddress + lastEntry.size();
+            if (expectedSegmentSize > segmentSize) {
+                throw new StorageException(
+                        "Last entry is truncated: " + path
+                                + ", entryStart=" + lastAddress + ", requiredEnd=" + expectedSegmentSize
+                                + ", actualSize=" + segmentSize
+                );
+            }
+            if (segmentSize > expectedSegmentSize) {
+                fileHandle.truncate(expectedSegmentSize, FlushMode.FSYNC);
+            }
         } catch (IOException exception) {
-            throw new StorageException("Failed to read size of segment: " + path, exception);
+            throw new StorageException("Failed to recover segment: " + path, exception);
         }
     }
 
@@ -82,39 +124,19 @@ final class Segment implements Closeable {
         }
     }
 
-    private void recover() { // 생성자에서만 호출. 마지막 세그먼트의 정합성을 검사하고 미커밋 trailing bytes를 제거
-        try {
-            long entryCount = count();
-            long segmentSize = fileHandle.size();
-            if (entryCount == 0) {
-                if (segmentSize > 0) {
-                    truncate(0);
-                }
-                return;
-            }
-            long lastAddress = index.readAddressAt(entryCount - 1);
-            Entry lastEntry = Entry.readFrom(fileHandle, lastAddress);
-            long expectedSegmentSize = lastAddress + lastEntry.size();
-            if (expectedSegmentSize > segmentSize) {
-                throw new StorageException(
-                        "Last entry is truncated: " + path
-                                + ", entryStart=" + lastAddress + ", requiredEnd=" + expectedSegmentSize
-                                + ", actualSize=" + segmentSize
-                );
-            }
-            if (segmentSize > expectedSegmentSize) {
-                truncate(expectedSegmentSize);
-            }
-        } catch (IOException exception) {
-            throw new StorageException("Failed to recover segment: " + path, exception);
-        }
+    long startOffset() {
+        return startOffset;
     }
 
-    private void truncate(long newSize) { // 파일을 newSize bytes로 잘라내고 fsync. 부팅 복구 시 미커밋 trailing bytes 제거에 사용
+    long count() {
+        return index.count();
+    }
+
+    boolean reaches(long size) {
         try {
-            fileHandle.truncate(newSize, FlushMode.FSYNC);
+            return fileHandle.size() >= size;
         } catch (IOException exception) {
-            throw new StorageException("Failed to truncate segment: " + path, exception);
+            throw new StorageException("Failed to read size of segment: " + path, exception);
         }
     }
 

@@ -5,27 +5,21 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import org.mmmq.core.message.Message;
 
 public final class SegmentChain implements Closeable { // 한 토픽의 세그먼트 파일 목록을 관리. 세그먼트 회전, offset 기반 조회, 부팅 복구를 담당
 
-    private static final Pattern SEGMENT_FILE_PATTERN = Pattern.compile(
-            "segment-(\\d{20})\\.mmm"); // 파일명에서 20자리 startOffset을 파싱하기 위한 정규식
     private static final String OFFSETS_DIR_NAME = "offsets"; // dispatcher offset 파일을 저장하는 서브디렉토리 이름
 
-    private final Path topicDir; // data/{topic}/ 디렉토리 경로
+    private final Path path; // data/{topic}/ 디렉토리 경로
     private final long segmentMaxBytes; // 세그먼트 회전 임계값. active 세그먼트 크기가 이 값 이상이면 새 세그먼트 생성
     private final ConcurrentSkipListMap<Long, Segment> segmentsByStartOffset = new ConcurrentSkipListMap<>(); // startOffset → Segment 맵. floorEntry로 임의 offset의 세그먼트를 O(log n)에 조회
     private Segment active; // 현재 쓰기 중인 세그먼트. 항상 segmentsByStartOffset의 가장 큰 startOffset을 가진 segment
 
-    private SegmentChain(Path topicDir, long segmentMaxBytes) { // 외부에서 직접 생성하지 않도록 private
-        this.topicDir = topicDir;
+    private SegmentChain(Path path, long segmentMaxBytes) { // 외부에서 직접 생성하지 않도록 private
+        this.path = path;
         this.segmentMaxBytes = segmentMaxBytes;
     }
 
@@ -44,7 +38,10 @@ public final class SegmentChain implements Closeable { // 한 토픽의 세그�
 
     public void append(Message message) { // 메시지를 active 세그먼트에 추가. 필요하면 먼저 회전
         if (active.reaches(segmentMaxBytes)) {
-            rotate();
+            long nextOffset = active.startOffset() + active.count();
+            Segment next = Segment.open(path, nextOffset); // 새 .mmm/.idx 파일 생성
+            segmentsByStartOffset.put(nextOffset, next); // 맵에 등록해 readAt에서 조회 가능하도록
+            active = next; // 이후 쓰기는 새 세그먼트로
         }
         active.append(message); // .mmm 쓰기 + fsync, .idx 쓰기 + fsync
     }
@@ -63,44 +60,17 @@ public final class SegmentChain implements Closeable { // 한 토픽의 세그�
     }
 
     public Path offsetsDir() { // data/{topic}/offsets/ 경로 반환. TopicQueue가 OffsetStore를 만들 때 사용
-        return topicDir.resolve(OFFSETS_DIR_NAME);
+        return path.resolve(OFFSETS_DIR_NAME);
     }
 
     private void bootstrap() { // 디렉토리에서 기존 세그먼트를 스캔해 맵에 등록하고 active 설정
-        List<Long> startOffsets = scanStartOffsets(); // 파일명 기준으로 정렬된 startOffset 목록
-        if (startOffsets.isEmpty()) { // 기존 세그먼트가 없으면 startOffset=0으로 첫 세그먼트를 새로 생성
-            Segment first = Segment.open(topicDir, 0L);
+        Segment.openAll(path).forEach( // ConcurrentSkipListMap이 키 기준으로 자동 정렬하므로 삽입 순서 무관
+                segment -> segmentsByStartOffset.put(segment.startOffset(), segment));
+        if (segmentsByStartOffset.isEmpty()) { // 기존 세그먼트가 없으면 startOffset=0으로 첫 세그먼트를 새로 생성
+            Segment first = Segment.open(path, 0L);
             segmentsByStartOffset.put(0L, first);
-            active = first;
-
-            return;
-        }
-        for (Long startOffset : startOffsets) { // 스캔된 세그먼트를 순서대로 맵에 등록. open이 recover까지 책임지므로 별도 복구 호출 불필요
-            Segment segment = Segment.open(topicDir, startOffset);
-            segmentsByStartOffset.put(startOffset, segment);
         }
         active = segmentsByStartOffset.lastEntry().getValue(); // 가장 큰 startOffset을 가진 세그먼트가 active
-    }
-
-    private List<Long> scanStartOffsets() { // 토픽 디렉토리의 .mmm 파일을 스캔해 startOffset 목록을 정렬된 순서로 반환
-        try (Stream<Path> entries = Files.list(topicDir)) {
-            return entries.filter(Files::isRegularFile) // 디렉토리(offsets/)는 제외
-                    .map(path -> path.getFileName().toString()) // 파일 경로 → 파일명만 추출
-                    .map(SEGMENT_FILE_PATTERN::matcher) // 파일명 → Matcher 생성
-                    .filter(Matcher::matches) // "segment-{20자리}.mmm" 형식에 맞는 파일만 남김
-                    .map(matcher -> Long.parseLong(matcher.group(1))) // 정규식 첫 번째 그룹(20자리 숫자) → long startOffset
-                    .sorted() // 오름차순 정렬: 오래된 세그먼트 → 최신 세그먼트 순
-                    .toList();
-        } catch (IOException exception) {
-            throw new StorageException("Failed to scan topic directory: " + topicDir, exception);
-        }
-    }
-
-    private void rotate() { // 새 세그먼트를 생성해 active로 교체
-        long nextOffset = segmentsByStartOffset.lastKey() + active.count();
-        Segment next = Segment.open(topicDir, nextOffset); // 새 .mmm/.idx 파일 생성
-        segmentsByStartOffset.put(nextOffset, next); // 맵에 등록해 readAt에서 조회 가능하도록
-        active = next; // 이후 쓰기는 새 세그먼트로
     }
 
     @Override
