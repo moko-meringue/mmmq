@@ -9,7 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -20,14 +19,15 @@ final class Segment implements Closeable {
 
     private static final String EXTENSION = ".mmm";
     private static final String FILE_NAME_FORMAT = "segment-%020d"; // 20자리 zero-padding: lexicographic 정렬 = numeric 정렬 보장
-    private static final Pattern FILE_NAME_PATTERN = Pattern.compile("segment-(\\d{20})\\.mmm"); // FILE_NAME_FORMAT의 역방향 파싱용
+    private static final Pattern FILE_NAME_PATTERN = Pattern.compile(
+            "segment-(\\d{20})\\.mmm"); // FILE_NAME_FORMAT의 역방향 파싱용
 
     private final Path path; // 에러 메시지에 파일 경로를 포함하기 위해 보존
     private final long startOffset; // 이 segment의 첫 메시지의 absolute offset. 파일명에 인코딩된 식별자
     private final FileHandle fileHandle; // positional read/write를 지원하는 NIO 채널. read(buf, pos)는 채널의 position을 변경하지 않아 thread-safe
-    private final SegmentIndex index; // .idx 파일 핸들
+    private final OffsetIndex index; // .idx 파일 핸들
 
-    private Segment(Path path, long startOffset, FileHandle fileHandle, SegmentIndex index) {
+    private Segment(Path path, long startOffset, FileHandle fileHandle, OffsetIndex index) {
         this.path = path;
         this.startOffset = startOffset;
         this.fileHandle = fileHandle;
@@ -35,27 +35,23 @@ final class Segment implements Closeable {
         recover();
     }
 
-    static List<Segment> openAll(Path dir) { // dir 내의 모든 segment 파일을 스캔해 열어 반환. 식별자(파일명) 컨벤션을 Segment 안에 캡슐화
-        try (Stream<Path> entries = Files.list(dir)) {
+    static List<Segment> openAll(Path base) { // base 내의 모든 segment 파일을 스캔해 열어 반환. 식별자(파일명) 컨벤션을 Segment 안에 캡슐화
+        try (Stream<Path> entries = Files.list(base)) {
             return entries
                     .filter(Files::isRegularFile)
-                    .map(file -> tryParseStartOffset(file).map(startOffset -> open(dir, startOffset)))
-                    .flatMap(Optional::stream)
+                    .map(file -> FILE_NAME_PATTERN.matcher(file.getFileName().toString()))
+                    .filter(Matcher::matches)
+                    .map(matcher -> Long.parseLong(matcher.group(1)))
+                    .map(startOffset -> open(base, startOffset))
                     .toList();
         } catch (IOException exception) {
-            throw new StorageException("Failed to list segments in: " + dir, exception);
+            throw new StorageException("Failed to list segments in: " + base, exception);
         }
     }
 
-    private static Optional<Long> tryParseStartOffset(Path file) {
-        Matcher matcher = FILE_NAME_PATTERN.matcher(file.getFileName().toString());
-
-        return matcher.matches() ? Optional.of(Long.parseLong(matcher.group(1))) : Optional.empty();
-    }
-
-    static Segment open(Path dir, long startOffset) {
+    static Segment open(Path base, long startOffset) {
         String baseName = String.format(FILE_NAME_FORMAT, startOffset);
-        Path segmentPath = dir.resolve(baseName + EXTENSION);
+        Path segmentPath = base.resolve(baseName + EXTENSION);
         try {
             FileHandle fileHandle = FileHandle.open(
                     segmentPath,
@@ -63,7 +59,7 @@ final class Segment implements Closeable {
                     StandardOpenOption.READ,    // recover에서 읽기도 필요
                     StandardOpenOption.WRITE    // append 쓰기에 필요
             );
-            SegmentIndex index = SegmentIndex.open(dir, baseName);
+            OffsetIndex index = OffsetIndex.open(base, baseName);
             return new Segment(segmentPath, startOffset, fileHandle, index); // 생성자가 recover까지 수행해 즉시 사용 가능 상태로 반환
         } catch (IOException exception) {
             throw new StorageException("Failed to open segment: " + segmentPath, exception);
@@ -80,7 +76,7 @@ final class Segment implements Closeable {
                 }
                 return;
             }
-            long lastAddress = index.readAddressAt(entryCount - 1);
+            long lastAddress = index.readAt(entryCount - 1);
             Entry lastEntry = Entry.readFrom(fileHandle, lastAddress);
             long expectedSegmentSize = lastAddress + lastEntry.size();
             if (expectedSegmentSize > segmentSize) {
@@ -102,7 +98,7 @@ final class Segment implements Closeable {
         Entry entry = Entry.from(message);
         try {
             long address = fileHandle.appendFully(entry.toBuffer(), FlushMode.FSYNC); // .mmm 쓰기 + fsync #1
-            index.appendAndForce(address); // .idx 쓰기 + fsync #2. segment fsync 완료 후 실행해야 불변식 유지
+            index.append(address); // .idx 쓰기 + fsync #2. segment fsync 완료 후 실행해야 불변식 유지
         } catch (IOException exception) {
             throw new StorageException("Failed to append to segment: " + path, exception);
         }
@@ -116,7 +112,7 @@ final class Segment implements Closeable {
         if (offset >= count()) {
             return null;
         }
-        long address = index.readAddressAt(offset); // .idx에서 .mmm 내 entry 시작 주소 조회
+        long address = index.readAt(offset); // .idx에서 .mmm 내 entry 시작 주소 조회
         try {
             return Entry.readFrom(fileHandle, address).toMessage();
         } catch (IOException exception) {
@@ -190,10 +186,7 @@ final class Segment implements Closeable {
 
         ByteBuffer toBuffer() {
             ByteBuffer buffer = ByteBuffer.allocate(size());
-            buffer.putInt(messageBytes.length);
-            buffer.put(messageBytes);
-            buffer.flip();
-
+            buffer.putInt(messageBytes.length).put(messageBytes).flip();
             return buffer;
         }
 

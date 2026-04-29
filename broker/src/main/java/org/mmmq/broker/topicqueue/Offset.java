@@ -8,7 +8,7 @@ public final class Offset implements Comparable<Offset> { // 메시지 읽기 �
         this(0L);
     }
 
-    public Offset(long value) { // OffsetStore에서 읽은 마지막 커밋 값으로 복원할 때 사용
+    public Offset(long value) { // OffsetCheckpoint에서 읽은 마지막 커밋 값으로 복원할 때 사용
         this.value = value;
     }
 

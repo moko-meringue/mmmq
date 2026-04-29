@@ -28,9 +28,9 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
 
     private static final Logger log = LoggerFactory.getLogger(Dispatcher.class);
     private static final Pattern NAME_PATTERN = Pattern.compile(
-            "[A-Za-z0-9._-]+"); // Dispatcher 이름은 offset 파일명으로 사용되므로 파일 시스템에 안전한 문자만 허용
+            "[A-Za-z0-9._-]+"); // Dispatcher 이름은 checkpoint 파일명으로 사용되므로 파일 시스템에 안전한 문자만 허용
 
-    final String name; // Dispatcher 식별자. offset 파일명({name}.offset)으로도 사용됨
+    final String name; // Dispatcher 식별자. checkpoint 파일명({name}.checkpoint)으로도 사용됨
     final Host host; // 메시지를 전달할 Consumer의 주소
     final List<org.mmmq.core.message.Pattern> patterns; // 이 Dispatcher가 처리할 토픽 패턴 목록 (Ant-style 와일드카드)
     final List<DeadLetterQueue> deadLetterQueues; // NACK 소진 시 실패 메시지를 보낼 DLQ 목록
@@ -126,15 +126,15 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
     }
 
     record Subscription( // 한 (Dispatcher, TopicQueue) 쌍의 구독 상태. 독립적인 offset과 단일 worker thread를 보유
-                         String dispatcherName, // commit() 호출 시 OffsetStore를 찾기 위한 키
+                         String dispatcherName, // commit() 호출 시 OffsetCheckpoint를 찾기 위한 키
                          Offset offset,         // 이 구독의 현재 읽기 위치. peek 전용이며 commit 시에만 증가
                          ExecutorService worker  // drain 작업을 처리하는 단일 스레드 executor
     ) {
 
-        Subscription(String dispatcherName, TopicQueue topicQueue) { // 신규 구독: OffsetStore에서 마지막 커밋 위치를 읽어 Offset을 초기화
+        Subscription(String dispatcherName, TopicQueue topicQueue) { // 신규 구독: OffsetCheckpoint에서 마지막 커밋 위치를 읽어 Offset을 초기화
             this(
                     dispatcherName,
-                    topicQueue.subscribe(dispatcherName), // OffsetStore.read()로 재시작 위치 복원
+                    topicQueue.subscribe(dispatcherName), // OffsetCheckpoint.read()로 재시작 위치 복원
                     new ThreadPoolExecutor(
                             0, 1, 60L, TimeUnit.SECONDS, // 최대 1개 스레드: 같은 토픽 메시지의 순서를 보장
                             new ArrayBlockingQueue<>(1), // 큐 크기 1: 이미 drain 중이면 추가 제출은 무시

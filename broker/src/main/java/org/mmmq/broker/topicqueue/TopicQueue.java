@@ -1,10 +1,10 @@
 package org.mmmq.broker.topicqueue;
 
 import jakarta.annotation.Nullable;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.io.Closeable;
 import java.util.concurrent.locks.ReentrantLock;
-import org.mmmq.broker.topicqueue.storage.OffsetStore;
+import org.mmmq.broker.topicqueue.storage.OffsetCheckpoint;
+import org.mmmq.broker.topicqueue.storage.OffsetCheckpointRegistry;
 import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.broker.topicqueue.storage.StorageException;
 import org.mmmq.core.message.Message;
@@ -12,17 +12,18 @@ import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TopicQueue { // 한 토픽의 메시지를 디스크에 저장하고 dispatcher에게 제공하는 단일 진실 저장소
+public class TopicQueue implements Closeable { // 한 토픽의 메시지를 디스크에 저장하고 dispatcher에게 제공하는 단일 진실 저장소
 
     private static final Logger log = LoggerFactory.getLogger(TopicQueue.class);
     private final Topic topic; // 이 큐가 속한 토픽
     private final SegmentChain segmentChain; // 세그먼트 파일 관리 객체. 실제 디스크 I/O를 담당
-    private final Map<String, OffsetStore> offsetStores = new ConcurrentHashMap<>(); // dispatcher 이름 → OffsetStore. 여러 dispatcher가 동시에 독립적으로 offset을 관리
+    private final OffsetCheckpointRegistry checkpointRegistry; // dispatcher 이름별 OffsetCheckpoint 컬렉션. checkpoints 디렉토리를 자체 관리
     private final ReentrantLock writeLock = new ReentrantLock(); // offer는 단일 writer만 허용. reader(peek)는 lock 없이 FileChannel positional read
 
-    public TopicQueue(Topic topic, SegmentChain segmentChain) {
+    public TopicQueue(Topic topic, SegmentChain segmentChain, OffsetCheckpointRegistry checkpointRegistry) {
         this.topic = topic;
         this.segmentChain = segmentChain;
+        this.checkpointRegistry = checkpointRegistry;
     }
 
     public boolean offer(Message message) { // 메시지를 디스크에 기록. fsync 완료 후 true 반환. IOException 발생 시 false 반환 → NACK
@@ -41,13 +42,9 @@ public class TopicQueue { // 한 토픽의 메시지를 디스크에 저장하�
     }
 
     public Offset subscribe(
-            String dispatcherName) { // dispatcher 최초 등록 시 호출. OffsetStore를 열고 마지막 커밋 위치에서 시작하는 Offset을 반환
-        OffsetStore store = offsetStores.computeIfAbsent(
-                dispatcherName,
-                name -> OffsetStore.open(segmentChain.offsetsDir(), name) // 파일 없으면 생성(초기값 0), 있으면 기존 값 유지
-        );
-
-        return new Offset(store.read()); // 저장된 마지막 commit 위치에서 재개. 브로커 재시작 시 중단 지점부터 다시 시작
+            String dispatcherName) { // dispatcher 최초 등록 시 호출. OffsetCheckpoint를 열고 마지막 커밋 위치에서 시작하는 Offset을 반환
+        return new Offset(
+                checkpointRegistry.register(dispatcherName).read()); // 저장된 마지막 commit 위치에서 재개. 브로커 재시작 시 중단 지점부터 다시 시작
     }
 
     @Nullable
@@ -58,14 +55,23 @@ public class TopicQueue { // 한 토픽의 메시지를 디스크에 저장하�
 
     public void commit(String dispatcherName, Offset offset) { // 메시지 처리 완료 후 호출. offset을 1 증가시키고 파일에 fsync
         offset.increment(); // 다음 peek에서 이 메시지가 아닌 다음 메시지를 읽도록 전진
-        OffsetStore store = offsetStores.get(dispatcherName);
-        if (store == null) { // subscribe 없이 commit을 호출하면 프로그래밍 오류
+        OffsetCheckpoint checkpoint = checkpointRegistry.get(dispatcherName);
+        if (checkpoint == null) { // subscribe 없이 commit을 호출하면 프로그래밍 오류 — 부재 해석은 토픽 레이어의 책임
             throw new IllegalStateException("Dispatcher not subscribed: " + dispatcherName);
         }
-        store.write(offset.value()); // fsync #3: 이 시점 이후 브로커 재시작 시 증가된 offset부터 재개
+        checkpoint.write(offset.value()); // fsync #3: 이 시점 이후 브로커 재시작 시 증가된 offset부터 재개
     }
 
     public Topic getTopic() { // FrontDispatcher와 Dispatcher가 토픽 매칭 여부를 확인할 때 사용
         return topic;
+    }
+
+    @Override
+    public void close() { // 보유한 storage 리소스 정리. SegmentChain 닫기에 실패해도 OffsetCheckpointRegistry는 닫힘
+        try {
+            segmentChain.close();
+        } finally {
+            checkpointRegistry.close();
+        }
     }
 }

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.topicqueue.TopicQueue;
+import org.mmmq.broker.topicqueue.storage.OffsetCheckpointRegistry;
 import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.core.Host;
 import org.mmmq.core.WebProtocol;
@@ -141,8 +144,14 @@ class DispatcherTest {
 
     private TopicQueue createTopicQueue(Topic topic) { // @TempDir 내에 토픽 전용 서브디렉토리를 만들어 TopicQueue 생성
         final Path topicDir = tempDir.resolve(topic.name()); // 토픽마다 격리된 디렉토리
-        final SegmentChain directory = SegmentChain.open(topicDir, SEGMENT_MAX_BYTES);
+        try {
+            Files.createDirectories(topicDir); // 토픽 디렉토리는 토픽 레이어 책임
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to create topic directory: " + topicDir, exception);
+        }
+        final SegmentChain segmentChain = SegmentChain.open(topicDir, SEGMENT_MAX_BYTES);
+        final OffsetCheckpointRegistry checkpointRegistry = OffsetCheckpointRegistry.open(topicDir);
 
-        return new TopicQueue(topic, directory);
+        return new TopicQueue(topic, segmentChain, checkpointRegistry);
     }
 }

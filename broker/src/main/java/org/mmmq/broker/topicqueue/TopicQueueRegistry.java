@@ -1,5 +1,6 @@
 package org.mmmq.broker.topicqueue;
 
+import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -7,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import org.mmmq.broker.config.TopicStorageProperties;
 import org.mmmq.broker.dispatcher.Dispatcher;
+import org.mmmq.broker.topicqueue.storage.OffsetCheckpointRegistry;
 import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
@@ -50,11 +52,28 @@ public class TopicQueueRegistry implements
         }
     }
 
+    @PreDestroy
+    public void shutdown() { // Spring context 종료 시 호출. 모든 TopicQueue를 닫아 fd 누수 방지
+        queues.values().forEach(queue -> {
+            try {
+                queue.close();
+            } catch (Exception exception) {
+                log.error("Failed to close topic queue: {}", queue.getTopic(), exception); // 한 큐의 close 실패가 다른 큐 정리를 막지 않도록 catch
+            }
+        });
+    }
+
     private TopicQueue create(Topic topic) { // TopicQueue를 새로 생성하고 등록된 모든 Dispatcher에 구독을 연결
         Path topicDir = Path.of(properties.dataDir(), topic.name()); // data/{topic}/ 경로
-        SegmentChain directory = SegmentChain.open(topicDir,
-                properties.segmentMaxBytes()); // 세그먼트 파일 열기/생성 + 마지막 세그먼트 정합성 복구
-        TopicQueue queue = new TopicQueue(topic, directory);
+        try {
+            Files.createDirectories(topicDir); // 토픽 디렉토리는 토픽 레이어 책임. storage 클래스들은 base 존재를 가정
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to create topic directory: " + topicDir, exception);
+        }
+        SegmentChain segmentChain = SegmentChain.open(topicDir,
+                properties.segmentMaxBytes()); // 세그먼트 파일 스캔 및 마지막 세그먼트 정합성 복구
+        OffsetCheckpointRegistry checkpointRegistry = OffsetCheckpointRegistry.open(topicDir); // checkpoints 서브디렉토리 생성 및 OffsetCheckpoint 컬렉션 준비
+        TopicQueue queue = new TopicQueue(topic, segmentChain, checkpointRegistry);
         log.info("Restored topic queue: {}", topic.name());
         dispatcherProvider.stream()
                 .forEach(dispatcher -> dispatcher.subscribe(queue)); // 각 Dispatcher가 자신의 패턴과 비교해 매칭되는 토픽만 구독

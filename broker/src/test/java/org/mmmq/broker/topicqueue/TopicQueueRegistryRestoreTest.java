@@ -2,6 +2,8 @@ package org.mmmq.broker.topicqueue;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -9,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mmmq.broker.config.TopicStorageProperties;
 import org.mmmq.broker.dispatcher.Dispatcher;
+import org.mmmq.broker.topicqueue.storage.OffsetCheckpointRegistry;
 import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
@@ -36,7 +39,7 @@ class TopicQueueRegistryRestoreTest {
 
         final TopicQueue queueA = registry.get(new Topic("topic-a")); // 복원된 큐 조회
         final TopicQueue queueB = registry.get(new Topic("topic-b"));
-        final Offset offsetA = queueA.subscribe("dispatcher-1"); // OffsetStore 없음 → offset=0
+        final Offset offsetA = queueA.subscribe("dispatcher-1"); // OffsetCheckpoint 없음 → offset=0
         final Offset offsetB = queueB.subscribe("dispatcher-1");
 
         assertThat(queueA.peek(offsetA)).isNotNull(); // offset=0에 메시지가 존재해야 함
@@ -45,15 +48,17 @@ class TopicQueueRegistryRestoreTest {
 
     @Test
     @DisplayName("dispatcher가 마지막 commit 위치에서 재개한다")
-    void resumesFromLastCommittedOffset(@TempDir Path tempDir) {
+    void resumesFromLastCommittedOffset(@TempDir Path tempDir) throws IOException {
         final Path topicDir = tempDir.resolve("topic-a");
-        final SegmentChain directory = SegmentChain.open(topicDir, DEFAULT_MAX_BYTES);
-        final TopicQueue queue = new TopicQueue(new Topic("topic-a"), directory);
+        Files.createDirectories(topicDir); // 토픽 디렉토리는 토픽 레이어 책임
+        final SegmentChain segmentChain = SegmentChain.open(topicDir, DEFAULT_MAX_BYTES);
+        final OffsetCheckpointRegistry checkpointRegistry = OffsetCheckpointRegistry.open(topicDir);
+        final TopicQueue queue = new TopicQueue(new Topic("topic-a"), segmentChain, checkpointRegistry);
         queue.offer(new Message(new Topic("topic-a"), Map.of("seq", 1))); // offset=0
         queue.offer(new Message(new Topic("topic-a"), Map.of("seq", 2))); // offset=1
         final Offset offset = queue.subscribe("dispatcher-1");
         queue.peek(offset);
-        queue.commit("dispatcher-1", offset); // offset=1을 OffsetStore에 fsync. 재시작 후 이 위치부터 재개해야 함
+        queue.commit("dispatcher-1", offset); // offset=1을 OffsetCheckpoint에 fsync. 재시작 후 이 위치부터 재개해야 함
 
         final TopicStorageProperties properties = new TopicStorageProperties(
                 tempDir.toAbsolutePath().toString(),
@@ -63,7 +68,7 @@ class TopicQueueRegistryRestoreTest {
         registry.afterSingletonsInstantiated(); // 부팅 복원
 
         final TopicQueue restored = registry.get(new Topic("topic-a")); // 복원된 큐
-        final Offset restoredOffset = restored.subscribe("dispatcher-1"); // OffsetStore에서 1을 읽음
+        final Offset restoredOffset = restored.subscribe("dispatcher-1"); // OffsetCheckpoint에서 1을 읽음
 
         assertThat(restoredOffset.value()).isEqualTo(1L); // 커밋된 위치(1)부터 재개됨을 검증
     }
@@ -84,8 +89,13 @@ class TopicQueueRegistryRestoreTest {
 
     private void seedTopic(Path baseDir, String topicName, Message message) { // 재시작 전 상태를 준비하는 헬퍼: 토픽 디렉토리와 세그먼트 파일 생성
         final Path topicDir = baseDir.resolve(topicName);
-        try (SegmentChain directory = SegmentChain.open(topicDir, DEFAULT_MAX_BYTES)) {
-            directory.append(message); // 메시지를 디스크에 기록하고 채널 닫기
+        try {
+            Files.createDirectories(topicDir);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to create topic directory: " + topicDir, exception);
+        }
+        try (SegmentChain segmentChain = SegmentChain.open(topicDir, DEFAULT_MAX_BYTES)) {
+            segmentChain.append(message); // 메시지를 디스크에 기록하고 채널 닫기
         }
     }
 
