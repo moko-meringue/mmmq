@@ -26,6 +26,10 @@ public class TopicQueue implements Closeable { // 한 토픽의 메시지를 디
         this.checkpointRegistry = checkpointRegistry;
     }
 
+    public Offset subscribe(String dispatcherName) {
+        return new Offset(checkpointRegistry.register(dispatcherName).read());
+    }
+
     public boolean offer(Message message) { // 메시지를 디스크에 기록. fsync 완료 후 true 반환. IOException 발생 시 false 반환 → NACK
         writeLock.lock(); // 동시에 여러 producer가 쓰면 세그먼트 회전 타이밍이 꼬일 수 있어 직렬화
         try {
@@ -42,10 +46,6 @@ public class TopicQueue implements Closeable { // 한 토픽의 메시지를 디
     @Nullable
     public Message peek(Offset offset) {
         return segmentChain.readAt(offset.value()); // lock 없음: FileChannel.read(buf, pos)는 thread-safe
-    }
-
-    public Offset subscribe(String dispatcherName) {
-        return new Offset(checkpointRegistry.register(dispatcherName).read());
     }
 
     public Offset commit(String dispatcherName, Offset offset) { // 메시지 처리 완료 후 호출. 진전된 새 Offset을 반환하고 파일에 fsync
