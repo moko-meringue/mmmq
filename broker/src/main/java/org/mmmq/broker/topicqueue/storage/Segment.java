@@ -9,8 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.mmmq.broker.topicqueue.storage.FileHandle.FlushMode;
 import org.mmmq.core.message.Message;
@@ -18,9 +16,7 @@ import org.mmmq.core.message.Message;
 final class Segment implements Closeable {
 
     private static final String EXTENSION = ".mmm";
-    private static final String FILE_NAME_FORMAT = "segment-%020d"; // 20자리 zero-padding: lexicographic 정렬 = numeric 정렬 보장
-    private static final Pattern FILE_NAME_PATTERN = Pattern.compile(
-            "segment-(\\d{20})\\.mmm"); // FILE_NAME_FORMAT의 역방향 파싱용
+    private static final int OFFSET_DIGITS = Long.toString(Long.MAX_VALUE).length();
 
     private final Path path; // 에러 메시지에 파일 경로를 포함하기 위해 보존
     private final long startOffset; // 이 segment의 첫 메시지의 absolute offset. 파일명에 인코딩된 식별자
@@ -39,9 +35,12 @@ final class Segment implements Closeable {
         try (Stream<Path> entries = Files.list(base)) {
             return entries
                     .filter(Files::isRegularFile)
-                    .map(file -> FILE_NAME_PATTERN.matcher(file.getFileName().toString()))
-                    .filter(Matcher::matches)
-                    .map(matcher -> Long.parseLong(matcher.group(1)))
+                    .map(file -> file.getFileName().toString())
+                    .filter(fileName -> fileName.length() == OFFSET_DIGITS + EXTENSION.length())
+                    .filter(fileName -> fileName.endsWith(EXTENSION))
+                    .map(fileName -> fileName.substring(0, OFFSET_DIGITS))
+                    .filter(digits -> digits.chars().allMatch(Character::isDigit))
+                    .map(Long::parseLong)
                     .map(startOffset -> open(base, startOffset))
                     .toList();
         } catch (IOException exception) {
@@ -50,19 +49,20 @@ final class Segment implements Closeable {
     }
 
     static Segment open(Path base, long startOffset) {
-        String baseName = String.format(FILE_NAME_FORMAT, startOffset);
-        Path segmentPath = base.resolve(baseName + EXTENSION);
+        Path path = base.resolve(
+                "0".repeat(OFFSET_DIGITS - Long.toString(startOffset).length()) + startOffset + EXTENSION
+        );
         try {
             FileHandle fileHandle = FileHandle.open(
-                    segmentPath,
+                    path,
                     StandardOpenOption.CREATE,  // 파일이 없으면 새로 생성
                     StandardOpenOption.READ,    // recover에서 읽기도 필요
                     StandardOpenOption.WRITE    // append 쓰기에 필요
             );
-            OffsetIndex index = OffsetIndex.open(base, baseName);
-            return new Segment(segmentPath, startOffset, fileHandle, index); // 생성자가 recover까지 수행해 즉시 사용 가능 상태로 반환
+            OffsetIndex index = OffsetIndex.open(base, startOffset);
+            return new Segment(path, startOffset, fileHandle, index); // 생성자가 recover까지 수행해 즉시 사용 가능 상태로 반환
         } catch (IOException exception) {
-            throw new StorageException("Failed to open segment: " + segmentPath, exception);
+            throw new StorageException("Failed to open segment: " + path, exception);
         }
     }
 

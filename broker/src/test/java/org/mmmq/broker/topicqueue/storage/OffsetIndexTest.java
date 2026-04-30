@@ -12,7 +12,7 @@ class OffsetIndexTest {
     @Test
     @DisplayName("entryCount는 파일 size를 8로 나눈 값과 같다")
     void countMatchesByteSize(@TempDir Path tempDir) {
-        try (OffsetIndex index = OffsetIndex.open(tempDir, "test")) {
+        try (OffsetIndex index = OffsetIndex.open(tempDir, 0L)) {
             index.append(0L);   // 8 bytes
             index.append(100L); // 16 bytes
             index.append(200L); // 24 bytes
@@ -24,7 +24,7 @@ class OffsetIndexTest {
     @Test
     @DisplayName("readAddressAt 결과는 append 한 값과 동일하다")
     void readAddressRoundTrip(@TempDir Path tempDir) {
-        try (OffsetIndex index = OffsetIndex.open(tempDir, "test")) {
+        try (OffsetIndex index = OffsetIndex.open(tempDir, 0L)) {
             index.append(0L);   // relativeOffset=0에 0 저장
             index.append(100L); // relativeOffset=1에 100 저장
             index.append(200L); // relativeOffset=2에 200 저장
@@ -38,7 +38,7 @@ class OffsetIndexTest {
     @Test
     @DisplayName("새로 만든 index는 entryCount가 0이다")
     void newIndexHasZeroEntries(@TempDir Path tempDir) {
-        try (OffsetIndex index = OffsetIndex.open(tempDir, "test")) {
+        try (OffsetIndex index = OffsetIndex.open(tempDir, 0L)) {
             assertThat(index.count()).isZero(); // 빈 파일: size=0, size/8=0
         }
     }

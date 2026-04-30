@@ -67,7 +67,7 @@ class SegmentChainTest {
             directory.append(new Message(new Topic("topic"), Map.of("k", "v"))); // 정상 메시지 1개 커밋
         } // close(): 브로커 정상 종료 시뮬레이션
 
-        final Path segmentFile = tempDir.resolve("segment-00000000000000000000.mmm"); // 첫 세그먼트 .mmm 파일 경로
+        final Path segmentFile = tempDir.resolve("0000000000000000000.mmm"); // 첫 세그먼트 .mmm 파일 경로
         final long beforeSize = Files.size(segmentFile); // 정상 종료 후 .mmm 크기 보존
         try (FileChannel channel = FileChannel.open(segmentFile, StandardOpenOption.WRITE, StandardOpenOption.APPEND)) {
             channel.write(ByteBuffer.wrap("garbage".getBytes())); // 비정상 종료 시 fsync 안된 partial write 시뮬레이션
@@ -87,7 +87,7 @@ class SegmentChainTest {
         try (SegmentChain directory = SegmentChain.open(tempDir, DEFAULT_MAX_BYTES)) {
             directory.append(new Message(new Topic("topic"), Map.of("k", "v"))); // 정상 메시지 커밋
         }
-        final Path segmentFile = tempDir.resolve("segment-00000000000000000000.mmm");
+        final Path segmentFile = tempDir.resolve("0000000000000000000.mmm");
         try (FileChannel channel = FileChannel.open(segmentFile, StandardOpenOption.WRITE)) {
             channel.truncate(2L); // .mmm을 강제로 2 bytes로 잘라 .idx가 가리키는 위치보다 짧게 만들어 손상 시뮬레이션
         }
