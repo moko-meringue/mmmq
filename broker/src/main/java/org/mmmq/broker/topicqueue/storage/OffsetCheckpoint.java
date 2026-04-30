@@ -25,8 +25,7 @@ public final class OffsetCheckpoint implements Closeable { // 이름과 연결�
         this.fileHandle = fileHandle;
     }
 
-    static List<OffsetCheckpoint> openAll(
-            Path base) { // base 내의 모든 checkpoint 파일을 스캔해 열어 반환. 식별자(파일명) 컨벤션을 OffsetCheckpoint 안에 캡슐화
+    static List<OffsetCheckpoint> openAll(Path base) {
         try (Stream<Path> entries = Files.list(base)) {
             return entries
                     .filter(Files::isRegularFile)
@@ -54,7 +53,6 @@ public final class OffsetCheckpoint implements Closeable { // 이름과 연결�
             if (fileHandle.size() == 0) {
                 checkpoint.write(0L);
             }
-
             return checkpoint;
         } catch (IOException exception) {
             throw new StorageException("Failed to open offset checkpoint: " + file, exception);
