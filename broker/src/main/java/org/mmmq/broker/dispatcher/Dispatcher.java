@@ -15,6 +15,7 @@ import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
+import org.mmmq.core.message.TopicPattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -32,19 +33,19 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
 
     final String name; // Dispatcher 식별자. checkpoint 파일명({name}.checkpoint)으로도 사용됨
     final Host host; // 메시지를 전달할 Consumer의 주소
-    final List<org.mmmq.core.message.Pattern> patterns; // 이 Dispatcher가 처리할 토픽 패턴 목록 (Ant-style 와일드카드)
+    final List<TopicPattern> patterns; // 이 Dispatcher가 처리할 토픽 패턴 목록 (Ant-style 와일드카드)
     final List<DeadLetterQueue> deadLetterQueues; // NACK 소진 시 실패 메시지를 보낼 DLQ 목록
     final ConcurrentHashMap<TopicQueue, Subscription> subscriptions = new ConcurrentHashMap<>(); // 토픽큐 → Subscription. 각 토픽별로 독립적인 worker thread와 offset을 보유
     Sender sender; // Consumer에게 HTTP로 메시지를 전달하는 객체
 
-    public Dispatcher(String name, Host host, List<org.mmmq.core.message.Pattern> patterns) { // DLQ 없는 단순 생성자
+    public Dispatcher(String name, Host host, List<TopicPattern> patterns) { // DLQ 없는 단순 생성자
         this(name, host, patterns, List.of());
     }
 
     public Dispatcher(
             String name,
             Host host,
-            List<org.mmmq.core.message.Pattern> patterns,
+            List<TopicPattern> patterns,
             List<DeadLetterQueue> deadLetterQueues
     ) {
         if (!NAME_PATTERN.matcher(name).matches()) { // 파일 시스템 안전 문자 검증: offset 파일명이 될 이름에 특수문자 방지

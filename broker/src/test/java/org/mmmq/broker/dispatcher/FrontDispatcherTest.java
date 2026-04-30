@@ -15,7 +15,7 @@ import org.mmmq.broker.topicqueue.TopicQueueRegistry;
 import org.mmmq.core.Host;
 import org.mmmq.core.WebProtocol;
 import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Pattern;
+import org.mmmq.core.message.TopicPattern;
 import org.mmmq.core.message.Topic;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -37,7 +37,7 @@ class FrontDispatcherTest {
         when(registry.get(new Topic("order.new"))).thenReturn(mockQueue); // 특정 토픽 요청에 mock 큐 반환
         when(mockQueue.offer(org.mockito.ArgumentMatchers.any())).thenReturn(true); // 디스크 쓰기 성공 시뮬레이션
 
-        final Dispatcher dispatcher = new Dispatcher("test", host, List.of(new Pattern("order.*")));
+        final Dispatcher dispatcher = new Dispatcher("test", host, List.of(new TopicPattern("order.*")));
         final FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry, publisher);
 
         final Message message = new Message(new Topic("order.new"), Map.of("id", 1));
@@ -56,7 +56,7 @@ class FrontDispatcherTest {
         when(registry.get(new Topic("payment.kakao"))).thenReturn(mockQueue); // "order.*" 패턴과 불일치하는 토픽
         when(mockQueue.offer(org.mockito.ArgumentMatchers.any())).thenReturn(true);
 
-        final Dispatcher dispatcher = new Dispatcher("test", host, List.of(new Pattern("order.*"))); // payment 토픽과 불일치
+        final Dispatcher dispatcher = new Dispatcher("test", host, List.of(new TopicPattern("order.*"))); // payment 토픽과 불일치
         final FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry, publisher);
 
         final Message message = new Message(new Topic("payment.kakao"), Map.of("id", 1));
@@ -73,7 +73,7 @@ class FrontDispatcherTest {
         when(registry.get(new Topic("order.new"))).thenReturn(mockQueue);
         when(mockQueue.offer(org.mockito.ArgumentMatchers.any())).thenReturn(false); // 디스크 쓰기 실패 시뮬레이션
 
-        final Dispatcher dispatcher = new Dispatcher("test", host, List.of(new Pattern("order.*")));
+        final Dispatcher dispatcher = new Dispatcher("test", host, List.of(new TopicPattern("order.*")));
         final FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry, publisher);
 
         final Message message = new Message(new Topic("order.new"), Map.of("id", 1));

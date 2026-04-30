@@ -21,7 +21,7 @@ import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.core.Host;
 import org.mmmq.core.WebProtocol;
 import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Pattern;
+import org.mmmq.core.message.TopicPattern;
 import org.mmmq.core.message.Topic;
 
 class DispatcherTest {
@@ -36,13 +36,13 @@ class DispatcherTest {
 
     @BeforeEach
     void setUp() {
-        dispatcher = new Dispatcher("test-dispatcher", host, List.of(new Pattern("**"))); // 모든 토픽을 매칭하는 와일드카드 패턴으로 초기화
+        dispatcher = new Dispatcher("test-dispatcher", host, List.of(new TopicPattern("**"))); // 모든 토픽을 매칭하는 와일드카드 패턴으로 초기화
     }
 
     @Test
     @DisplayName("Dispatcher 이름이 regex에 부합하지 않으면 예외를 던진다")
     void rejectInvalidDispatcherName() {
-        assertThatThrownBy(() -> new Dispatcher("invalid name!", host, List.of(new Pattern("**")))) // 공백과 느낌표는 [A-Za-z0-9._-]+ 패턴에 불일치
+        assertThatThrownBy(() -> new Dispatcher("invalid name!", host, List.of(new TopicPattern("**")))) // 공백과 느낌표는 [A-Za-z0-9._-]+ 패턴에 불일치
                 .isInstanceOf(IllegalArgumentException.class); // 파일명으로 사용할 수 없는 문자를 생성자에서 즉시 거부
     }
 
@@ -126,7 +126,7 @@ class DispatcherTest {
     @Test
     @DisplayName("패턴 미매칭 토픽은 구독하지 않는다")
     void doesNotSubscribeUnmatchedTopicTest() {
-        dispatcher = new Dispatcher("test-dispatcher", host, List.of(new Pattern("order.*"))); // "order.*"만 매칭. "payment.kakao"는 제외
+        dispatcher = new Dispatcher("test-dispatcher", host, List.of(new TopicPattern("order.*"))); // "order.*"만 매칭. "payment.kakao"는 제외
         dispatcher.sender = new Sender(null) {
             @Override
             public boolean send(Message message, int retryCount) {

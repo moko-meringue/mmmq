@@ -2,9 +2,10 @@ package org.mmmq.core.message;
 
 import org.mmmq.core.util.PatternMatcher;
 
-public record Pattern(
+public record TopicPattern(
         String value
 ) {
+
     private static final PatternMatcher PATH_MATCHER = new PatternMatcher();
 
     public boolean matches(Topic topic) {

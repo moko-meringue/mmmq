@@ -7,7 +7,7 @@ import org.mmmq.consumer.handler.FrontHandlerUtil;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.consumer.handler.execution.HandlerExecutions;
 import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Pattern;
+import org.mmmq.core.message.TopicPattern;
 import org.mmmq.core.message.Topic;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,8 +69,8 @@ class InterfaceExecutionRegistrationTest {
     static class SampleListener implements MMMQListener<SampleDto> {
 
         @Override
-        public Pattern listens() {
-            return new Pattern("order.new");
+        public TopicPattern listens() {
+            return new TopicPattern("order.new");
         }
 
         @Override

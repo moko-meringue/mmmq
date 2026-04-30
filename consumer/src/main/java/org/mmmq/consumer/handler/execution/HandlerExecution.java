@@ -1,14 +1,14 @@
 package org.mmmq.consumer.handler.execution;
 
 import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Pattern;
+import org.mmmq.core.message.TopicPattern;
 
 public abstract class HandlerExecution {
 
     protected final String name;
-    protected final Pattern pattern;
+    protected final TopicPattern pattern;
 
-    protected HandlerExecution(String name, Pattern pattern) {
+    protected HandlerExecution(String name, TopicPattern pattern) {
         this.name = name;
         this.pattern = pattern;
     }
@@ -23,7 +23,7 @@ public abstract class HandlerExecution {
         return name;
     }
 
-    public Pattern getPattern() {
+    public TopicPattern getPattern() {
         return pattern;
     }
 }
