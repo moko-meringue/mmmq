@@ -30,36 +30,34 @@ public class TopicQueue implements Closeable { // 한 토픽의 메시지를 디
         writeLock.lock(); // 동시에 여러 producer가 쓰면 세그먼트 회전 타이밍이 꼬일 수 있어 직렬화
         try {
             segmentChain.append(message); // .mmm 쓰기 + fsync, .idx 쓰기 + fsync
-
             return true; // 두 fsync가 모두 완료된 시점에만 true를 반환 → Producer에 ACK
         } catch (StorageException exception) {
             log.error("Failed to persist message for topic {}", topic, exception);
-
             return false; // 디스크 쓰기 실패: Producer에 NACK를 보내 재시도 유도
         } finally {
             writeLock.unlock(); // 성공/실패 모두 lock 해제
         }
     }
 
-    public Offset subscribe(
-            String dispatcherName) { // dispatcher 최초 등록 시 호출. OffsetCheckpoint를 열고 마지막 커밋 위치에서 시작하는 Offset을 반환
-        return new Offset(
-                checkpointRegistry.register(dispatcherName).read()); // 저장된 마지막 commit 위치에서 재개. 브로커 재시작 시 중단 지점부터 다시 시작
-    }
-
     @Nullable
-    public Message peek(
-            Offset offset) { // offset 위치의 메시지를 읽어 반환하되 offset을 증가시키지 않음. at-least-once의 핵심: commit 전에 브로커가 죽으면 재시작 후 같은 메시지를 다시 읽음
+    public Message peek(Offset offset) {
         return segmentChain.readAt(offset.value()); // lock 없음: FileChannel.read(buf, pos)는 thread-safe
     }
 
-    public void commit(String dispatcherName, Offset offset) { // 메시지 처리 완료 후 호출. offset을 1 증가시키고 파일에 fsync
-        offset.increment(); // 다음 peek에서 이 메시지가 아닌 다음 메시지를 읽도록 전진
+    public Offset subscribe(String dispatcherName) {
+        return new Offset(checkpointRegistry.register(dispatcherName).read());
+    }
+
+    public Offset commit(String dispatcherName, Offset offset) { // 메시지 처리 완료 후 호출. 진전된 새 Offset을 반환하고 파일에 fsync
         OffsetCheckpoint checkpoint = checkpointRegistry.get(dispatcherName);
         if (checkpoint == null) { // subscribe 없이 commit을 호출하면 프로그래밍 오류 — 부재 해석은 토픽 레이어의 책임
-            throw new IllegalStateException("Dispatcher not subscribed: " + dispatcherName);
+            throw new IllegalStateException(
+                    "Cannot commit: dispatcher '" + dispatcherName + "' has not subscribed topic '" + topic.name() + "'"
+            );
         }
-        checkpoint.write(offset.value()); // fsync #3: 이 시점 이후 브로커 재시작 시 증가된 offset부터 재개
+        Offset next = offset.next(); // 다음 peek에서 이 메시지가 아닌 다음 메시지를 읽도록 진전
+        checkpoint.write(next.value()); // fsync #3: 이 시점 이후 브로커 재시작 시 진전된 offset부터 재개
+        return next;
     }
 
     public Topic getTopic() { // FrontDispatcher와 Dispatcher가 토픽 매칭 여부를 확인할 때 사용

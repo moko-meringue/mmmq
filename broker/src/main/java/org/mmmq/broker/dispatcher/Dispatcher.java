@@ -91,8 +91,9 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
         while ((message = topicQueue.peek(subscription.offset()))
                 != null) { // peek은 offset을 바꾸지 않음. null이면 현재 시점에 읽을 메시지가 없음
             deliverOrDeadLetter(message); // 전달 완료(ACK 또는 DLQ 적재)가 보장된 후에만 return
-            topicQueue.commit(subscription.dispatcherName(),
-                    subscription.offset()); // offset++ + fsync. deliverOrDeadLetter return 후에만 실행 → at-least-once 보장
+            Offset advanced = topicQueue.commit(subscription.dispatcherName(),
+                    subscription.offset()); // fsync 후 진전된 새 Offset 반환
+            subscription.advance(advanced); // 다음 iteration의 peek에서 진전된 위치부터 읽도록 갱신
         }
     }
 
@@ -125,22 +126,32 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
         }
     }
 
-    record Subscription( // 한 (Dispatcher, TopicQueue) 쌍의 구독 상태. 독립적인 offset과 단일 worker thread를 보유
-                         String dispatcherName, // commit() 호출 시 OffsetCheckpoint를 찾기 위한 키
-                         Offset offset,         // 이 구독의 현재 읽기 위치. peek 전용이며 commit 시에만 증가
-                         ExecutorService worker  // drain 작업을 처리하는 단일 스레드 executor
-    ) {
+    static final class Subscription { // 한 (Dispatcher, TopicQueue) 쌍의 구독 상태. 독립적인 offset과 단일 worker thread를 보유
+
+        private final String dispatcherName; // commit() 호출 시 OffsetCheckpoint를 찾기 위한 키
+        private final ExecutorService worker; // drain 작업을 처리하는 단일 스레드 executor
+        private Offset offset; // 이 구독의 현재 읽기 위치. drain의 단일 worker thread에서만 갱신되어 race-free
 
         Subscription(String dispatcherName, TopicQueue topicQueue) { // 신규 구독: OffsetCheckpoint에서 마지막 커밋 위치를 읽어 Offset을 초기화
-            this(
-                    dispatcherName,
-                    topicQueue.subscribe(dispatcherName), // OffsetCheckpoint.read()로 재시작 위치 복원
-                    new ThreadPoolExecutor(
-                            0, 1, 60L, TimeUnit.SECONDS, // 최대 1개 스레드: 같은 토픽 메시지의 순서를 보장
-                            new ArrayBlockingQueue<>(1), // 큐 크기 1: 이미 drain 중이면 추가 제출은 무시
-                            new ThreadPoolExecutor.DiscardPolicy() // 큐가 가득 차면 새 task를 버림: MessageArrivedEvent는 낙관적이므로 유실 허용
-                    )
+            this.dispatcherName = dispatcherName;
+            this.offset = topicQueue.subscribe(dispatcherName); // OffsetCheckpoint.read()로 재시작 위치 복원
+            this.worker = new ThreadPoolExecutor(
+                    0, 1, 60L, TimeUnit.SECONDS, // 최대 1개 스레드: 같은 토픽 메시지의 순서를 보장
+                    new ArrayBlockingQueue<>(1), // 큐 크기 1: 이미 drain 중이면 추가 제출은 무시
+                    new ThreadPoolExecutor.DiscardPolicy() // 큐가 가득 차면 새 task를 버림: MessageArrivedEvent는 낙관적이므로 유실 허용
             );
+        }
+
+        String dispatcherName() {
+            return dispatcherName;
+        }
+
+        Offset offset() {
+            return offset;
+        }
+
+        void advance(Offset next) { // commit 후 새 Offset으로 갱신. drain의 단일 worker thread에서만 호출됨
+            this.offset = next;
         }
 
         void submit(Runnable task) { // worker thread에 drain 작업 제출. 이미 실행 중이면 DiscardPolicy에 의해 무시됨

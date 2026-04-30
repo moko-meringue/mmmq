@@ -63,9 +63,9 @@ class TopicQueueTest {
         queue.offer(first);  // offset=0
         queue.offer(second); // offset=1
 
-        final Offset offset = queue.subscribe("dispatcher-1");
+        Offset offset = queue.subscribe("dispatcher-1");
         assertThat(queue.peek(offset)).isEqualTo(first); // offset=0: 첫 번째 메시지
-        queue.commit("dispatcher-1", offset);            // offset++ + fsync: offset=1
+        offset = queue.commit("dispatcher-1", offset);   // 진전된 새 Offset 반환 + fsync
         assertThat(queue.peek(offset)).isEqualTo(second); // offset=1: 두 번째 메시지로 전진
     }
 
