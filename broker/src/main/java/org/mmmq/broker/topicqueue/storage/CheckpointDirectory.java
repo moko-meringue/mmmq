@@ -28,7 +28,6 @@ public final class CheckpointDirectory implements Closeable {
         }
         CheckpointDirectory registry = new CheckpointDirectory(path);
         registry.bootstrap(); // 디스크의 기존 checkpoint 파일을 모두 로드. Dispatcher subscribe에 의존하지 않고 디스크 상태가 source of truth
-
         return registry;
     }
 
