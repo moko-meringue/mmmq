@@ -26,14 +26,13 @@ import org.springframework.context.event.EventListener;
 
 public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 토픽의 메시지를 전달하는 객체
 
-    static final int MAX_NACK_RETRY_COUNT = 3; // Consumer가 NACK를 연속으로 이 횟수만큼 반환하면 DLQ로 이동
-    static final long INITIAL_BACKOFF_DELAY_MS = 1000; // 통신 오류 시 첫 재시도 대기 시간: 1초
-    static final long MAX_BACKOFF_DELAY_MS = 60000; // 지수 백오프의 상한선: 60초
-    static final int BACKOFF_MULTIPLIER = 2; // 매 실패마다 대기 시간을 2배로 증가
+    private static final int MAX_NACK_RETRY_COUNT = 3; // Consumer가 NACK를 연속으로 이 횟수만큼 반환하면 DLQ로 이동
+    private static final long INITIAL_BACKOFF_DELAY_MS = 1000; // 통신 오류 시 첫 재시도 대기 시간: 1초
+    private static final long MAX_BACKOFF_DELAY_MS = 60000; // 지수 백오프의 상한선: 60초
+    private static final int BACKOFF_MULTIPLIER = 2; // 매 실패마다 대기 시간을 2배로 증가
 
     private static final Logger log = LoggerFactory.getLogger(Dispatcher.class);
-    private static final Pattern NAME_PATTERN = Pattern.compile(
-            "[A-Za-z0-9._-]+"); // Dispatcher 이름은 checkpoint 파일명으로 사용되므로 파일 시스템에 안전한 문자만 허용
+    private static final Pattern NAME_PATTERN = Pattern.compile("[A-Za-z0-9._-]+");
 
     final String name; // Dispatcher 식별자. checkpoint 파일명({name}.checkpoint)으로도 사용됨
     final Host host; // 메시지를 전달할 Consumer의 주소
@@ -131,11 +130,11 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
         workerPool.shutdownAll();
     }
 
-    static final class WorkerPool { // 토픽별 단일 스레드 워커 풀. drain 직렬화 보장이 책임. 워커 정책(스레드 수, queue 크기, discard 정책)이 이 클래스에 응집
+    private static final class WorkerPool { // 토픽별 단일 스레드 워커 풀. drain 직렬화 보장이 책임. 워커 정책(스레드 수, queue 크기, discard 정책)이 이 클래스에 응집
 
         private final Map<TopicQueue, ExecutorService> pool = new ConcurrentHashMap<>(); // 토픽 → 전용 워커. 토픽마다 메시지 순서 보장 위해 단일 스레드 격리
 
-        void submit(TopicQueue topicQueue, Runnable task) { // 해당 토픽의 워커에 task 제출. 워커가 없으면 첫 제출 시점에 생성
+        private void submit(TopicQueue topicQueue, Runnable task) { // 해당 토픽의 워커에 task 제출. 워커가 없으면 첫 제출 시점에 생성
             pool.computeIfAbsent(topicQueue, queue -> createWorker()).submit(task);
         }
 
@@ -147,7 +146,7 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
             );
         }
 
-        void shutdownAll() { // 모든 워커를 즉시 인터럽트하여 종료. 진행 중인 drain 중단
+        private void shutdownAll() { // 모든 워커를 즉시 인터럽트하여 종료. 진행 중인 drain 중단
             pool.values()
                     .forEach(ExecutorService::shutdownNow);
         }
