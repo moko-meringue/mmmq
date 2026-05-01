@@ -9,8 +9,8 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.mmmq.broker.topicqueue.storage.CheckpointRegistry;
-import org.mmmq.broker.topicqueue.storage.SegmentChain;
+import org.mmmq.broker.topicqueue.storage.CheckpointDirectory;
+import org.mmmq.broker.topicqueue.storage.SegmentFileChain;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 
@@ -114,9 +114,9 @@ class TopicQueueTest {
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to create topic directory: " + topicDir, exception);
         }
-        final SegmentChain segmentChain = SegmentChain.open(topicDir, DEFAULT_MAX_BYTES);
-        final CheckpointRegistry checkpointRegistry = CheckpointRegistry.open(topicDir);
+        final SegmentFileChain segmentFileChain = SegmentFileChain.open(topicDir, DEFAULT_MAX_BYTES);
+        final CheckpointDirectory checkpointDirectory = CheckpointDirectory.open(topicDir);
 
-        return new TopicQueue(new Topic(topicName), segmentChain, checkpointRegistry);
+        return new TopicQueue(new Topic(topicName), segmentFileChain, checkpointDirectory);
     }
 }

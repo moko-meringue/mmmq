@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import org.mmmq.broker.topicqueue.storage.FileHandle.FlushMode;
 
-final class OffsetIndex implements Closeable { // .idx 파일 한 개를 캡슐화. 각 엔트리는 8바이트 long으로 .mmm 파일 내 주소를 저장
+final class OffsetIndexFile implements Closeable { // .idx 파일 한 개를 캡슐화. 각 엔트리는 8바이트 long으로 .mmm 파일 내 주소를 저장
 
     private static final String EXTENSION = ".idx";
     private static final int ENTRY_BYTES = Long.BYTES; // 엔트리 1개의 크기. 각 엔트리는 .mmm 파일 내 address를 담는 long 1개
@@ -16,12 +16,12 @@ final class OffsetIndex implements Closeable { // .idx 파일 한 개를 캡슐�
     private final Path path; // 에러 메시지에 파일 경로를 포함하기 위해 보존
     private final FileHandle fileHandle; // positional read/write를 지원하는 NIO 채널
 
-    private OffsetIndex(Path path, FileHandle fileHandle) { // 외부에서 직접 생성하지 않도록 생성자를 private으로 제한
+    private OffsetIndexFile(Path path, FileHandle fileHandle) { // 외부에서 직접 생성하지 않도록 생성자를 private으로 제한
         this.path = path;
         this.fileHandle = fileHandle;
     }
 
-    static OffsetIndex open(Path base, long startOffset) { // 파일이 없으면 생성, 있으면 기존 엔트리를 유지하며 열기
+    static OffsetIndexFile open(Path base, long startOffset) { // 파일이 없으면 생성, 있으면 기존 엔트리를 유지하며 열기
         Path path = base.resolve(
                 "0".repeat(OFFSET_DIGITS - Long.toString(startOffset).length()) + startOffset + EXTENSION
         );
@@ -32,7 +32,7 @@ final class OffsetIndex implements Closeable { // .idx 파일 한 개를 캡슐�
                     StandardOpenOption.READ,    // readAddressAt, count에 필요
                     StandardOpenOption.WRITE    // appendAndForce에 필요
             );
-            return new OffsetIndex(path, fileHandle);
+            return new OffsetIndexFile(path, fileHandle);
         } catch (IOException exception) {
             throw new StorageException("Failed to open startOffset index: " + path, exception);
         }
