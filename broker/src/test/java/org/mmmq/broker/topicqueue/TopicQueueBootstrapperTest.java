@@ -17,7 +17,7 @@ import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 import org.springframework.context.ApplicationEventPublisher;
 
-class TopicQueueRegistryRestoreTest {
+class TopicQueueBootstrapperTest {
 
     private static final long DEFAULT_MAX_BYTES = 64L * 1024 * 1024;
     private static final ApplicationEventPublisher NO_OP_PUBLISHER = event -> {
