@@ -22,7 +22,6 @@ final class FileHandle implements Closeable {
     long appendFully(ByteBuffer buffer, FlushMode flushMode) throws IOException {
         long address = channel.size();
         writeFully(address, buffer, flushMode);
-
         return address;
     }
 
@@ -45,7 +44,6 @@ final class FileHandle implements Closeable {
                 throw new IOException("Unexpected EOF at address " + (address + buffer.position()));
             }
         }
-
         return buffer.array();
     }
 

@@ -13,7 +13,6 @@ final class OffsetIndex implements Closeable { // .idx 파일 한 개를 캡슐�
     private static final int ENTRY_BYTES = Long.BYTES; // 엔트리 1개의 크기. 각 엔트리는 .mmm 파일 내 address를 담는 long 1개
     private static final int OFFSET_DIGITS = Long.toString(Long.MAX_VALUE).length();
 
-
     private final Path path; // 에러 메시지에 파일 경로를 포함하기 위해 보존
     private final FileHandle fileHandle; // positional read/write를 지원하는 NIO 채널
 
