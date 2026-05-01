@@ -1,6 +1,8 @@
 package org.mmmq.broker.dispatcher;
 
+import jakarta.annotation.PreDestroy;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -12,12 +14,14 @@ import org.mmmq.broker.dlq.DeadLetter;
 import org.mmmq.broker.dlq.DeadLetterQueue;
 import org.mmmq.broker.topicqueue.Offset;
 import org.mmmq.broker.topicqueue.TopicQueue;
+import org.mmmq.broker.topicqueue.TopicQueueInitializedEvent;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 import org.mmmq.core.message.TopicPattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 
 public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 토픽의 메시지를 전달하는 객체
@@ -35,19 +39,15 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
     final Host host; // 메시지를 전달할 Consumer의 주소
     final List<TopicPattern> patterns; // 이 Dispatcher가 처리할 토픽 패턴 목록 (Ant-style 와일드카드)
     final List<DeadLetterQueue> deadLetterQueues; // NACK 소진 시 실패 메시지를 보낼 DLQ 목록
-    final ConcurrentHashMap<TopicQueue, Subscription> subscriptions = new ConcurrentHashMap<>(); // 토픽큐 → Subscription. 각 토픽별로 독립적인 worker thread와 offset을 보유
+    final ConcurrentHashMap<TopicQueue, Offset> subscriptions = new ConcurrentHashMap<>(); // 토픽큐 → 현재 offset. 키 존재 = 구독 중, 값 = 마지막 커밋 위치
+    final WorkerPool workerPool = new WorkerPool(); // 토픽별 단일 스레드 워커 풀. drain 직렬화 책임
     Sender sender; // Consumer에게 HTTP로 메시지를 전달하는 객체
 
     public Dispatcher(String name, Host host, List<TopicPattern> patterns) { // DLQ 없는 단순 생성자
         this(name, host, patterns, List.of());
     }
 
-    public Dispatcher(
-            String name,
-            Host host,
-            List<TopicPattern> patterns,
-            List<DeadLetterQueue> deadLetterQueues
-    ) {
+    public Dispatcher(String name, Host host, List<TopicPattern> patterns, List<DeadLetterQueue> deadLetterQueues) {
         if (!NAME_PATTERN.matcher(name).matches()) { // 파일 시스템 안전 문자 검증: offset 파일명이 될 이름에 특수문자 방지
             throw new IllegalArgumentException("Dispatcher name must match [A-Za-z0-9._-]+, but was: " + name);
         }
@@ -58,12 +58,20 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
         this.sender = Sender.from(host); // Consumer 호스트 정보로 HTTP 클라이언트 생성
     }
 
-    public void subscribe(TopicQueue topicQueue) { // 토픽 큐가 이 Dispatcher의 패턴과 매칭되면 Subscription을 생성해 등록
+    @EventListener
+    void onTopicQueueInitialized(
+            TopicQueueInitializedEvent event) { // lazy 생성 / 부팅 복원 모두 처리. 패턴 매칭이면 Checkpoint에서 초기 offset 읽어 등록. catch-up drain은 onApplicationReady로 미룸
+        TopicQueue topicQueue = event.topicQueue();
         if (!matches(topicQueue.getTopic())) { // 패턴 불일치 토픽은 무시
             return;
         }
         subscriptions.computeIfAbsent(topicQueue,
-                queue -> new Subscription(name, queue)); // 중복 구독 방지: 이미 Subscription이 있으면 새로 만들지 않음
+                queue -> queue.subscribe(name)); // Checkpoint.read()로 재시작 위치 복원
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    void onApplicationReady() {
+        subscriptions.keySet().forEach(this::triggerDrain); // 빈 큐엔 no-op이라 항상 안전
     }
 
     boolean matches(Topic topic) { // 등록된 패턴 중 하나라도 topic과 매칭되면 true
@@ -71,30 +79,25 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
                 .anyMatch(pattern -> pattern.matches(topic));
     }
 
-    void stop() { // 애플리케이션 종료 시 모든 Subscription worker thread를 즉시 중단
-        subscriptions.values()
-                .forEach(Subscription::shutdownNow);
-    }
-
     @EventListener
-    void onMessageArrived(
-            MessageArrivedEvent event) { // MessageArrivedEvent 수신 시 해당 토픽을 구독 중인 Subscription의 worker에 drain 작업을 제출
-        final TopicQueue topicQueue = event.topicQueue();
-        subscriptions.computeIfPresent(topicQueue, (topic, subscription) -> { // 이 토픽을 구독하는 Subscription이 있는 경우에만 처리
-            subscription.submit(() -> drain(topicQueue, subscription)); // worker thread에 비동기 실행 위임
-
-            return subscription; // computeIfPresent는 null 반환 시 엔트리를 제거하므로 반드시 subscription 반환
-        });
+    void onMessageArrived(MessageArrivedEvent event) {
+        triggerDrain(event.topicQueue());
     }
 
-    void drain(TopicQueue topicQueue, Subscription subscription) { // 큐에 남은 메시지를 전부 처리할 때까지 반복. peek → 전달 → commit 순서
+    private void triggerDrain(TopicQueue topicQueue) {
+        if (!subscriptions.containsKey(topicQueue)) {
+            return;
+        }
+        workerPool.submit(topicQueue, () -> drain(topicQueue));
+    }
+
+    void drain(TopicQueue topicQueue) { // 큐에 남은 메시지를 전부 처리할 때까지 반복. peek → 전달 → commit 순서. 토픽별 단일 워커 스레드에서만 호출됨
+        Offset offset = subscriptions.get(topicQueue);
         Message message;
-        while ((message = topicQueue.peek(subscription.offset()))
-                != null) { // peek은 offset을 바꾸지 않음. null이면 현재 시점에 읽을 메시지가 없음
+        while ((message = topicQueue.peek(offset)) != null) { // peek은 offset을 바꾸지 않음. null이면 현재 시점에 읽을 메시지가 없음
             deliverOrDeadLetter(message); // 전달 완료(ACK 또는 DLQ 적재)가 보장된 후에만 return
-            Offset advanced = topicQueue.commit(subscription.dispatcherName(),
-                    subscription.offset()); // fsync 후 진전된 새 Offset 반환
-            subscription.advance(advanced); // 다음 iteration의 peek에서 진전된 위치부터 읽도록 갱신
+            offset = topicQueue.commit(name, offset); // fsync 후 진전된 새 Offset 반환
+            subscriptions.put(topicQueue, offset); // 토픽별 단일 스레드라 race-free
         }
     }
 
@@ -127,40 +130,30 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
         }
     }
 
-    static final class Subscription { // 한 (Dispatcher, TopicQueue) 쌍의 구독 상태. 독립적인 offset과 단일 worker thread를 보유
+    @PreDestroy
+    public void destroy() { // Spring context 종료 시 호출. 모든 워커 즉시 중단
+        workerPool.shutdownAll();
+    }
 
-        private final String dispatcherName; // commit() 호출 시 Checkpoint를 찾기 위한 키
-        private final ExecutorService worker; // drain 작업을 처리하는 단일 스레드 executor
-        private Offset offset; // 이 구독의 현재 읽기 위치. drain의 단일 worker thread에서만 갱신되어 race-free
+    static final class WorkerPool { // 토픽별 단일 스레드 워커 풀. drain 직렬화 보장이 책임. 워커 정책(스레드 수, queue 크기, discard 정책)이 이 클래스에 응집
 
-        Subscription(String dispatcherName, TopicQueue topicQueue) { // 신규 구독: Checkpoint에서 마지막 커밋 위치를 읽어 Offset을 초기화
-            this.dispatcherName = dispatcherName;
-            this.offset = topicQueue.subscribe(dispatcherName); // Checkpoint.read()로 재시작 위치 복원
-            this.worker = new ThreadPoolExecutor(
+        private final Map<TopicQueue, ExecutorService> pool = new ConcurrentHashMap<>(); // 토픽 → 전용 워커. 토픽마다 메시지 순서 보장 위해 단일 스레드 격리
+
+        void submit(TopicQueue topicQueue, Runnable task) { // 해당 토픽의 워커에 task 제출. 워커가 없으면 첫 제출 시점에 생성
+            pool.computeIfAbsent(topicQueue, queue -> createWorker()).submit(task);
+        }
+
+        private ExecutorService createWorker() {
+            return new ThreadPoolExecutor(
                     0, 1, 60L, TimeUnit.SECONDS, // 최대 1개 스레드: 같은 토픽 메시지의 순서를 보장
                     new ArrayBlockingQueue<>(1), // 큐 크기 1: 이미 drain 중이면 추가 제출은 무시
                     new ThreadPoolExecutor.DiscardPolicy() // 큐가 가득 차면 새 task를 버림: MessageArrivedEvent는 낙관적이므로 유실 허용
             );
         }
 
-        String dispatcherName() {
-            return dispatcherName;
-        }
-
-        Offset offset() {
-            return offset;
-        }
-
-        void advance(Offset next) { // commit 후 새 Offset으로 갱신. drain의 단일 worker thread에서만 호출됨
-            this.offset = next;
-        }
-
-        void submit(Runnable task) { // worker thread에 drain 작업 제출. 이미 실행 중이면 DiscardPolicy에 의해 무시됨
-            worker.submit(task);
-        }
-
-        void shutdownNow() { // 진행 중인 작업을 인터럽트하고 worker thread를 즉시 종료
-            worker.shutdownNow();
+        void shutdownAll() { // 모든 워커를 즉시 인터럽트하여 종료. 진행 중인 drain 중단
+            pool.values()
+                    .forEach(ExecutorService::shutdownNow);
         }
     }
 }

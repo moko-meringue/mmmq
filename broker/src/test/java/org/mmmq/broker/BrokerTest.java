@@ -40,7 +40,7 @@ class BrokerTest {
 
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
-        registry.add("mmmq.broker.storage.dataDir", () -> tempDataDir.toAbsolutePath().toString()); // 테스트마다 격리된 임시 디렉토리를 data/ 루트로 설정해 다른 테스트와 파일 공유 방지
+        registry.add("mmmq.broker.storage.root-dir", () -> tempDataDir.toAbsolutePath().toString()); // 테스트마다 격리된 임시 디렉토리를 data/ 루트로 설정해 다른 테스트와 파일 공유 방지
     }
 
     @BeforeEach

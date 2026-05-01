@@ -38,7 +38,7 @@ class FrontDispatcherTest {
         when(mockQueue.offer(org.mockito.ArgumentMatchers.any())).thenReturn(true); // 디스크 쓰기 성공 시뮬레이션
 
         final Dispatcher dispatcher = new Dispatcher("test", host, List.of(new TopicPattern("order.*")));
-        final FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry, publisher);
+        final FrontDispatcher frontDispatcher = new FrontDispatcher(registry, publisher);
 
         final Message message = new Message(new Topic("order.new"), Map.of("id", 1));
         final boolean persisted = frontDispatcher.dispatch(message);
@@ -57,7 +57,7 @@ class FrontDispatcherTest {
         when(mockQueue.offer(org.mockito.ArgumentMatchers.any())).thenReturn(true);
 
         final Dispatcher dispatcher = new Dispatcher("test", host, List.of(new TopicPattern("order.*"))); // payment 토픽과 불일치
-        final FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry, publisher);
+        final FrontDispatcher frontDispatcher = new FrontDispatcher(registry, publisher);
 
         final Message message = new Message(new Topic("payment.kakao"), Map.of("id", 1));
         final boolean persisted = frontDispatcher.dispatch(message);
@@ -74,7 +74,7 @@ class FrontDispatcherTest {
         when(mockQueue.offer(org.mockito.ArgumentMatchers.any())).thenReturn(false); // 디스크 쓰기 실패 시뮬레이션
 
         final Dispatcher dispatcher = new Dispatcher("test", host, List.of(new TopicPattern("order.*")));
-        final FrontDispatcher frontDispatcher = new FrontDispatcher(List.of(dispatcher), registry, publisher);
+        final FrontDispatcher frontDispatcher = new FrontDispatcher(registry, publisher);
 
         final Message message = new Message(new Topic("order.new"), Map.of("id", 1));
         final boolean persisted = frontDispatcher.dispatch(message);

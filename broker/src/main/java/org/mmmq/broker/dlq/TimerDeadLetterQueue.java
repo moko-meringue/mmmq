@@ -26,7 +26,7 @@ public class TimerDeadLetterQueue extends DeadLetterQueue {
     }
 
     @PreDestroy
-    public void stop() {
+    public void destroy() {
         worker.stop();
     }
 

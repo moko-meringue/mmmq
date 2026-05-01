@@ -48,7 +48,7 @@ public class FrontHandler {
     }
 
     @PreDestroy
-    void stop() {
+    void destroy() {
         threadPool.shutdown();
         try {
             if (!threadPool.awaitTermination(5, TimeUnit.SECONDS)) {

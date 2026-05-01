@@ -1,86 +1,51 @@
 package org.mmmq.broker.topicqueue;
 
 import jakarta.annotation.PreDestroy;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
-import org.mmmq.broker.config.TopicStorageProperties;
-import org.mmmq.broker.dispatcher.Dispatcher;
-import org.mmmq.broker.topicqueue.storage.CheckpointRegistry;
-import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 @Component
-public class TopicQueueRegistry implements
-        SmartInitializingSingleton { // 토픽 이름 → TopicQueue 맵을 관리. 부팅 시 data/ 디렉토리를 스캔해 기존 큐를 복원
+public class TopicQueueRegistry { // 토픽→큐 맵 보유. 새 큐 등록 시 TopicQueueInitializedEvent 발행해 listener가 자체 구독
 
     private static final Logger log = LoggerFactory.getLogger(TopicQueueRegistry.class);
 
-    private final Path root; // 세그먼트 파일 루트 디렉토리
-    private final long segmentMaxBytes; // 세그먼트 파일 최대 크기 (바이트). 초과 시 새 세그먼트로 회전
+    private final TopicQueueFactory factory; // 큐 조립을 위임. Registry는 디스크 레이아웃을 모름
+    private final ApplicationEventPublisher publisher; // 새 큐 등록 시 이벤트 발행. Dispatcher 등이 listener로 자체 구독
     private final ConcurrentHashMap<Topic, TopicQueue> queues = new ConcurrentHashMap<>(); // 토픽 → TopicQueue. 동시 접근 안전
-    private final ObjectProvider<Dispatcher> dispatcherProvider; // 순환 의존성 방지: 직접 List<Dispatcher> 주입 대신 lazy 조회
 
-    public TopicQueueRegistry(ObjectProvider<Dispatcher> dispatcherProvider, TopicStorageProperties properties) {
-        this.root = Path.of(properties.rootDir());
-        this.segmentMaxBytes = properties.segmentMaxBytes();
-        this.dispatcherProvider = dispatcherProvider;
+    public TopicQueueRegistry(TopicQueueFactory factory, ApplicationEventPublisher publisher) {
+        this.factory = factory;
+        this.publisher = publisher;
     }
 
-    public TopicQueue get(Topic topic) { // 토픽의 큐를 조회하거나 없으면 새로 생성. FrontDispatcher에서 메시지 수신 시마다 호출
-        return queues.computeIfAbsent(topic, this::create); // 동일 토픽에 대해 create가 한 번만 실행됨을 보장
+    public TopicQueue get(Topic topic) { // 토픽의 큐를 조회하거나 없으면 생성. FrontDispatcher가 메시지 수신 시마다 호출
+        return queues.computeIfAbsent(topic, t -> {
+            TopicQueue queue = factory.create(t);
+            log.info("Topic queue created: {}", queue.getTopic().name()); // lazy 생성: prior state 없음
+            publisher.publishEvent(new TopicQueueInitializedEvent(queue));
+
+            return queue;
+        });
     }
 
-    @Override
-    public void afterSingletonsInstantiated() {// data/ 디렉토리를 스캔해 기존 토픽 큐를 모두 복원. 브로커 재시작 시 dispatcher가 중단 지점부터 재개
-        if (!Files.isDirectory(root)) { // 첫 실행이거나 data/가 없으면 복원할 큐가 없음
-            return;
-        }
-        try (Stream<Path> topics = Files.list(root)) {
-            topics.filter(Files::isDirectory) // data/ 내 서브디렉토리만 토픽으로 간주
-                    .map(path -> new Topic(path.getFileName().toString())) // 디렉토리명 → Topic 객체
-                    .forEach(this::get); // get()이 computeIfAbsent로 create()를 호출해 큐 복원
-        } catch (IOException exception) {
-            throw new IllegalStateException("Failed to scan data directory: " + root,
-                    exception); // data/ 스캔 실패는 브로커 기동 실패로 처리
-        }
+    void register(TopicQueue queue) { // Bootstrap이 디스크에서 복원한 큐를 등록할 때 사용
+        queues.put(queue.getTopic(), queue);
+        log.info("Topic queue registered: {}", queue.getTopic().name()); // 부팅 복원: 미커밋 메시지 가능 (catch-up은 ApplicationReadyEvent에서)
+        publisher.publishEvent(new TopicQueueInitializedEvent(queue));
     }
 
     @PreDestroy
-    public void shutdown() { // Spring context 종료 시 호출. 모든 TopicQueue를 닫아 fd 누수 방지
+    public void destroy() { // Spring context 종료 시 호출. 모든 TopicQueue를 닫아 fd 누수 방지
         queues.values().forEach(queue -> {
             try {
                 queue.close();
             } catch (Exception exception) {
-                log.error("Failed to close topic queue: {}", queue.getTopic(),
-                        exception); // 한 큐의 close 실패가 다른 큐 정리를 막지 않도록 catch
+                log.error("Failed to close topic queue: {}", queue.getTopic(), exception);
             }
         });
-    }
-
-    private TopicQueue create(Topic topic) { // TopicQueue를 새로 생성하고 등록된 모든 Dispatcher에 구독을 연결
-        Path topicDir = root.resolve(topic.name()); // data/{topic}/ 경로
-        try {
-            Files.createDirectories(topicDir); // 토픽 디렉토리는 토픽 레이어 책임. storage 클래스들은 base 존재를 가정
-        } catch (IOException exception) {
-            throw new IllegalStateException("Failed to create topic directory: " + topicDir, exception);
-        }
-        SegmentChain segmentChain = SegmentChain.open(topicDir,
-                segmentMaxBytes); // 세그먼트 파일 스캔 및 마지막 세그먼트 정합성 복구
-        CheckpointRegistry checkpointRegistry = CheckpointRegistry.open(
-                topicDir); // checkpoints 서브디렉토리 생성 및 Checkpoint 컬렉션 준비
-        TopicQueue queue = new TopicQueue(topic, segmentChain, checkpointRegistry);
-        log.info("Restored topic queue: {}", topic.name());
-        dispatcherProvider.stream()
-                .forEach(dispatcher -> dispatcher.subscribe(queue)); // 각 Dispatcher가 자신의 패턴과 비교해 매칭되는 토픽만 구독
-
-        return queue;
     }
 }

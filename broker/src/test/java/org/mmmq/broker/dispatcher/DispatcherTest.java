@@ -16,13 +16,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.topicqueue.TopicQueue;
-import org.mmmq.broker.topicqueue.storage.CheckpointRegistry;
-import org.mmmq.broker.topicqueue.storage.SegmentChain;
+import org.mmmq.broker.topicqueue.TopicQueueInitializedEvent;
+import org.mmmq.broker.topicqueue.storage.CheckpointDirectory;
+import org.mmmq.broker.topicqueue.storage.SegmentFileChain;
 import org.mmmq.core.Host;
 import org.mmmq.core.WebProtocol;
 import org.mmmq.core.message.Message;
-import org.mmmq.core.message.TopicPattern;
 import org.mmmq.core.message.Topic;
+import org.mmmq.core.message.TopicPattern;
 
 class DispatcherTest {
 
@@ -36,13 +37,15 @@ class DispatcherTest {
 
     @BeforeEach
     void setUp() {
-        dispatcher = new Dispatcher("test-dispatcher", host, List.of(new TopicPattern("**"))); // 모든 토픽을 매칭하는 와일드카드 패턴으로 초기화
+        dispatcher = new Dispatcher("test-dispatcher", host,
+                List.of(new TopicPattern("**"))); // 모든 토픽을 매칭하는 와일드카드 패턴으로 초기화
     }
 
     @Test
     @DisplayName("Dispatcher 이름이 regex에 부합하지 않으면 예외를 던진다")
     void rejectInvalidDispatcherName() {
-        assertThatThrownBy(() -> new Dispatcher("invalid name!", host, List.of(new TopicPattern("**")))) // 공백과 느낌표는 [A-Za-z0-9._-]+ 패턴에 불일치
+        assertThatThrownBy(() -> new Dispatcher("invalid name!", host,
+                List.of(new TopicPattern("**")))) // 공백과 느낌표는 [A-Za-z0-9._-]+ 패턴에 불일치
                 .isInstanceOf(IllegalArgumentException.class); // 파일명으로 사용할 수 없는 문자를 생성자에서 즉시 거부
     }
 
@@ -60,12 +63,12 @@ class DispatcherTest {
         };
 
         final TopicQueue topicQueue = createTopicQueue(new Topic("test")); // @TempDir 기반 TopicQueue 생성
-        dispatcher.subscribe(topicQueue); // 패턴("**")이 토픽("test")에 매칭되어 Subscription 생성
+        dispatcher.onTopicQueueInitialized(new TopicQueueInitializedEvent(topicQueue)); // 패턴("**")이 토픽("test")에 매칭되어 Subscription 생성
         topicQueue.offer(new Message(new Topic("test"), Map.of("key", "value"))); // offset=0에 메시지 저장
         dispatcher.onMessageArrived(new MessageArrivedEvent(topicQueue)); // drain 작업을 worker thread에 제출
 
         assertThatCode(latch::await).doesNotThrowAnyException(); // worker thread가 send()를 호출할 때까지 대기
-        dispatcher.stop(); // worker thread 종료
+        dispatcher.destroy(); // worker thread 종료
     }
 
     @Test
@@ -83,8 +86,8 @@ class DispatcherTest {
 
         final TopicQueue orderQueue = createTopicQueue(new Topic("order.new")); // 첫 번째 토픽 큐
         final TopicQueue paymentQueue = createTopicQueue(new Topic("payment.kakao")); // 두 번째 토픽 큐
-        dispatcher.subscribe(orderQueue);   // 각 토픽별로 독립적인 Subscription 생성
-        dispatcher.subscribe(paymentQueue);
+        dispatcher.onTopicQueueInitialized(new TopicQueueInitializedEvent(orderQueue));   // 각 토픽별로 독립적인 Subscription 생성
+        dispatcher.onTopicQueueInitialized(new TopicQueueInitializedEvent(paymentQueue));
 
         orderQueue.offer(new Message(new Topic("order.new"), Map.of("id", 1)));     // offset=0
         paymentQueue.offer(new Message(new Topic("payment.kakao"), Map.of("id", 2))); // offset=0
@@ -92,7 +95,7 @@ class DispatcherTest {
         dispatcher.onMessageArrived(new MessageArrivedEvent(paymentQueue)); // payment 토픽 drain 트리거
 
         assertThatCode(latch::await).doesNotThrowAnyException(); // 두 전송 모두 완료될 때까지 대기
-        dispatcher.stop();
+        dispatcher.destroy();
     }
 
     @Test
@@ -110,8 +113,8 @@ class DispatcherTest {
 
         final TopicQueue topicA = createTopicQueue(new Topic("topicA"));
         final TopicQueue topicB = createTopicQueue(new Topic("topicB"));
-        dispatcher.subscribe(topicA);
-        dispatcher.subscribe(topicB);
+        dispatcher.onTopicQueueInitialized(new TopicQueueInitializedEvent(topicA));
+        dispatcher.onTopicQueueInitialized(new TopicQueueInitializedEvent(topicB));
 
         topicA.offer(new Message(new Topic("topicA"), Map.of("seq", 1))); // topicA offset=0
         topicA.offer(new Message(new Topic("topicA"), Map.of("seq", 2))); // topicA offset=1
@@ -120,13 +123,14 @@ class DispatcherTest {
         dispatcher.onMessageArrived(new MessageArrivedEvent(topicB)); // topicB drain 트리거: 1개 전송
 
         assertThatCode(latch::await).doesNotThrowAnyException(); // 3개 모두 전송될 때까지 대기
-        dispatcher.stop();
+        dispatcher.destroy();
     }
 
     @Test
     @DisplayName("패턴 미매칭 토픽은 구독하지 않는다")
     void doesNotSubscribeUnmatchedTopicTest() {
-        dispatcher = new Dispatcher("test-dispatcher", host, List.of(new TopicPattern("order.*"))); // "order.*"만 매칭. "payment.kakao"는 제외
+        dispatcher = new Dispatcher("test-dispatcher", host,
+                List.of(new TopicPattern("order.*"))); // "order.*"만 매칭. "payment.kakao"는 제외
         dispatcher.sender = new Sender(null) {
             @Override
             public boolean send(Message message, int retryCount) {
@@ -135,7 +139,7 @@ class DispatcherTest {
         };
 
         final TopicQueue paymentQueue = createTopicQueue(new Topic("payment.kakao")); // 패턴 불일치 토픽
-        dispatcher.subscribe(paymentQueue); // "order.*"가 "payment.kakao"와 매칭 안되므로 subscribe 내부에서 조기 반환
+        dispatcher.onTopicQueueInitialized(new TopicQueueInitializedEvent(paymentQueue)); // "order.*"가 "payment.kakao"와 매칭 안되므로 listener 내부에서 조기 반환
         paymentQueue.offer(new Message(new Topic("payment.kakao"), Map.of("id", 1)));
         dispatcher.onMessageArrived(new MessageArrivedEvent(paymentQueue)); // 구독 없으므로 drain 발생 안함
 
@@ -149,9 +153,9 @@ class DispatcherTest {
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to create topic directory: " + topicDir, exception);
         }
-        final SegmentChain segmentChain = SegmentChain.open(topicDir, SEGMENT_MAX_BYTES);
-        final CheckpointRegistry checkpointRegistry = CheckpointRegistry.open(topicDir);
+        final SegmentFileChain segmentFileChain = SegmentFileChain.open(topicDir, SEGMENT_MAX_BYTES);
+        final CheckpointDirectory checkpointDirectory = CheckpointDirectory.open(topicDir);
 
-        return new TopicQueue(topic, segmentChain, checkpointRegistry);
+        return new TopicQueue(topic, segmentFileChain, checkpointDirectory);
     }
 }

@@ -118,7 +118,7 @@ class FrontHandlerTest {
     @Test
     @DisplayName("소멸될 때 스레드풀을 종료한다.")
     void destructTest() {
-        frontHandler.stop();
+        frontHandler.destroy();
         assertThat(frontHandler.threadPool.isShutdown()).isTrue();
     }
 
