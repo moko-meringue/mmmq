@@ -59,8 +59,7 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
     }
 
     @EventListener
-    void onTopicQueueInitialized(
-            TopicQueueInitializedEvent event) { // lazy 생성 / 부팅 복원 모두 처리. 패턴 매칭이면 Checkpoint에서 초기 offset 읽어 등록. catch-up drain은 onApplicationReady로 미룸
+    void onTopicQueueInitialized(TopicQueueInitializedEvent event) {
         TopicQueue topicQueue = event.topicQueue();
         if (!matches(topicQueue.getTopic())) { // 패턴 불일치 토픽은 무시
             return;
@@ -71,7 +70,7 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
 
     @EventListener(ApplicationReadyEvent.class)
     void onApplicationReady() {
-        subscriptions.keySet().forEach(this::triggerDrain); // 빈 큐엔 no-op이라 항상 안전
+        subscriptions.keySet().forEach(topicQueue -> workerPool.submit(topicQueue, () -> drain(topicQueue)));
     }
 
     boolean matches(Topic topic) { // 등록된 패턴 중 하나라도 topic과 매칭되면 true
@@ -81,17 +80,14 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
 
     @EventListener
     void onMessageArrived(MessageArrivedEvent event) {
-        triggerDrain(event.topicQueue());
-    }
-
-    private void triggerDrain(TopicQueue topicQueue) {
+        TopicQueue topicQueue = event.topicQueue();
         if (!subscriptions.containsKey(topicQueue)) {
             return;
         }
         workerPool.submit(topicQueue, () -> drain(topicQueue));
     }
 
-    void drain(TopicQueue topicQueue) { // 큐에 남은 메시지를 전부 처리할 때까지 반복. peek → 전달 → commit 순서. 토픽별 단일 워커 스레드에서만 호출됨
+    private void drain(TopicQueue topicQueue) { // 큐에 남은 메시지를 전부 처리할 때까지 반복. peek → 전달 → commit 순서. 토픽별 단일 워커 스레드에서만 호출됨
         Offset offset = subscriptions.get(topicQueue);
         Message message;
         while ((message = topicQueue.peek(offset)) != null) { // peek은 offset을 바꾸지 않음. null이면 현재 시점에 읽을 메시지가 없음
