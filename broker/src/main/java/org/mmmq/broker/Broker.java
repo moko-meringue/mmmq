@@ -20,9 +20,8 @@ public class Broker { // POST /messages 엔드포인트. 메시지를 수신해 
 
     @PostMapping("/messages")
     public ResponseEntity<BrokerAcknowledgement> postMessage(@RequestBody Message message) {
-        final boolean persisted = frontDispatcher.dispatch(message); // 디스크 fsync 완료 시 true, IOException 발생 시 false
-        final Acknowledgement acknowledgement = persisted ? Acknowledgement.ACK : Acknowledgement.NACK; // true → ACK(Producer가 재시도 불필요), false → NACK(Producer가 재시도)
-
+        Acknowledgement acknowledgement = frontDispatcher.dispatch(
+                message); // ACK = 디스크 fsync 완료, NACK = 저장 실패 → Producer가 재시도
         return ResponseEntity.ok(new BrokerAcknowledgement(acknowledgement));
     }
 }

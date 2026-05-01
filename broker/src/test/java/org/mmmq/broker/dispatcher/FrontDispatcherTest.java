@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.broker.topicqueue.TopicQueueRegistry;
 import org.mmmq.core.Host;
+import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.WebProtocol;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.TopicPattern;
@@ -31,7 +32,7 @@ class FrontDispatcherTest {
     Host host = new Host(WebProtocol.HTTP, "localhost", 8080);
 
     @Test
-    @DisplayName("offer 성공 시 true 반환 및 MessageArrivedEvent 발행")
+    @DisplayName("offer 성공 시 ACK 반환 및 MessageArrivedEvent 발행")
     void dispatchPersistsAndPublishesEvent() {
         final TopicQueue mockQueue = mock(TopicQueue.class);
         when(registry.get(new Topic("order.new"))).thenReturn(mockQueue); // 특정 토픽 요청에 mock 큐 반환
@@ -41,9 +42,9 @@ class FrontDispatcherTest {
         final FrontDispatcher frontDispatcher = new FrontDispatcher(registry, publisher);
 
         final Message message = new Message(new Topic("order.new"), Map.of("id", 1));
-        final boolean persisted = frontDispatcher.dispatch(message);
+        final Acknowledgement acknowledgement = frontDispatcher.dispatch(message);
 
-        assertThat(persisted).isTrue(); // offer 성공이면 true 반환
+        assertThat(acknowledgement).isEqualTo(Acknowledgement.ACK); // offer 성공이면 ACK 반환
         verify(registry).get(new Topic("order.new")); // 정확한 토픽으로 registry.get이 호출됐는지 확인
         verify(mockQueue).offer(message); // 해당 메시지가 큐에 저장 시도됐는지 확인
         verify(publisher).publishEvent(new MessageArrivedEvent(mockQueue)); // 저장 성공 후 이벤트 발행됐는지 확인
@@ -60,15 +61,15 @@ class FrontDispatcherTest {
         final FrontDispatcher frontDispatcher = new FrontDispatcher(registry, publisher);
 
         final Message message = new Message(new Topic("payment.kakao"), Map.of("id", 1));
-        final boolean persisted = frontDispatcher.dispatch(message);
+        final Acknowledgement acknowledgement = frontDispatcher.dispatch(message);
 
-        assertThat(persisted).isTrue(); // 수신자 없어도 디스크에 저장하고 ACK 반환
+        assertThat(acknowledgement).isEqualTo(Acknowledgement.ACK); // 수신자 없어도 디스크에 저장하고 ACK 반환
         verify(mockQueue).offer(message); // offer는 dispatcher 매칭 여부와 무관하게 항상 호출됨
     }
 
     @Test
-    @DisplayName("offer 실패 시 false 반환하고 이벤트는 발행하지 않는다")
-    void dispatchReturnsFalseWhenOfferFails() {
+    @DisplayName("offer 실패 시 NACK 반환하고 이벤트는 발행하지 않는다")
+    void dispatchReturnsNackWhenOfferFails() {
         final TopicQueue mockQueue = mock(TopicQueue.class);
         when(registry.get(new Topic("order.new"))).thenReturn(mockQueue);
         when(mockQueue.offer(org.mockito.ArgumentMatchers.any())).thenReturn(false); // 디스크 쓰기 실패 시뮬레이션
@@ -77,9 +78,9 @@ class FrontDispatcherTest {
         final FrontDispatcher frontDispatcher = new FrontDispatcher(registry, publisher);
 
         final Message message = new Message(new Topic("order.new"), Map.of("id", 1));
-        final boolean persisted = frontDispatcher.dispatch(message);
+        final Acknowledgement acknowledgement = frontDispatcher.dispatch(message);
 
-        assertThat(persisted).isFalse(); // offer 실패이면 false 반환 → NACK
+        assertThat(acknowledgement).isEqualTo(Acknowledgement.NACK); // offer 실패이면 NACK 반환
         org.mockito.Mockito.verifyNoInteractions(publisher); // 저장 실패 시 이벤트를 발행하면 안됨. Dispatcher에게 존재하지 않는 메시지를 읽으라고 알릴 수 있음
     }
 }
