@@ -40,8 +40,8 @@ class SegmentFileTest {
             final Message message = new Message(new Topic("topic"), Map.of("k", "v"));
             segmentFile.append(message);
 
-            assertThat(segmentFile.readAt(0L)).isEqualTo(message); // 상대 offset 0 = 첫 번째 메시지
-            assertThat(segmentFile.readAt(1L)).isNull();           // 상대 offset 1 = 메시지 없음
+            assertThat(segmentFile.readAt(0L)).isEqualTo(message);
+            assertThat(segmentFile.readAt(1L)).isNull();
         }
     }
 

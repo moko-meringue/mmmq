@@ -8,8 +8,8 @@ import org.springframework.context.annotation.ComponentScan;
 @EnableConfigurationProperties({
         StorageProperties.class,
         SegmentProperties.class
-}) // 두 properties 레코드를 @ConfigurationProperties 빈으로 등록
-@ComponentScan(basePackages = "org.mmmq.broker") // org.mmmq.broker 패키지 하위의 @Component 클래스를 Spring 빈으로 등록
+})
+@ComponentScan(basePackages = "org.mmmq.broker")
 class BrokerConfiguration {
 
 }
