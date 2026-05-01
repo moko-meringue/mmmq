@@ -7,7 +7,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-final class FileHandle implements Closeable {
+class FileHandle implements Closeable {
 
     private final FileChannel channel;
 

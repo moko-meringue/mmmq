@@ -10,16 +10,16 @@ import java.util.List;
 import java.util.stream.Stream;
 import org.mmmq.broker.topicqueue.storage.FileHandle.FlushMode;
 
-public final class CheckpointFile implements Closeable { // 이름과 연결된 8바이트 long offset 값을 파일에 영속화
+public class CheckpointFile implements Closeable {
 
-    private static final int VALUE_BYTES = Long.BYTES; // offset 값의 크기: long = 8 bytes
+    private static final int VALUE_BYTES = Long.BYTES;
     private static final String EXTENSION = ".checkpoint";
 
-    private final Path file; // {base}/{name}.checkpoint 경로
-    private final String name; // 식별자. 파일명에 인코딩됨
-    private final FileHandle fileHandle; // positional read/write를 지원하는 NIO 채널
+    private final Path file;
+    private final String name;
+    private final FileHandle fileHandle;
 
-    private CheckpointFile(Path file, String name, FileHandle fileHandle) { // 외부에서 직접 생성하지 않도록 private
+    private CheckpointFile(Path file, String name, FileHandle fileHandle) {
         this.file = file;
         this.name = name;
         this.fileHandle = fileHandle;
@@ -39,7 +39,7 @@ public final class CheckpointFile implements Closeable { // 이름과 연결된 
         }
     }
 
-    static CheckpointFile open(Path base, String name) { // base는 caller가 존재 보장
+    static CheckpointFile open(Path base, String name) {
         Path file = base.resolve(name + EXTENSION);
         try {
             FileHandle fileHandle = FileHandle.open(
@@ -63,9 +63,9 @@ public final class CheckpointFile implements Closeable { // 이름과 연결된 
         return name;
     }
 
-    public long read() { // 파일에서 8바이트를 읽어 마지막으로 저장된 offset을 반환
+    public long read() {
         try {
-            if (fileHandle.size() < VALUE_BYTES) { // 8바이트 미만: 파일이 손상됐거나 외부에서 변조됨
+            if (fileHandle.size() < VALUE_BYTES) {
                 throw new StorageException("Offset checkpoint is corrupted: " + file);
             }
             return ByteBuffer.wrap(fileHandle.readFully(0, VALUE_BYTES)).getLong();
@@ -74,18 +74,18 @@ public final class CheckpointFile implements Closeable { // 이름과 연결된 
         }
     }
 
-    public void write(long offset) { // offset을 파일에 덮어쓰고 fsync. at-least-once의 commit 지점: 이 호출 완료 후에만 offset이 전진
+    public void write(long offset) {
         try {
             ByteBuffer buffer = ByteBuffer.allocate(VALUE_BYTES);
             buffer.putLong(offset).flip();
-            fileHandle.writeFully(0, buffer, FlushMode.FSYNC); // checkpoint 파일은 항상 address 0에 덮어씀. 파일 크기는 항상 8바이트
+            fileHandle.writeFully(0, buffer, FlushMode.FSYNC);
         } catch (IOException exception) {
             throw new StorageException("Failed to write offset: " + file, exception);
         }
     }
 
     @Override
-    public void close() { // 사용 완료 후 fd 누수 방지
+    public void close() {
         try {
             fileHandle.close();
         } catch (IOException exception) {

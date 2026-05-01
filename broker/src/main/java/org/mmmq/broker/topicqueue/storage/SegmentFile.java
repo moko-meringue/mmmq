@@ -14,15 +14,15 @@ import java.util.stream.Stream;
 import org.mmmq.broker.topicqueue.storage.FileHandle.FlushMode;
 import org.mmmq.core.message.Message;
 
-final class SegmentFile implements Closeable {
+class SegmentFile implements Closeable {
 
     private static final String EXTENSION = ".mmm";
     private static final int OFFSET_DIGITS = Long.toString(Long.MAX_VALUE).length();
 
-    private final Path path; // 에러 메시지에 파일 경로를 포함하기 위해 보존
-    private final long startOffset; // 이 segment의 첫 메시지의 absolute offset. 파일명에 인코딩된 식별자
-    private final FileHandle fileHandle; // positional read/write를 지원하는 NIO 채널. read(buf, pos)는 채널의 position을 변경하지 않아 thread-safe
-    private final OffsetIndexFile offsetIndexFile; // .idx 파일 핸들
+    private final Path path;
+    private final long startOffset;
+    private final FileHandle fileHandle;
+    private final OffsetIndexFile offsetIndexFile;
 
     private SegmentFile(Path path, long startOffset, FileHandle fileHandle, OffsetIndexFile offsetIndexFile) {
         this.path = path;
@@ -32,7 +32,7 @@ final class SegmentFile implements Closeable {
         recover();
     }
 
-    static List<SegmentFile> openAll(Path base) { // base 내의 모든 segment 파일을 스캔해 열어 반환. 식별자(파일명) 컨벤션을 Segment 안에 캡슐화
+    static List<SegmentFile> openAll(Path base) {
         try (Stream<Path> entries = Files.list(base)) {
             return entries
                     .filter(Files::isRegularFile)
@@ -56,34 +56,21 @@ final class SegmentFile implements Closeable {
         try {
             FileHandle fileHandle = FileHandle.open(
                     path,
-                    StandardOpenOption.CREATE,  // 파일이 없으면 새로 생성
-                    StandardOpenOption.READ,    // recover에서 읽기도 필요
-                    StandardOpenOption.WRITE    // append 쓰기에 필요
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.READ,
+                    StandardOpenOption.WRITE
             );
             OffsetIndexFile offsetIndexFile = OffsetIndexFile.open(base, startOffset);
-            return new SegmentFile(path, startOffset, fileHandle,
-                    offsetIndexFile); // 생성자가 recover까지 수행해 즉시 사용 가능 상태로 반환
+            return new SegmentFile(path, startOffset, fileHandle, offsetIndexFile);
         } catch (IOException exception) {
             throw new StorageException("Failed to open segment: " + path, exception);
         }
     }
 
-
-    /**
-     * 진실의 원천 = OffsetIndexFile 이지? -> OffsetIndexFile에 있으면 SegmentFile에도 있어야 한다. -> OffsetIndexFile에 없으면 SegmentFile에도
-     * 없어야 한다.
-     * <p>
-     * -> OffsetIndexFile에 없는데, SegmentFile에 있다면? 누가 잘못된거지? -> SegmentFile이 잘못된 것이다.
-     * <p>
-     * -> OffsetIndexFile에 있는데, SegmentFile에 없다면? 누가 잘못된거지? -> SegmentFile이 잘못된 것이다.
-     * <p>
-     * 왜? OffsetIndexFile이 진실의 원천이니까. -> OffsetIndexFile에 있으면 SegmentFile에도 있어야 한다. -> OffsetIndexFile에 없으면
-     * SegmentFile에도 없어야 한다.
-     */
-    private void recover() { // 생성자에서만 호출. 마지막 세그먼트의 정합성을 검사하고 미커밋 trailing bytes를 제거
+    private void recover() {
         try {
-            long indexEntryCount = count(); // OffsetIndex.count() == 총 메시지 수
-            long fileSize = fileHandle.size(); // 내 .mmm 파일 크기
+            long indexEntryCount = count();
+            long fileSize = fileHandle.size();
             if (indexEntryCount == 0) {
                 if (fileSize > 0) {
                     fileHandle.truncate(0, FlushMode.FSYNC);
@@ -111,8 +98,8 @@ final class SegmentFile implements Closeable {
     void append(Message message) {
         Entry entry = Entry.from(message);
         try {
-            long address = fileHandle.appendFully(entry.toByteBuffer(), FlushMode.FSYNC); // .mmm 쓰기 + fsync #1
-            offsetIndexFile.append(address); // .idx 쓰기 + fsync #2. segment fsync 완료 후 실행해야 불변식 유지
+            long address = fileHandle.appendFully(entry.toByteBuffer(), FlushMode.FSYNC);
+            offsetIndexFile.append(address);
         } catch (IOException exception) {
             throw new StorageException("Failed to append to segment: " + path, exception);
         }
@@ -126,7 +113,7 @@ final class SegmentFile implements Closeable {
         if (offset >= count()) {
             return null;
         }
-        long address = offsetIndexFile.readAt(offset); // .idx에서 .mmm 내 entry 시작 주소 조회
+        long address = offsetIndexFile.readAt(offset);
         try {
             return Entry.readFrom(fileHandle, address).toMessage();
         } catch (IOException exception) {
@@ -164,8 +151,8 @@ final class SegmentFile implements Closeable {
             byte[] messageBytes
     ) {
 
-        private static final int LENGTH_HEADER_SIZE = Integer.BYTES; // entry 앞에 붙는 길이 헤더 크기 (4 bytes)
-        private static final ObjectMapper MAPPER = new ObjectMapper(); // ObjectMapper는 thread-safe이므로 공유 인스턴스 하나로 재사용
+        private static final int LENGTH_HEADER_SIZE = Integer.BYTES;
+        private static final ObjectMapper MAPPER = new ObjectMapper();
 
         Entry {
             if (messageBytes == null) {
@@ -177,7 +164,6 @@ final class SegmentFile implements Closeable {
             return new Entry(encode(message));
         }
 
-        // 성능?
         static Entry readFrom(FileHandle fileHandle, long address) throws IOException {
             int length = ByteBuffer.wrap(fileHandle.readFully(address, LENGTH_HEADER_SIZE)).getInt();
             return new Entry(fileHandle.readFully(address + LENGTH_HEADER_SIZE, length));
@@ -209,7 +195,7 @@ final class SegmentFile implements Closeable {
             return decode(messageBytes);
         }
 
-        int size() { // disk 상의 entry 전체 크기: 길이 헤더 + messageBytes
+        int size() {
             return LENGTH_HEADER_SIZE + messageBytes.length;
         }
     }
