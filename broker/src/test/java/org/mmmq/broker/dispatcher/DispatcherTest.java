@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.topicqueue.TopicQueue;
-import org.mmmq.broker.topicqueue.storage.OffsetCheckpointRegistry;
+import org.mmmq.broker.topicqueue.storage.CheckpointRegistry;
 import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.core.Host;
 import org.mmmq.core.WebProtocol;
@@ -150,7 +150,7 @@ class DispatcherTest {
             throw new IllegalStateException("Failed to create topic directory: " + topicDir, exception);
         }
         final SegmentChain segmentChain = SegmentChain.open(topicDir, SEGMENT_MAX_BYTES);
-        final OffsetCheckpointRegistry checkpointRegistry = OffsetCheckpointRegistry.open(topicDir);
+        final CheckpointRegistry checkpointRegistry = CheckpointRegistry.open(topicDir);
 
         return new TopicQueue(topic, segmentChain, checkpointRegistry);
     }

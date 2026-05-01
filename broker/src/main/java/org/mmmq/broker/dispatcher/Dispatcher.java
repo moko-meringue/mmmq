@@ -129,13 +129,13 @@ public class Dispatcher { // 하나의 Consumer를 향해 패턴 매칭되는 �
 
     static final class Subscription { // 한 (Dispatcher, TopicQueue) 쌍의 구독 상태. 독립적인 offset과 단일 worker thread를 보유
 
-        private final String dispatcherName; // commit() 호출 시 OffsetCheckpoint를 찾기 위한 키
+        private final String dispatcherName; // commit() 호출 시 Checkpoint를 찾기 위한 키
         private final ExecutorService worker; // drain 작업을 처리하는 단일 스레드 executor
         private Offset offset; // 이 구독의 현재 읽기 위치. drain의 단일 worker thread에서만 갱신되어 race-free
 
-        Subscription(String dispatcherName, TopicQueue topicQueue) { // 신규 구독: OffsetCheckpoint에서 마지막 커밋 위치를 읽어 Offset을 초기화
+        Subscription(String dispatcherName, TopicQueue topicQueue) { // 신규 구독: Checkpoint에서 마지막 커밋 위치를 읽어 Offset을 초기화
             this.dispatcherName = dispatcherName;
-            this.offset = topicQueue.subscribe(dispatcherName); // OffsetCheckpoint.read()로 재시작 위치 복원
+            this.offset = topicQueue.subscribe(dispatcherName); // Checkpoint.read()로 재시작 위치 복원
             this.worker = new ThreadPoolExecutor(
                     0, 1, 60L, TimeUnit.SECONDS, // 최대 1개 스레드: 같은 토픽 메시지의 순서를 보장
                     new ArrayBlockingQueue<>(1), // 큐 크기 1: 이미 drain 중이면 추가 제출은 무시

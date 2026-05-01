@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import org.mmmq.broker.config.TopicStorageProperties;
 import org.mmmq.broker.dispatcher.Dispatcher;
-import org.mmmq.broker.topicqueue.storage.OffsetCheckpointRegistry;
+import org.mmmq.broker.topicqueue.storage.CheckpointRegistry;
 import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;
@@ -23,13 +23,15 @@ public class TopicQueueRegistry implements
 
     private static final Logger log = LoggerFactory.getLogger(TopicQueueRegistry.class);
 
+    private final Path root; // 세그먼트 파일 루트 디렉토리
+    private final long segmentMaxBytes; // 세그먼트 파일 최대 크기 (바이트). 초과 시 새 세그먼트로 회전
     private final ConcurrentHashMap<Topic, TopicQueue> queues = new ConcurrentHashMap<>(); // 토픽 → TopicQueue. 동시 접근 안전
     private final ObjectProvider<Dispatcher> dispatcherProvider; // 순환 의존성 방지: 직접 List<Dispatcher> 주입 대신 lazy 조회
-    private final TopicStorageProperties properties; // dataDir, segmentMaxBytes 설정값
 
     public TopicQueueRegistry(ObjectProvider<Dispatcher> dispatcherProvider, TopicStorageProperties properties) {
+        this.root = Path.of(properties.rootDir());
+        this.segmentMaxBytes = properties.segmentMaxBytes();
         this.dispatcherProvider = dispatcherProvider;
-        this.properties = properties;
     }
 
     public TopicQueue get(Topic topic) { // 토픽의 큐를 조회하거나 없으면 새로 생성. FrontDispatcher에서 메시지 수신 시마다 호출
@@ -38,7 +40,6 @@ public class TopicQueueRegistry implements
 
     @Override
     public void afterSingletonsInstantiated() {// data/ 디렉토리를 스캔해 기존 토픽 큐를 모두 복원. 브로커 재시작 시 dispatcher가 중단 지점부터 재개
-        Path root = Path.of(properties.dataDir()); // 세그먼트 파일 루트 디렉토리
         if (!Files.isDirectory(root)) { // 첫 실행이거나 data/가 없으면 복원할 큐가 없음
             return;
         }
@@ -58,21 +59,23 @@ public class TopicQueueRegistry implements
             try {
                 queue.close();
             } catch (Exception exception) {
-                log.error("Failed to close topic queue: {}", queue.getTopic(), exception); // 한 큐의 close 실패가 다른 큐 정리를 막지 않도록 catch
+                log.error("Failed to close topic queue: {}", queue.getTopic(),
+                        exception); // 한 큐의 close 실패가 다른 큐 정리를 막지 않도록 catch
             }
         });
     }
 
     private TopicQueue create(Topic topic) { // TopicQueue를 새로 생성하고 등록된 모든 Dispatcher에 구독을 연결
-        Path topicDir = Path.of(properties.dataDir(), topic.name()); // data/{topic}/ 경로
+        Path topicDir = root.resolve(topic.name()); // data/{topic}/ 경로
         try {
             Files.createDirectories(topicDir); // 토픽 디렉토리는 토픽 레이어 책임. storage 클래스들은 base 존재를 가정
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to create topic directory: " + topicDir, exception);
         }
         SegmentChain segmentChain = SegmentChain.open(topicDir,
-                properties.segmentMaxBytes()); // 세그먼트 파일 스캔 및 마지막 세그먼트 정합성 복구
-        OffsetCheckpointRegistry checkpointRegistry = OffsetCheckpointRegistry.open(topicDir); // checkpoints 서브디렉토리 생성 및 OffsetCheckpoint 컬렉션 준비
+                segmentMaxBytes); // 세그먼트 파일 스캔 및 마지막 세그먼트 정합성 복구
+        CheckpointRegistry checkpointRegistry = CheckpointRegistry.open(
+                topicDir); // checkpoints 서브디렉토리 생성 및 Checkpoint 컬렉션 준비
         TopicQueue queue = new TopicQueue(topic, segmentChain, checkpointRegistry);
         log.info("Restored topic queue: {}", topic.name());
         dispatcherProvider.stream()

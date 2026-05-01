@@ -9,7 +9,7 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.mmmq.broker.topicqueue.storage.OffsetCheckpointRegistry;
+import org.mmmq.broker.topicqueue.storage.CheckpointRegistry;
 import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
@@ -34,7 +34,7 @@ class TopicQueueTest {
         final Message message = new Message(new Topic("topic"), Map.of("k", "v"));
         queue.offer(message); // offset=0에 메시지 저장
 
-        final Offset offset = queue.subscribe("dispatcher-1"); // OffsetCheckpoint 없음 → offset 0으로 초기화
+        final Offset offset = queue.subscribe("dispatcher-1"); // Checkpoint 없음 → offset 0으로 초기화
         final Message peeked = queue.peek(offset); // offset=0 위치의 메시지 조회
 
         assertThat(peeked).isEqualTo(message); // 저장한 메시지와 동일해야 함
@@ -84,7 +84,7 @@ class TopicQueueTest {
         // 브로커 재시작 시뮬레이션: 새 TopicQueue 인스턴스 생성
 
         final TopicQueue restarted = createQueue(tempDir, "topic"); // 같은 디렉토리를 가리켜 기존 파일 재사용
-        final Offset restoredOffset = restarted.subscribe("dispatcher-1"); // OffsetCheckpoint에서 1을 읽어 Offset(1) 반환
+        final Offset restoredOffset = restarted.subscribe("dispatcher-1"); // Checkpoint에서 1을 읽어 Offset(1) 반환
 
         assertThat(restoredOffset.value()).isEqualTo(1L);         // 마지막 커밋 위치(1)부터 재개
         assertThat(restarted.peek(restoredOffset)).isEqualTo(second); // offset=1 → 두 번째 메시지
@@ -101,7 +101,7 @@ class TopicQueueTest {
         queue.peek(offset); // 메시지 조회했지만 commit 미호출 (브로커 크래시 시뮬레이션)
 
         final TopicQueue restarted = createQueue(tempDir, "topic"); // 재시작
-        final Offset restoredOffset = restarted.subscribe("dispatcher-1"); // OffsetCheckpoint에 0이 저장되어 있음
+        final Offset restoredOffset = restarted.subscribe("dispatcher-1"); // Checkpoint에 0이 저장되어 있음
 
         assertThat(restoredOffset.value()).isZero();                    // 커밋 없이 재시작했으므로 offset=0
         assertThat(restarted.peek(restoredOffset)).isEqualTo(message); // 같은 메시지가 다시 전달됨 (at-least-once)
@@ -115,7 +115,7 @@ class TopicQueueTest {
             throw new IllegalStateException("Failed to create topic directory: " + topicDir, exception);
         }
         final SegmentChain segmentChain = SegmentChain.open(topicDir, DEFAULT_MAX_BYTES);
-        final OffsetCheckpointRegistry checkpointRegistry = OffsetCheckpointRegistry.open(topicDir);
+        final CheckpointRegistry checkpointRegistry = CheckpointRegistry.open(topicDir);
 
         return new TopicQueue(new Topic(topicName), segmentChain, checkpointRegistry);
     }

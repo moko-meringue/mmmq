@@ -3,8 +3,8 @@ package org.mmmq.broker.topicqueue;
 import jakarta.annotation.Nullable;
 import java.io.Closeable;
 import java.util.concurrent.locks.ReentrantLock;
-import org.mmmq.broker.topicqueue.storage.OffsetCheckpoint;
-import org.mmmq.broker.topicqueue.storage.OffsetCheckpointRegistry;
+import org.mmmq.broker.topicqueue.storage.Checkpoint;
+import org.mmmq.broker.topicqueue.storage.CheckpointRegistry;
 import org.mmmq.broker.topicqueue.storage.SegmentChain;
 import org.mmmq.broker.topicqueue.storage.StorageException;
 import org.mmmq.core.message.Message;
@@ -17,10 +17,10 @@ public class TopicQueue implements Closeable { // 한 토픽의 메시지를 디
     private static final Logger log = LoggerFactory.getLogger(TopicQueue.class);
     private final Topic topic; // 이 큐가 속한 토픽
     private final SegmentChain segmentChain; // 세그먼트 파일 관리 객체. 실제 디스크 I/O를 담당
-    private final OffsetCheckpointRegistry checkpointRegistry; // dispatcher 이름별 OffsetCheckpoint 컬렉션. checkpoints 디렉토리를 자체 관리
+    private final CheckpointRegistry checkpointRegistry; // dispatcher 이름별 Checkpoint 컬렉션. checkpoints 디렉토리를 자체 관리
     private final ReentrantLock writeLock = new ReentrantLock(); // offer는 단일 writer만 허용. reader(peek)는 lock 없이 FileChannel positional read
 
-    public TopicQueue(Topic topic, SegmentChain segmentChain, OffsetCheckpointRegistry checkpointRegistry) {
+    public TopicQueue(Topic topic, SegmentChain segmentChain, CheckpointRegistry checkpointRegistry) {
         this.topic = topic;
         this.segmentChain = segmentChain;
         this.checkpointRegistry = checkpointRegistry;
@@ -49,7 +49,7 @@ public class TopicQueue implements Closeable { // 한 토픽의 메시지를 디
     }
 
     public Offset commit(String dispatcherName, Offset offset) { // 메시지 처리 완료 후 호출. 진전된 새 Offset을 반환하고 파일에 fsync
-        OffsetCheckpoint checkpoint = checkpointRegistry.get(dispatcherName);
+        Checkpoint checkpoint = checkpointRegistry.get(dispatcherName);
         if (checkpoint == null) { // subscribe 없이 commit을 호출하면 프로그래밍 오류 — 부재 해석은 토픽 레이어의 책임
             throw new IllegalStateException(
                     "Cannot commit: dispatcher '" + dispatcherName + "' has not subscribed topic '" + topic.name() + "'"
@@ -65,7 +65,7 @@ public class TopicQueue implements Closeable { // 한 토픽의 메시지를 디
     }
 
     @Override
-    public void close() { // 보유한 storage 리소스 정리. SegmentChain 닫기에 실패해도 OffsetCheckpointRegistry는 닫힘
+    public void close() { // 보유한 storage 리소스 정리. SegmentChain 닫기에 실패해도 CheckpointRegistry는 닫힘
         try {
             segmentChain.close();
         } finally {
