@@ -57,6 +57,12 @@ public class Dispatcher {
         this.sender = Sender.from(host);
     }
 
+    @EventListener(ApplicationReadyEvent.class)
+    void onApplicationReady() {
+        subscriptions.keySet()
+                .forEach(topicQueue -> workerPool.submit(topicQueue, () -> drain(topicQueue)));
+    }
+
     @EventListener
     void onTopicQueueInitialized(TopicQueueInitializedEvent event) {
         TopicQueue topicQueue = event.topicQueue();
@@ -66,16 +72,6 @@ public class Dispatcher {
         subscriptions.computeIfAbsent(topicQueue, queue -> queue.subscribe(name));
     }
 
-    @EventListener(ApplicationReadyEvent.class)
-    void onApplicationReady() {
-        subscriptions.keySet().forEach(topicQueue -> workerPool.submit(topicQueue, () -> drain(topicQueue)));
-    }
-
-    boolean matches(Topic topic) {
-        return patterns.stream()
-                .anyMatch(pattern -> pattern.matches(topic));
-    }
-
     @EventListener
     void onMessageArrived(MessageArrivedEvent event) {
         TopicQueue topicQueue = event.topicQueue();
@@ -83,6 +79,11 @@ public class Dispatcher {
             return;
         }
         workerPool.submit(topicQueue, () -> drain(topicQueue));
+    }
+
+    boolean matches(Topic topic) {
+        return patterns.stream()
+                .anyMatch(pattern -> pattern.matches(topic));
     }
 
     private void drain(TopicQueue topicQueue) {
