@@ -32,13 +32,13 @@ class TopicQueueBootstrapperTest {
         final StorageProperties storage = new StorageProperties(tempDir.toAbsolutePath().toString());
         final SegmentProperties segment = new SegmentProperties(DEFAULT_MAX_BYTES);
         final TopicQueueFactory factory = new TopicQueueFactory(storage, segment);
-        final TopicQueueRegistry registry = new TopicQueueRegistry(factory, NO_OP_PUBLISHER);
-        final TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, factory, registry);
+        final TopicQueueContainer container = new TopicQueueContainer(factory, NO_OP_PUBLISHER);
+        final TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, factory, container);
 
         bootstrapper.afterSingletonsInstantiated();
 
-        final TopicQueue queueA = registry.get(new Topic("topic-a"));
-        final TopicQueue queueB = registry.get(new Topic("topic-b"));
+        final TopicQueue queueA = container.get(new Topic("topic-a"));
+        final TopicQueue queueB = container.get(new Topic("topic-b"));
         final Offset offsetA = queueA.subscribe("dispatcher-1");
         final Offset offsetB = queueB.subscribe("dispatcher-1");
 
@@ -63,11 +63,11 @@ class TopicQueueBootstrapperTest {
         final StorageProperties storage = new StorageProperties(tempDir.toAbsolutePath().toString());
         final SegmentProperties segment = new SegmentProperties(DEFAULT_MAX_BYTES);
         final TopicQueueFactory factory = new TopicQueueFactory(storage, segment);
-        final TopicQueueRegistry registry = new TopicQueueRegistry(factory, NO_OP_PUBLISHER);
-        final TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, factory, registry);
+        final TopicQueueContainer container = new TopicQueueContainer(factory, NO_OP_PUBLISHER);
+        final TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, factory, container);
         bootstrapper.afterSingletonsInstantiated();
 
-        final TopicQueue restored = registry.get(new Topic("topic-a"));
+        final TopicQueue restored = container.get(new Topic("topic-a"));
         final Offset restoredOffset = restored.subscribe("dispatcher-1");
 
         assertThat(restoredOffset.value()).isEqualTo(1L);
@@ -81,12 +81,12 @@ class TopicQueueBootstrapperTest {
         );
         final SegmentProperties segment = new SegmentProperties(DEFAULT_MAX_BYTES);
         final TopicQueueFactory factory = new TopicQueueFactory(storage, segment);
-        final TopicQueueRegistry registry = new TopicQueueRegistry(factory, NO_OP_PUBLISHER);
-        final TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, factory, registry);
+        final TopicQueueContainer container = new TopicQueueContainer(factory, NO_OP_PUBLISHER);
+        final TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, factory, container);
 
         bootstrapper.afterSingletonsInstantiated();
 
-        assertThat(registry.get(new Topic("anything"))).isNotNull();
+        assertThat(container.get(new Topic("anything"))).isNotNull();
     }
 
     private void seedTopic(Path baseDir, String topicName, Message message) {

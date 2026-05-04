@@ -9,22 +9,22 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 @Component
-public class TopicQueueRegistry {
+public class TopicQueueContainer {
 
-    private static final Logger log = LoggerFactory.getLogger(TopicQueueRegistry.class);
+    private static final Logger log = LoggerFactory.getLogger(TopicQueueContainer.class);
 
     private final TopicQueueFactory factory;
     private final ApplicationEventPublisher publisher;
     private final ConcurrentHashMap<Topic, TopicQueue> queues = new ConcurrentHashMap<>();
 
-    public TopicQueueRegistry(TopicQueueFactory factory, ApplicationEventPublisher publisher) {
+    public TopicQueueContainer(TopicQueueFactory factory, ApplicationEventPublisher publisher) {
         this.factory = factory;
         this.publisher = publisher;
     }
 
     public TopicQueue get(Topic topic) {
-        return queues.computeIfAbsent(topic, t -> {
-            TopicQueue queue = factory.create(t);
+        return queues.computeIfAbsent(topic, key -> {
+            TopicQueue queue = factory.create(key);
             log.info("Topic queue created: {}", queue.getTopic().name());
             publisher.publishEvent(new TopicQueueInitializedEvent(queue));
             return queue;

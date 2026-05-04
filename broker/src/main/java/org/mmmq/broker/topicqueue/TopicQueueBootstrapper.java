@@ -14,12 +14,12 @@ public class TopicQueueBootstrapper implements SmartInitializingSingleton {
 
     private final Path root;
     private final TopicQueueFactory factory;
-    private final TopicQueueRegistry registry;
+    private final TopicQueueContainer container;
 
-    public TopicQueueBootstrapper(StorageProperties storage, TopicQueueFactory factory, TopicQueueRegistry registry) {
+    public TopicQueueBootstrapper(StorageProperties storage, TopicQueueFactory factory, TopicQueueContainer container) {
         this.root = Path.of(storage.rootDir());
         this.factory = factory;
-        this.registry = registry;
+        this.container = container;
     }
 
     @Override
@@ -31,7 +31,7 @@ public class TopicQueueBootstrapper implements SmartInitializingSingleton {
             entries.filter(Files::isDirectory)
                     .map(path -> new Topic(path.getFileName().toString()))
                     .map(factory::create)
-                    .forEach(registry::register);
+                    .forEach(container::register);
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to scan data directory: " + root, exception);
         }
