@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.stream.Stream;
+import java.util.zip.CRC32C;
 import org.mmmq.broker.topicqueue.storage.FileHandle.FlushMode;
 import org.mmmq.core.message.Message;
 
@@ -151,7 +152,8 @@ class SegmentFile implements Closeable {
             byte[] messageBytes
     ) {
 
-        private static final int LENGTH_HEADER_SIZE = Integer.BYTES;
+        private static final int CRC_HEADER_BYTES = 4;
+        private static final int LENGTH_HEADER_BYTES = Integer.BYTES;
         private static final ObjectMapper MAPPER = new ObjectMapper();
 
         Entry {
@@ -161,42 +163,61 @@ class SegmentFile implements Closeable {
         }
 
         static Entry from(Message message) {
-            return new Entry(encode(message));
-        }
-
-        static Entry readFrom(FileHandle fileHandle, long address) throws IOException {
-            int length = ByteBuffer.wrap(fileHandle.readFully(address, LENGTH_HEADER_SIZE)).getInt();
-            return new Entry(fileHandle.readFully(address + LENGTH_HEADER_SIZE, length));
-        }
-
-        private static byte[] encode(Message message) {
             try {
-                return MAPPER.writeValueAsBytes(message);
+                return new Entry(MAPPER.writeValueAsBytes(message));
             } catch (JsonProcessingException exception) {
-                throw new StorageException("Failed to encode message: " + message, exception);
+                throw new MessageSerializationException("Failed to serialize message", exception);
             }
         }
 
-        private static Message decode(byte[] messageBytes) {
-            try {
-                return MAPPER.readValue(messageBytes, Message.class);
-            } catch (IOException exception) {
-                throw new StorageException("Failed to decode message", exception);
+        static Entry readFrom(FileHandle fileHandle, long address) throws IOException {
+            int length = ByteBuffer.wrap(fileHandle.readFully(address, LENGTH_HEADER_BYTES)).getInt();
+            if (length < CRC_HEADER_BYTES) {
+                throw new StorageException(
+                        "Entry frame too short to contain CRC header: length=" + length
+                );
+            }
+            ByteBuffer body = ByteBuffer.wrap(fileHandle.readFully(address + LENGTH_HEADER_BYTES, length));
+            long checksum = Integer.toUnsignedLong(body.getInt());
+            byte[] messageBytes = new byte[body.remaining()];
+            body.get(messageBytes);
+            validateChecksum(checksum, messageBytes);
+            return new Entry(messageBytes);
+        }
+
+        private static long computeChecksum(byte[] bytes) {
+            CRC32C crc32c = new CRC32C();
+            crc32c.update(bytes);
+            return crc32c.getValue();
+        }
+
+        private static void validateChecksum(long checksum, byte[] bytes) {
+            long computed = computeChecksum(bytes);
+            if (checksum != computed) {
+                throw new ChecksumMismatchException(
+                        "CRC mismatch: stored=" + checksum + ", computed=" + computed
+                );
             }
         }
 
         ByteBuffer toByteBuffer() {
-            ByteBuffer buffer = ByteBuffer.allocate(size());
-            buffer.putInt(messageBytes.length).put(messageBytes).flip();
+            long crc = computeChecksum(messageBytes);
+            int length = CRC_HEADER_BYTES + messageBytes.length;
+            ByteBuffer buffer = ByteBuffer.allocate(LENGTH_HEADER_BYTES + length);
+            buffer.putInt(length).putInt((int) crc).put(messageBytes).flip();
             return buffer;
         }
 
         Message toMessage() {
-            return decode(messageBytes);
+            try {
+                return MAPPER.readValue(messageBytes, Message.class);
+            } catch (IOException exception) {
+                throw new MessageSerializationException("Failed to deserialize message", exception);
+            }
         }
 
         int size() {
-            return LENGTH_HEADER_SIZE + messageBytes.length;
+            return LENGTH_HEADER_BYTES + CRC_HEADER_BYTES + messageBytes.length;
         }
     }
 }
