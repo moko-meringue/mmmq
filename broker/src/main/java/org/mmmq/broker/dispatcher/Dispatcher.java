@@ -96,7 +96,7 @@ public class Dispatcher {
                     if (message == null) {
                         return;
                     }
-                    deliverOrDeadLetter(message);
+                    deliver(message);
                 } catch (CorruptionException exception) {
                     log.error("Dispatcher {} skipped corrupted entry on topic {} at offset {}",
                             name,
@@ -108,32 +108,33 @@ public class Dispatcher {
                 offset = topicQueue.commit(name, offset);
                 subscriptions.put(topicQueue, offset);
             }
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            log.info("Dispatcher {} drain interrupted on topic {}", name, topicQueue.getTopic());
         } catch (Exception exception) {
             log.error("Dispatcher {} aborted drain on topic {}", name, topicQueue.getTopic(), exception);
         }
     }
 
-    private void deliverOrDeadLetter(Message message) {
+    private void deliver(Message message) throws InterruptedException {
         long currentBackoffDelay = INITIAL_BACKOFF_DELAY_MS;
-        while (!Thread.currentThread().isInterrupted()) {
+        while (true) {
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
             try {
                 if (!sender.send(message, MAX_NACK_RETRY_COUNT)) {
                     log.warn("NACK exhausted. Sending to DLQ: {}", message);
                     deadLetterQueues.forEach(dlq -> dlq.add(new DeadLetter(message)));
                 }
                 return;
-            } catch (Exception exception) {
+            } catch (RuntimeException exception) {
                 log.warn(
                         "Communication failure. Backing off {}ms. Error: {}",
                         currentBackoffDelay,
                         exception.getMessage()
                 );
-                try {
-                    Thread.sleep(currentBackoffDelay);
-                } catch (InterruptedException interruptedException) {
-                    Thread.currentThread().interrupt();
-                    return;
-                }
+                Thread.sleep(currentBackoffDelay);
                 currentBackoffDelay = Math.min(currentBackoffDelay * BACKOFF_MULTIPLIER, MAX_BACKOFF_DELAY_MS);
             }
         }
