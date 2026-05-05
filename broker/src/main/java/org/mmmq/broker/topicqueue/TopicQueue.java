@@ -5,6 +5,7 @@ import java.io.Closeable;
 import java.util.concurrent.locks.ReentrantLock;
 import org.mmmq.broker.topicqueue.storage.CheckpointDirectory;
 import org.mmmq.broker.topicqueue.storage.CheckpointFile;
+import org.mmmq.broker.topicqueue.storage.CorruptionException;
 import org.mmmq.broker.topicqueue.storage.SegmentFileChain;
 import org.mmmq.broker.topicqueue.storage.StorageException;
 import org.mmmq.core.message.Message;
@@ -45,7 +46,7 @@ public class TopicQueue implements Closeable {
     }
 
     @Nullable
-    public Message peek(Offset offset) {
+    public Message peek(Offset offset) throws CorruptionException {
         return segmentFileChain.readAt(offset.value());
     }
 

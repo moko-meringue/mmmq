@@ -42,7 +42,7 @@ public class SegmentFileChain implements Closeable {
     }
 
     @Nullable
-    public Message readAt(long absoluteOffset) {
+    public Message readAt(long absoluteOffset) throws CorruptionException {
         Long startOffset = segmentsByStartOffset.floorKey(absoluteOffset);
         if (startOffset == null) {
             return null;

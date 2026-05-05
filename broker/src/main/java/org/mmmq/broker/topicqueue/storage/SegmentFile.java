@@ -107,7 +107,7 @@ class SegmentFile implements Closeable {
     }
 
     @Nullable
-    Message readAt(long offset) {
+    Message readAt(long offset) throws CorruptionException {
         if (offset < 0) {
             throw new IllegalArgumentException("offset must be non-negative: " + offset);
         }
@@ -170,7 +170,7 @@ class SegmentFile implements Closeable {
             }
         }
 
-        static Entry readFrom(FileHandle fileHandle, long address) throws IOException {
+        static Entry readFrom(FileHandle fileHandle, long address) throws IOException, CorruptionException {
             int length = ByteBuffer.wrap(fileHandle.readFully(address, LENGTH_HEADER_BYTES)).getInt();
             if (length < CRC_HEADER_BYTES) {
                 throw new CorruptionException(
