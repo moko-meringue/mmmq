@@ -14,12 +14,10 @@ import org.springframework.stereotype.Component;
 public class TopicQueueBootstrapper implements SmartInitializingSingleton {
 
     private final Path root;
-    private final TopicQueueFactory factory;
     private final TopicQueueContainer container;
 
-    public TopicQueueBootstrapper(StorageProperties storage, TopicQueueFactory factory, TopicQueueContainer container) {
+    public TopicQueueBootstrapper(StorageProperties storage, TopicQueueContainer container) {
         this.root = Path.of(storage.rootDir());
-        this.factory = factory;
         this.container = container;
     }
 
@@ -31,7 +29,6 @@ public class TopicQueueBootstrapper implements SmartInitializingSingleton {
         try (Stream<Path> entries = Files.list(root)) {
             entries.filter(Files::isDirectory)
                     .map(path -> new Topic(path.getFileName().toString()))
-                    .map(factory::create)
                     .forEach(container::register);
         } catch (IOException exception) {
             throw new StorageException("Failed to scan data directory: " + root, exception);

@@ -31,10 +31,14 @@ public class TopicQueueContainer {
         });
     }
 
-    void register(TopicQueue queue) {
-        queues.put(queue.getTopic(), queue);
-        log.info("Topic queue registered: {}", queue.getTopic().name());
-        publisher.publishEvent(new TopicQueueInitializedEvent(queue));
+    @SuppressWarnings("resource")
+    void register(Topic topic) {
+        queues.computeIfAbsent(topic, key -> {
+            TopicQueue queue = factory.create(key);
+            log.info("Topic queue registered: {}", key.name());
+            publisher.publishEvent(new TopicQueueInitializedEvent(queue));
+            return queue;
+        });
     }
 
     @PreDestroy

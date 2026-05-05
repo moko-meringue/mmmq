@@ -33,7 +33,7 @@ class TopicQueueBootstrapperTest {
         final SegmentProperties segment = new SegmentProperties(DEFAULT_MAX_BYTES);
         final TopicQueueFactory factory = new TopicQueueFactory(storage, segment);
         final TopicQueueContainer container = new TopicQueueContainer(factory, NO_OP_PUBLISHER);
-        final TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, factory, container);
+        final TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, container);
 
         bootstrapper.afterSingletonsInstantiated();
 
@@ -64,7 +64,7 @@ class TopicQueueBootstrapperTest {
         final SegmentProperties segment = new SegmentProperties(DEFAULT_MAX_BYTES);
         final TopicQueueFactory factory = new TopicQueueFactory(storage, segment);
         final TopicQueueContainer container = new TopicQueueContainer(factory, NO_OP_PUBLISHER);
-        final TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, factory, container);
+        final TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, container);
         bootstrapper.afterSingletonsInstantiated();
 
         final TopicQueue restored = container.get(new Topic("topic-a"));
@@ -82,7 +82,7 @@ class TopicQueueBootstrapperTest {
         final SegmentProperties segment = new SegmentProperties(DEFAULT_MAX_BYTES);
         final TopicQueueFactory factory = new TopicQueueFactory(storage, segment);
         final TopicQueueContainer container = new TopicQueueContainer(factory, NO_OP_PUBLISHER);
-        final TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, factory, container);
+        final TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, container);
 
         bootstrapper.afterSingletonsInstantiated();
 
