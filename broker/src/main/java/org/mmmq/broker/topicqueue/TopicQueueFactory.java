@@ -7,6 +7,7 @@ import org.mmmq.broker.config.SegmentProperties;
 import org.mmmq.broker.config.StorageProperties;
 import org.mmmq.broker.topicqueue.storage.CheckpointDirectory;
 import org.mmmq.broker.topicqueue.storage.SegmentFileChain;
+import org.mmmq.broker.topicqueue.storage.StorageException;
 import org.mmmq.core.message.Topic;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +27,7 @@ public class TopicQueueFactory {
         try {
             Files.createDirectories(topicDir);
         } catch (IOException exception) {
-            throw new IllegalStateException("Failed to create topic directory: " + topicDir, exception);
+            throw new StorageException("Failed to create topic directory: " + topicDir, exception);
         }
         SegmentFileChain segmentFileChain = SegmentFileChain.open(topicDir, segmentMaxBytes);
         CheckpointDirectory checkpointDirectory = CheckpointDirectory.open(topicDir);

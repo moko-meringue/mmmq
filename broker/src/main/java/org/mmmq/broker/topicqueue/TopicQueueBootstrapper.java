@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 import org.mmmq.broker.config.StorageProperties;
+import org.mmmq.broker.topicqueue.storage.StorageException;
 import org.mmmq.core.message.Topic;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.stereotype.Component;
@@ -33,7 +34,7 @@ public class TopicQueueBootstrapper implements SmartInitializingSingleton {
                     .map(factory::create)
                     .forEach(container::register);
         } catch (IOException exception) {
-            throw new IllegalStateException("Failed to scan data directory: " + root, exception);
+            throw new StorageException("Failed to scan data directory: " + root, exception);
         }
     }
 }
