@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.atomic.AtomicLong;
 import org.mmmq.broker.topicqueue.storage.FileHandle.FlushMode;
 
 class OffsetIndexFile implements Closeable {
@@ -15,10 +16,12 @@ class OffsetIndexFile implements Closeable {
 
     private final Path path;
     private final FileHandle fileHandle;
+    private final AtomicLong committedCount;
 
-    private OffsetIndexFile(Path path, FileHandle fileHandle) {
+    private OffsetIndexFile(Path path, FileHandle fileHandle, long initialCount) {
         this.path = path;
         this.fileHandle = fileHandle;
+        this.committedCount = new AtomicLong(initialCount);
     }
 
     static OffsetIndexFile open(Path base, long startOffset) {
@@ -32,7 +35,7 @@ class OffsetIndexFile implements Closeable {
                     StandardOpenOption.READ,
                     StandardOpenOption.WRITE
             );
-            return new OffsetIndexFile(path, fileHandle);
+            return new OffsetIndexFile(path, fileHandle, fileHandle.size() / ENTRY_BYTES);
         } catch (IOException exception) {
             throw new StorageException("Failed to open startOffset index: " + path, exception);
         }
@@ -43,6 +46,7 @@ class OffsetIndexFile implements Closeable {
             ByteBuffer buffer = ByteBuffer.allocate(ENTRY_BYTES);
             buffer.putLong(address).flip();
             fileHandle.appendFully(buffer, FlushMode.FSYNC);
+            committedCount.incrementAndGet();
         } catch (IOException exception) {
             throw new StorageException("Failed to append to offset index: " + path, exception);
         }
@@ -57,11 +61,7 @@ class OffsetIndexFile implements Closeable {
     }
 
     long count() {
-        try {
-            return fileHandle.size() / ENTRY_BYTES;
-        } catch (IOException exception) {
-            throw new StorageException("Failed to read size of offset index: " + path, exception);
-        }
+        return committedCount.get();
     }
 
     @Override
