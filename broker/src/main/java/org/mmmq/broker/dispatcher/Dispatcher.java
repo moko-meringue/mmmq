@@ -163,6 +163,7 @@ public class Dispatcher {
         private void shutdownAll() {
             pool.values()
                     .forEach(ExecutorService::shutdownNow);
+            pool.clear();
         }
     }
 }
