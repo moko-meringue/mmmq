@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class FrontDispatcher {
 
-    final TopicQueueContainer container;
+    private final TopicQueueContainer container;
     private final ApplicationEventPublisher publisher;
 
     public FrontDispatcher(TopicQueueContainer container, ApplicationEventPublisher publisher) {
