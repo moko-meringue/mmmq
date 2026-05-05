@@ -173,7 +173,7 @@ class SegmentFile implements Closeable {
         static Entry readFrom(FileHandle fileHandle, long address) throws IOException {
             int length = ByteBuffer.wrap(fileHandle.readFully(address, LENGTH_HEADER_BYTES)).getInt();
             if (length < CRC_HEADER_BYTES) {
-                throw new StorageException(
+                throw new CorruptionException(
                         "Entry frame too short to contain CRC header: length=" + length
                 );
             }

@@ -15,6 +15,7 @@ import org.mmmq.broker.dlq.DeadLetterQueue;
 import org.mmmq.broker.topicqueue.Offset;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.broker.topicqueue.TopicQueueInitializedEvent;
+import org.mmmq.broker.topicqueue.storage.CorruptionException;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
@@ -87,12 +88,28 @@ public class Dispatcher {
     }
 
     private void drain(TopicQueue topicQueue) {
-        Offset offset = subscriptions.get(topicQueue);
-        Message message;
-        while ((message = topicQueue.peek(offset)) != null) {
-            deliverOrDeadLetter(message);
-            offset = topicQueue.commit(name, offset);
-            subscriptions.put(topicQueue, offset);
+        try {
+            Offset offset = subscriptions.get(topicQueue);
+            while (true) {
+                try {
+                    Message message = topicQueue.peek(offset);
+                    if (message == null) {
+                        return;
+                    }
+                    deliverOrDeadLetter(message);
+                } catch (CorruptionException exception) {
+                    log.error("Dispatcher {} skipped corrupted entry on topic {} at offset {}",
+                            name,
+                            topicQueue.getTopic(),
+                            offset,
+                            exception
+                    );
+                }
+                offset = topicQueue.commit(name, offset);
+                subscriptions.put(topicQueue, offset);
+            }
+        } catch (Exception exception) {
+            log.error("Dispatcher {} aborted drain on topic {}", name, topicQueue.getTopic(), exception);
         }
     }
 
