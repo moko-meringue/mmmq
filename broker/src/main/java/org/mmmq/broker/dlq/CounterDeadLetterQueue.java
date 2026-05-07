@@ -26,7 +26,7 @@ public class CounterDeadLetterQueue extends DeadLetterQueue {
     }
 
     @PreDestroy
-    public void stop() {
+    public void destroy() {
         executor.shutdown();
         try {
             if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {

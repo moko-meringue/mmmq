@@ -47,7 +47,7 @@ Producer.produce(message)
   → HTTP POST /messages → Broker
   → FrontDispatcher.dispatch(message)
     → Filters Dispatchers by Pattern.matches(topic)  [Ant-style wildcard, e.g. order.*]
-    → TopicQueueRegistry.get(topic) → TopicQueue (SegmentChain, segment capacity 1000)
+    → TopicQueueRegistry.get(topic) → TopicQueue (SegmentChain, segmentFile capacity 1000)
     → TopicQueue.offer(message) + publishes MessageArrivedEvent
     → Dispatcher (per Consumer): subscribes to TopicQueue, single Subscription worker thread
       → Drains TopicQueue from per-Subscription Offset
@@ -111,7 +111,6 @@ public Dispatcher orderDispatcher() {
 - Class/Interface: insert a blank line immediately after the opening brace `{`.
 - Record: place each component on a new line. Insert a blank line after `{` if the record has methods.
 - Annotation stacking: pyramid order (shortest → longest, top → bottom).
-- ALWAYS insert a blank line before a `return` statement.
 - Do NOT use `this` unless needed to resolve naming conflicts.
 
 ### Lombok
@@ -120,7 +119,7 @@ public Dispatcher orderDispatcher() {
 
 ### Immutability
 - Use `private final` fields with `@RequiredArgsConstructor` for DI.
-- Use `final` for local variables when reassignment is not needed.
+- NEVER use `final` for local variables.
 - Return immutable collections (`Stream.toList()`, `List.copyOf()`).
 
 ### Optional & Streams

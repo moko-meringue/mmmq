@@ -5,7 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Pattern;
+import org.mmmq.core.message.TopicPattern;
 import org.mmmq.core.message.Topic;
 
 import java.util.Map;
@@ -66,14 +66,14 @@ class FrontHandlerTest {
     void executeTest() throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(3);
 
-        FakeHandlerExecution fakeHandlerExecutionA = new FakeHandlerExecution(new Pattern("topicA")) {
+        FakeHandlerExecution fakeHandlerExecutionA = new FakeHandlerExecution(new TopicPattern("topicA")) {
             @Override
             public void execute(Message message) {
                 super.execute(message);
                 latch.countDown();
             }
         };
-        FakeHandlerExecution fakeHandlerExecutionB = new FakeHandlerExecution(new Pattern("topicB")) {
+        FakeHandlerExecution fakeHandlerExecutionB = new FakeHandlerExecution(new TopicPattern("topicB")) {
             @Override
             public void execute(Message message) {
                 super.execute(message);
@@ -104,7 +104,7 @@ class FrontHandlerTest {
     void handleTest() {
         frontHandler.start();
         CountDownLatch latch = new CountDownLatch(1);
-        frontHandler.addHandlerExecution(new HandlerExecution("name", new Pattern("topic")) {
+        frontHandler.addHandlerExecution(new HandlerExecution("name", new TopicPattern("topic")) {
             @Override
             public void execute(Message message) {
                 latch.countDown();
@@ -118,14 +118,14 @@ class FrontHandlerTest {
     @Test
     @DisplayName("소멸될 때 스레드풀을 종료한다.")
     void destructTest() {
-        frontHandler.stop();
+        frontHandler.destroy();
         assertThat(frontHandler.threadPool.isShutdown()).isTrue();
     }
 
     class FakeHandlerExecution extends HandlerExecution {
         int executionCount = 0;
 
-        protected FakeHandlerExecution(Pattern pattern) {
+        protected FakeHandlerExecution(TopicPattern pattern) {
             super("FakeHandlerExecution", pattern);
         }
 

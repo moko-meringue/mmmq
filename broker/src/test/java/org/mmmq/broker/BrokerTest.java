@@ -3,9 +3,12 @@ package org.mmmq.broker;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
+import java.nio.file.Path;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mmmq.broker.dispatcher.FrontDispatcher;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
@@ -14,8 +17,8 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.Map;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -26,11 +29,19 @@ import static org.mockito.Mockito.verify;
 )
 class BrokerTest {
 
+    @TempDir
+    static Path tempDataDir;
+
     @LocalServerPort
     int port;
 
     @Autowired
     ObjectMapper objectMapper;
+
+    @DynamicPropertySource
+    static void registerProperties(DynamicPropertyRegistry registry) {
+        registry.add("mmmq.broker.storage.root-dir", () -> tempDataDir.toAbsolutePath().toString());
+    }
 
     @BeforeEach
     void setup() {
@@ -40,7 +51,7 @@ class BrokerTest {
     @Test
     @DisplayName("Manager는 외부로부터 메시지를 받을 수 있다.")
     void receiveMessageTest() throws JsonProcessingException {
-        Message message = new Message(new Topic("topic"), Map.of("key", "value"));
+        final Message message = new Message(new Topic("topic"), Map.of("key", "value"));
         RestAssured.given().log().all()
                 .body(objectMapper.writeValueAsString(message))
                 .contentType("application/json")
@@ -53,11 +64,11 @@ class BrokerTest {
     @Test
     @DisplayName("Manager는 전달받은 메시지를 브로커에게 전달할 수 있다.")
     void forwardToBrokerTest() {
-        Message message = new Message(new Topic("topic"), Map.of("key", "value"));
-        FrontDispatcher frontDispatcher = mock(FrontDispatcher.class);
-        Broker Broker = new Broker(frontDispatcher);
+        final Message message = new Message(new Topic("topic"), Map.of("key", "value"));
+        final FrontDispatcher frontDispatcher = mock(FrontDispatcher.class);
+        final Broker broker = new Broker(frontDispatcher);
 
-        Broker.postMessage(message);
+        broker.postMessage(message);
 
         verify(frontDispatcher).dispatch(message);
     }

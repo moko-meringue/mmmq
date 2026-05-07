@@ -6,7 +6,7 @@ import org.mmmq.consumer.exception.HandlerExecutionException;
 import org.mmmq.consumer.exception.InvalidHandlerException;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Pattern;
+import org.mmmq.core.message.TopicPattern;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -18,7 +18,7 @@ class MethodExecution extends HandlerExecution {
     final JavaType parameterType;
     final ObjectMapper objectMapper;
 
-    MethodExecution(Pattern pattern, Object bean, Method method, ObjectMapper objectMapper) {
+    MethodExecution(TopicPattern pattern, Object bean, Method method, ObjectMapper objectMapper) {
         super(bean.getClass().getCanonicalName() + "#" + method.getName(), pattern);
         method.setAccessible(true);
         this.bean = bean;

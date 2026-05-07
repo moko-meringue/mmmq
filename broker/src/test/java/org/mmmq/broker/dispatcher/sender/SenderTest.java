@@ -97,7 +97,6 @@ class SenderTest {
     void retryOnNackTest() throws JsonProcessingException {
         Sender sender = new Sender(restClient);
 
-        // 첫 번째 시도는 NACK, 두 번째 시도는 ACK
         server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(
