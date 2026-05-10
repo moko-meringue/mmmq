@@ -17,7 +17,7 @@
 
 ```
 Producer.produce(message)
-  → HTTP POST /messages → Broker
+  → HTTP POST /mmmq/messages → Broker
     → FrontDispatcher.dispatch(message)
       → TopicQueueContainer.get(topic)  [없으면 생성 + TopicQueueInitializedEvent 발행]
       → TopicQueue.offer(message)
@@ -29,7 +29,7 @@ Producer.produce(message)
             → WorkerPool에 drain 태스크 제출
               → drain(): TopicQueue.peek(offset)으로 루프 소비
                 → Sender.send(message, maxNackRetry=3)
-                  → HTTP POST /messages → Consumer
+                  → HTTP POST /mmmq/messages → Consumer
                     → FrontHandler: BlockingQueue(1000) + ThreadPoolExecutor(2~5)
                       → HandlerExecution(@MMMQListener 또는 MMMQListener<T>)
                 → 전송 완료 시: TopicQueue.commit(name, offset)으로 체크포인트 fsync
@@ -62,7 +62,7 @@ ApplicationReadyEvent
 
 ```
 core/       # 공유 타입: Message, Topic, TopicPattern, Acknowledgement
-producer/   # Producer 빈 + Gateway (RestClient → POST /messages → Broker)
+producer/   # Producer 빈 + Gateway (RestClient → POST /mmmq/messages → Broker)
 consumer/   # Consumer REST 엔드포인트 + FrontHandler + HandlerExecution
 broker/     # Broker REST 엔드포인트 + FrontDispatcher + Dispatcher + 영속화 저장소 + DeadLetterQueue
 ```
@@ -101,7 +101,7 @@ broker/     # Broker REST 엔드포인트 + FrontDispatcher + Dispatcher + 영�
 
 ```
 Producer.produce(message)
-  → Gateway.send(message) [HTTP POST /messages]
+  → Gateway.send(message) [HTTP POST /mmmq/messages]
   → BrokerAcknowledgement 수신
   → NACK 시 maxRetryCount까지 재시도 (기본값: 3)
 ```
@@ -127,7 +127,7 @@ Producer producer = Producer.builder(brokerHost)
 
 ### REST 엔드포인트
 
-`Broker`는 `POST /messages`를 제공하여 Producer로부터 메시지를 수신합니다. 수신한 메시지를 `FrontDispatcher`에 위임하고, **디스크 fsync 성공 여부에 따라** `BrokerAcknowledgement(ACK | NACK)`을 반환합니다.
+`Broker`는 `POST /mmmq/messages`를 제공하여 Producer로부터 메시지를 수신합니다. 수신한 메시지를 `FrontDispatcher`에 위임하고, **디스크 fsync 성공 여부에 따라** `BrokerAcknowledgement(ACK | NACK)`을 반환합니다.
 
 ---
 
@@ -306,7 +306,7 @@ NACK 재시도를 모두 소진한 메시지를 `DeadLetter`로 포장하여 저
 ## consumer
 
 ```
-Consumer (POST /messages)
+Consumer (POST /mmmq/messages)
   → FrontHandler.handle(message)       // 내부 BlockingQueue(1000)에 추가
     → Worker 스레드: 큐에서 꺼내
       → HandlerExecutions.getExecutions(message) [토픽 기반 캐싱]
