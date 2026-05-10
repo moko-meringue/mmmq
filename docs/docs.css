@@ -1,0 +1,929 @@
+/* =========================================================
+   docs.css — 메인 랜딩 + 모듈 docs 페이지 전용 (styles.css 위에 적용)
+   ========================================================= */
+
+/* =========================================================
+   Site shell (모든 새 페이지 공유)
+   ========================================================= */
+.site-shell {
+    max-width: clamp(1440px, 96vw, 1920px);
+    margin: 0 auto;
+    padding: 0 var(--s-7);
+    /* 콘텐츠가 짧아도 footer를 viewport 하단에 고정 */
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.site-nav-wrap {
+    padding: var(--s-5) 0;
+}
+
+/* =========================================================
+   Landing (메인 페이지) 섹션
+   ========================================================= */
+.landing-section {
+    padding: var(--s-7) 0;
+}
+
+.landing-section__head {
+    margin: 0 0 var(--s-5);
+}
+
+.landing-section__head .t-eyebrow {
+    display: block;
+    margin-bottom: var(--s-3);
+}
+
+.landing-section__head h2 {
+    margin-bottom: var(--s-3);
+}
+
+.landing-section__head p {
+    color: var(--ink-strong);
+    font-size: 16px;
+    line-height: 26px;
+}
+
+/* Hero variant for landing — slightly different from DS hero */
+.landing-hero {
+    display: grid;
+    grid-template-columns: 1fr 480px;
+    gap: var(--s-9);
+    align-items: center;
+    padding: var(--s-8) 0 var(--s-7);
+}
+
+.landing-hero h1 {
+    margin-bottom: var(--s-5);
+    letter-spacing: -0.025em;
+}
+
+.landing-hero__sub {
+    font-size: 20px;
+    line-height: 32px;
+    color: var(--ink-muted);
+    margin-bottom: var(--s-6);
+    max-width: 520px;
+}
+
+/* Single-column variant — about/quickstart/release/docs landing 등 visual이 없는 페이지용 */
+.landing-hero--single {
+    grid-template-columns: 1fr;
+    padding: 0 0 var(--s-7);
+}
+
+.landing-hero--single h1 {
+    margin: var(--s-3) 0 var(--s-4);
+}
+
+.landing-hero--single .landing-hero__sub {
+    max-width: 720px;
+}
+
+/* =========================================================
+   Home — Pillars (4-card "왜 mmmq인가" 섹션)
+   ========================================================= */
+.pillar-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--s-4);
+}
+
+.pillar-card {
+    padding: var(--s-6) var(--s-5);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    background: var(--surface-page);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    transition: border-color 120ms, transform 120ms;
+}
+
+.pillar-card:hover {
+    border-color: var(--brand-primary);
+    transform: translateY(-2px);
+}
+
+.pillar-card__num {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--brand-primary);
+    letter-spacing: 0.04em;
+}
+
+.pillar-card__title {
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 700;
+    color: var(--ink-strong);
+    letter-spacing: -0.01em;
+    margin: 0;
+}
+
+.pillar-card__desc {
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--ink-muted);
+    margin: 0;
+}
+
+/* =========================================================
+   Home — At a glance (코드 + 단계 설명 2열)
+   ========================================================= */
+.preview-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: var(--s-6);
+    align-items: start;
+}
+
+.preview-steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+}
+
+.preview-steps li {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: var(--s-3);
+    align-items: start;
+}
+
+.preview-steps__num {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--r-pill);
+    background: var(--brand-primary-soft);
+    color: var(--brand-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.preview-steps__body {
+    padding-top: 3px;
+    color: var(--ink-strong);
+    line-height: 24px;
+}
+
+.preview-steps__body code {
+    background: var(--surface-sunken);
+    padding: 1px 6px;
+    border-radius: var(--r-xs);
+    font-size: 13px;
+}
+
+/* =========================================================
+   Home — Closing CTA band (마지막 시작하기 유도 섹션)
+   ========================================================= */
+.cta-band {
+    background: var(--brand-primary-soft);
+    border: 1px solid var(--brand-primary);
+    border-radius: var(--r-md);
+    padding: var(--s-8) var(--s-7);
+    text-align: center;
+}
+
+.cta-band__title {
+    font-size: 30px;
+    line-height: 38px;
+    font-weight: 700;
+    color: var(--ink-strong);
+    letter-spacing: -0.02em;
+    margin: 0 0 var(--s-3);
+}
+
+.cta-band__sub {
+    color: var(--ink-muted);
+    font-size: 16px;
+    line-height: 26px;
+    max-width: 560px;
+    margin: 0 auto var(--s-5);
+}
+
+.cta-band__actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .preview-grid {
+        grid-template-columns: 1fr;
+        gap: var(--s-5);
+    }
+
+    .cta-band {
+        padding: var(--s-6) var(--s-5);
+    }
+
+    .cta-band__title {
+        font-size: 24px;
+        line-height: 32px;
+    }
+
+    .pillar-card {
+        padding: var(--s-5) var(--s-4);
+    }
+}
+
+.landing-hero__ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+}
+
+.landing-hero__visual {
+    background: var(--brand-primary-soft);
+    border: 1px solid var(--brand-primary);
+    border-radius: var(--r-lg);
+    height: 360px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s-7);
+}
+
+.landing-hero__visual svg {
+    width: 320px;
+    height: auto;
+}
+
+.brand-accent {
+    color: var(--brand-primary);
+}
+
+/* Name callout (about: 이름의 뜻) */
+.name-callout {
+    background: var(--surface-soft);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    padding: var(--s-7);
+}
+
+.name-callout__formula {
+    font-family: var(--font-mono);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--ink-strong);
+    letter-spacing: -0.02em;
+    margin-bottom: var(--s-3);
+    line-height: 44px;
+}
+
+.name-callout__formula em {
+    color: var(--brand-primary);
+    font-style: normal;
+}
+
+.name-callout__caption {
+    color: var(--ink-strong);
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 30px;
+}
+
+/* Goals 4-attribute (텍스트만, 아이콘 없이) */
+.feature-card--text-only {
+    background: var(--brand-primary-soft);
+    border-color: transparent;
+}
+
+.feature-card--text-only .feature-card__icon {
+    display: none;
+}
+
+.feature-card--text-only .feature-card__num {
+    display: none;
+}
+
+.feature-card--text-only .feature-card__title {
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    color: var(--ink-strong);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.feature-card__title-en {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--brand-primary-hover);
+    letter-spacing: -0.01em;
+}
+
+.feature-card--text-only .feature-card__desc {
+    color: var(--ink-strong);
+    opacity: 0.78;
+}
+
+.feature-card__divider {
+    border: 0;
+    border-top: 1px solid var(--brand-primary);
+    opacity: 0.25;
+    margin: 4px 0;
+    width: 100%;
+}
+
+/* About / Quickstart 페이지: 우측 sticky TOC 그리드 */
+.about-grid,
+.quickstart-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 200px;
+    gap: var(--s-7);
+    align-items: start;
+    padding-top: var(--s-7);
+}
+
+.about-content,
+.quickstart-content {
+    min-width: 0;
+}
+
+.about-content section,
+.quickstart-content section {
+    scroll-margin-top: var(--s-5);
+}
+
+/* about 본문 단락 기본 스타일 — 인라인 style 대체 */
+.about-content p.t-body-lg {
+    color: var(--ink-strong);
+    margin-bottom: var(--s-5);
+}
+
+.about-content p.t-body {
+    color: var(--ink-muted);
+    margin-bottom: var(--s-4);
+    line-height: 28px;
+}
+
+/* docs landing의 H1 + version dropdown 한 줄 배치 */
+.docs-hero__titlebar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--s-4);
+    margin: var(--s-3) 0 var(--s-4);
+}
+
+.docs-hero__titlebar h1 {
+    margin: 0;
+}
+
+.docs-hero__titlebar .version-dropdown {
+    margin-left: auto;
+}
+
+/* docs landing 본문 안의 hero sub-text는 720px max-width를 따른다 */
+.docs-content .landing-hero__sub {
+    max-width: 720px;
+}
+
+/* .about-toc / .quickstart-toc 의 sticky·폭 등 시각 스타일은
+   .docs-toc 공통 컴포넌트(styles.css)가 동일하게 처리한다.
+   HTML에서 `class="docs-toc about-toc"` 처럼 함께 붙여 쓰면 된다. */
+
+/* Quickstart 모듈 섹션: 코드 블록 세로 스택 */
+.qs-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+}
+
+/* Maintainer profiles */
+.maintainer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: var(--s-5);
+}
+
+.maintainer-card {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    column-gap: var(--s-5);
+    row-gap: var(--s-4);
+    padding: var(--s-5);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    background: var(--surface-page);
+}
+
+.maintainer-card__head {
+    grid-column: 1 / -1;
+}
+
+.maintainer-card__photo {
+    width: 140px;
+    height: 140px;
+    object-fit: cover;
+    border-radius: var(--r-sm);
+    background: var(--brand-primary-soft);
+    border: 1px solid var(--border-default);
+    display: block;
+}
+
+.maintainer-card__detail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    min-width: 0;
+    height: 100%;
+}
+
+.maintainer-card__name {
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: -0.01em;
+}
+
+.maintainer-card__role {
+    font-size: 13px;
+    color: var(--ink-subtle);
+    margin-top: 4px;
+}
+
+.maintainer-card__bio {
+    font-size: 14px;
+    color: var(--ink-strong);
+    line-height: 22px;
+    flex: 1;
+    margin: 0;
+}
+
+.maintainer-card__links {
+    display: flex;
+    gap: var(--s-3);
+    margin-top: auto;
+}
+
+/* Why mmmq — 4 feature 카드 */
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--s-4);
+}
+
+.feature-card {
+    padding: var(--s-5);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    background: var(--surface-page);
+}
+
+.feature-card__icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.feature-card__icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.feature-card__title {
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 26px;
+}
+
+.feature-card__desc {
+    color: var(--ink-muted);
+    font-size: 14px;
+    line-height: 22px;
+}
+
+/* 3-card 모듈 그리드 */
+.modules-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--s-5);
+}
+
+/* Quickstart steps */
+.steps-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--s-4);
+}
+
+.steps-grid-3 .step-card {
+    width: 100%;
+}
+
+/* Footer wrap on landing — flex margin-top:auto로 viewport 하단에 sticky */
+.landing-footer-wrap {
+    margin-top: auto;
+    padding: var(--s-7) 0 var(--s-5);
+}
+
+/* =========================================================
+   docs 페이지 전용 (3 컬럼 레이아웃)
+   ========================================================= */
+.docs-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr 200px;
+    gap: var(--s-7);
+    align-items: start;
+    padding: var(--s-7) 0 var(--s-10);
+}
+
+/* Side nav (좌) */
+.docs-sidenav {
+    position: sticky;
+    top: var(--s-5);
+}
+
+.docs-sidenav__title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-subtle);
+    margin: 0 0 var(--s-3) var(--s-3);
+}
+
+.docs-sidenav .sidenav {
+    width: 100%;
+    padding: var(--s-3);
+}
+
+.docs-sidenav .sidenav__group {
+    margin-bottom: var(--s-4);
+}
+
+.docs-sidenav .sidenav__head {
+    padding: 14px var(--s-3);
+    border-radius: var(--r-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    transition: background-color 0.15s ease;
+}
+
+.docs-sidenav .sidenav__head svg {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.docs-sidenav .sidenav__head-name {
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ink-strong);
+    font-family: var(--font-mono);
+}
+
+.docs-sidenav a.sidenav__head {
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+}
+
+.docs-sidenav a.sidenav__head:hover {
+    background: var(--surface-soft);
+}
+
+.docs-sidenav .sidenav__head--active {
+    background: var(--brand-primary-soft);
+}
+
+.docs-sidenav .sidenav__head--active .sidenav__head-name {
+    color: var(--brand-primary);
+}
+
+/* Content (중) */
+.docs-content {
+    min-width: 0;
+}
+
+.docs-content__eyebrow {
+    display: block;
+    margin-bottom: var(--s-3);
+}
+
+.docs-content > h1 {
+    font-size: 44px;
+    line-height: 52px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--s-4);
+}
+
+.docs-content > p.lede {
+    font-size: 18px;
+    line-height: 30px;
+    color: var(--ink-muted);
+    margin-bottom: var(--s-7);
+    padding-bottom: var(--s-3);
+    border-bottom: 1px solid var(--border-default);
+}
+
+.docs-content section {
+    margin-bottom: var(--s-9);
+    scroll-margin-top: 100px;
+}
+
+.docs-content section h2 {
+    font-size: 28px;
+    line-height: 36px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin-bottom: var(--s-4);
+}
+
+.docs-content section h3 {
+    font-size: 22px;
+    line-height: 30px;
+    font-weight: 600;
+    margin: var(--s-7) 0 var(--s-3);
+}
+
+.docs-content section p {
+    color: var(--ink-strong);
+    margin-bottom: var(--s-4);
+    line-height: 28px;
+}
+
+.docs-content section p.muted {
+    color: var(--ink-muted);
+}
+
+.docs-content section ul, .docs-content section ol {
+    margin: 0 0 var(--s-4) 24px;
+    color: var(--ink-strong);
+}
+
+.docs-content section li {
+    margin-bottom: var(--s-2);
+    line-height: 26px;
+}
+
+.docs-content section .code-block {
+    margin: 0 0 var(--s-4);
+}
+
+.docs-content section .callout {
+    margin-bottom: var(--s-4);
+}
+
+.docs-content section .tbl {
+    margin-bottom: var(--s-4);
+}
+
+
+/* .docs-toc 스타일은 styles.css에 공통 컴포넌트로 정의됨 */
+
+/* =========================================================
+   Page section break (sticky-friendly)
+   ========================================================= */
+.docs-divider {
+    border-top: 1px solid var(--border-default);
+    margin: var(--s-7) 0;
+}
+
+/* =========================================================
+   "이 모듈" hero block (각 모듈 페이지 상단)
+   ========================================================= */
+.module-hero {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    margin-bottom: var(--s-5);
+}
+
+.module-hero__icon {
+    width: 72px;
+    height: 72px;
+    background: var(--surface-soft);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.module-hero__icon svg {
+    width: 56px;
+    height: 56px;
+}
+
+.module-hero__name {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--brand-primary-hover);
+    margin-bottom: 4px;
+    text-transform: lowercase;
+}
+
+.module-hero__title {
+    font-size: 40px;
+    line-height: 48px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+/* .version-dropdown 스타일은 styles.css(공통 컴포넌트)로 이전됨 */
+
+/* =========================================================
+   Responsive — 페이지 레이아웃 미디어쿼리
+   ---------------------------------------------------------
+   styles.css의 공통 미디어쿼리와 동일한 브레이크포인트를 사용:
+     · 1024px 이하: docs 3열 grid을 1열로 stack
+     · 768px 이하 : about/quickstart/landing-hero 1열, hero 패딩 축소
+     · 480px 이하 : maintainer-card 사진 위/텍스트 아래로 stack
+   ========================================================= */
+
+/* 태블릿 — 1024px 이하 */
+@media (max-width: 1024px) {
+    /* docs 3열 레이아웃 → 1열 stack
+       sidenav(좌) → content(중) → toc(우) 순서 유지 */
+    .docs-grid {
+        grid-template-columns: 1fr;
+        gap: var(--s-5);
+        padding: var(--s-5) 0 var(--s-7);
+    }
+
+    .docs-sidenav,
+    .docs-toc {
+        position: static;
+        top: auto;
+        width: 100%;
+    }
+
+    /* 모바일에서 sidenav는 가로 스크롤 가능한 가로 스택으로 (좌측 칼럼 폭 강제 해제) */
+    .docs-sidenav .sidenav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--s-2);
+        padding: 0;
+    }
+
+    .docs-sidenav .sidenav__group {
+        margin-bottom: 0;
+    }
+
+    /* 콘텐츠 max-width 해제 (1열에선 풀 너비 사용) */
+    .docs-content {
+        max-width: 100%;
+    }
+}
+
+/* 모바일 — 768px 이하 */
+@media (max-width: 768px) {
+    /* about/quickstart 2열 → 1열 (TOC 본문 아래로) */
+    .about-grid,
+    .quickstart-grid {
+        grid-template-columns: 1fr;
+        gap: var(--s-5);
+        padding-top: var(--s-5);
+    }
+
+    /* landing 페이지 hero (홈만 적용) → 1열 */
+    .landing-hero {
+        grid-template-columns: 1fr;
+        gap: var(--s-5);
+        padding: var(--s-6) 0 var(--s-5);
+    }
+
+    .landing-hero__sub {
+        font-size: 17px;
+        line-height: 26px;
+    }
+
+    /* about 본문 2열 블록 → 1열 */
+    .about-block {
+        grid-template-columns: 1fr;
+        gap: var(--s-4);
+    }
+
+    /* landing-section 패딩 축소 */
+    .landing-section {
+        padding: var(--s-5) 0;
+    }
+
+    /* 모듈 페이지 hero 축소 */
+    .module-hero__title {
+        font-size: 28px;
+        line-height: 36px;
+    }
+
+    .module-hero__icon {
+        width: 56px;
+        height: 56px;
+    }
+
+    .module-hero__icon svg {
+        width: 42px;
+        height: 42px;
+    }
+
+    /* docs-content 본문 typography 축소 */
+    .docs-content > h1 {
+        font-size: 32px;
+        line-height: 40px;
+    }
+
+    .docs-content section h2 {
+        font-size: 22px;
+        line-height: 30px;
+    }
+
+    .docs-content section h3 {
+        font-size: 19px;
+        line-height: 26px;
+    }
+
+    .docs-content > p.lede {
+        font-size: 16px;
+        line-height: 26px;
+    }
+
+    /* maintainer 카드 사진 좀 작게 */
+    .maintainer-card {
+        grid-template-columns: 100px 1fr;
+        column-gap: var(--s-4);
+        padding: var(--s-4);
+    }
+
+    /* name callout 축소 */
+    .name-callout {
+        padding: var(--s-6) var(--s-4);
+    }
+
+    .name-callout__formula {
+        font-size: 22px;
+    }
+
+    /* sidenav 가로 스택일 때 그룹 사이 정렬을 위해 head padding 약간 줄임 */
+    .docs-sidenav .sidenav__head {
+        padding: var(--s-2) var(--s-3);
+        background: var(--surface-soft);
+        border: 1px solid var(--border-default);
+        border-radius: var(--r-sm);
+        margin-bottom: 0;
+    }
+
+    .docs-sidenav .sidenav__head--active {
+        border-color: var(--brand-primary);
+        background: var(--brand-primary-soft);
+    }
+}
+
+/* 좁은 모바일 — 480px 이하 */
+@media (max-width: 480px) {
+    /* maintainer 카드: 사진 위 → 텍스트 아래 stack */
+    .maintainer-card {
+        grid-template-columns: 1fr;
+        row-gap: var(--s-3);
+        text-align: left;
+    }
+
+    .maintainer-card__photo {
+        width: 88px;
+        height: 88px;
+    }
+
+    /* module-hero 도 stack 가능 (icon + title) */
+    .module-hero {
+        gap: var(--s-3);
+    }
+
+    .module-hero__title {
+        font-size: 24px;
+        line-height: 32px;
+    }
+
+    /* landing-section head 축소 */
+    .landing-section__head {
+        margin-bottom: var(--s-4);
+    }
+
+    /* name-callout 더 작게 */
+    .name-callout__formula {
+        font-size: 18px;
+    }
+}

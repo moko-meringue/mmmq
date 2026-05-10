@@ -1,0 +1,1941 @@
+/* =========================================================
+   MMMQ 디자인 시스템 v0.1
+   토큰 → 타이포 → 컴포넌트 순서로 정의.
+   ========================================================= */
+
+:root {
+    /* ----- color tokens ----- */
+    --brand-primary: #6DB33F;
+    --brand-primary-hover: #5A9A33;
+    --brand-primary-soft: #EAF5DD;
+    --ink-strong: #0B1416;
+    --ink-muted: #4B5563;
+    --ink-subtle: #6B7280;
+    --border-default: #E5E7EB;
+    --border-strong: #CBD5E1;
+    --surface-page: #FFFFFF;
+    --surface-soft: #F8FAFB;
+    --surface-sunken: #EEF2F6;
+    --semantic-success: #16A34A;
+    --semantic-warn: #F59E0B;
+    --semantic-danger: #DC2626;
+    --syntax-key: #BE185D;
+    --syntax-string: #047857;
+    --syntax-comment: #6B7280;
+
+    /* ----- type families ----- */
+    --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont,
+    'Apple SD Gothic Neo', system-ui, sans-serif;
+    --font-mono: 'Pretendard', -apple-system, BlinkMacSystemFont,
+    'Apple SD Gothic Neo', system-ui, sans-serif;
+
+    /* ----- type tokens ----- */
+    --t-display-size: 72px;
+    --t-display-lh: 84px;
+    --t-display-w: 700;
+    --t-h1-size: 56px;
+    --t-h1-lh: 64px;
+    --t-h1-w: 700;
+    --t-h2-size: 40px;
+    --t-h2-lh: 48px;
+    --t-h2-w: 700;
+    --t-h3-size: 24px;
+    --t-h3-lh: 32px;
+    --t-h3-w: 600;
+    --t-h4-size: 18px;
+    --t-h4-lh: 26px;
+    --t-h4-w: 600;
+    --t-body-lg-size: 18px;
+    --t-body-lg-lh: 30px;
+    --t-body-lg-w: 400;
+    --t-body-size: 16px;
+    --t-body-lh: 28px;
+    --t-body-w: 400;
+    --t-body-sm-size: 14px;
+    --t-body-sm-lh: 22px;
+    --t-body-sm-w: 400;
+    --t-code-size: 14px;
+    --t-code-lh: 22px;
+    --t-code-w: 400;
+    --t-eyebrow-size: 12px;
+    --t-eyebrow-lh: 16px;
+    --t-eyebrow-w: 600;
+
+    /* ----- spacing scale (8 grid) ----- */
+    --s-1: 4px;
+    --s-2: 8px;
+    --s-3: 12px;
+    --s-4: 16px;
+    --s-5: 24px;
+    --s-6: 32px;
+    --s-7: 48px;
+    --s-8: 64px;
+    --s-9: 80px;
+    --s-10: 120px;
+    --s-11: 160px;
+
+    /* ----- radius scale ----- */
+    --r-xs: 4px;
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 20px;
+    --r-pill: 9999px;
+
+    /* ----- shadows ----- */
+    --sh-hover: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+/* =========================================================
+   Reset & base
+   ========================================================= */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    font-family: var(--font-sans);
+    background: var(--surface-page);
+    color: var(--ink-strong);
+    font-size: var(--t-body-size);
+    line-height: var(--t-body-lh);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+img {
+    max-width: 100%;
+    display: block;
+}
+
+button {
+    font-family: inherit;
+}
+
+/* Inline code (코드 블록 외부에서 사용되는 <code>) */
+code {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    background: var(--surface-sunken);
+    padding: 2px 6px;
+    border-radius: var(--r-xs);
+    color: var(--ink-strong);
+    border: 1px solid var(--border-default);
+}
+
+/* 코드 블록 내부의 <code>·<pre>는 자체 배경/보더 사용 */
+.code-block code,
+.code-block pre code {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    font-size: inherit;
+}
+
+/* =========================================================
+   Typography utility classes (= text styles in Figma)
+   ========================================================= */
+.t-display {
+    font-size: var(--t-display-size);
+    line-height: var(--t-display-lh);
+    font-weight: var(--t-display-w);
+    letter-spacing: -0.025em;
+}
+
+.t-h1 {
+    font-size: var(--t-h1-size);
+    line-height: var(--t-h1-lh);
+    font-weight: var(--t-h1-w);
+    letter-spacing: -0.02em;
+}
+
+.t-h2 {
+    font-size: var(--t-h2-size);
+    line-height: var(--t-h2-lh);
+    font-weight: var(--t-h2-w);
+    letter-spacing: -0.015em;
+}
+
+.t-h3 {
+    font-size: var(--t-h3-size);
+    line-height: var(--t-h3-lh);
+    font-weight: var(--t-h3-w);
+}
+
+.t-h4 {
+    font-size: var(--t-h4-size);
+    line-height: var(--t-h4-lh);
+    font-weight: var(--t-h4-w);
+}
+
+.t-body-lg {
+    font-size: var(--t-body-lg-size);
+    line-height: var(--t-body-lg-lh);
+    font-weight: var(--t-body-lg-w);
+}
+
+.t-body {
+    font-size: var(--t-body-size);
+    line-height: var(--t-body-lh);
+    font-weight: var(--t-body-w);
+}
+
+.t-body-sm {
+    font-size: var(--t-body-sm-size);
+    line-height: var(--t-body-sm-lh);
+    font-weight: var(--t-body-sm-w);
+    color: var(--ink-muted);
+}
+
+.t-code {
+    font-family: var(--font-mono);
+    font-size: var(--t-code-size);
+    line-height: var(--t-code-lh);
+    font-weight: var(--t-code-w);
+}
+
+.t-eyebrow {
+    font-size: var(--t-eyebrow-size);
+    line-height: var(--t-eyebrow-lh);
+    font-weight: var(--t-eyebrow-w);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--brand-primary);
+}
+
+/* =========================================================
+   Layout container
+   ========================================================= */
+.ds {
+    max-width: clamp(1440px, 96vw, 1920px);
+    margin: 0 auto;
+}
+
+.ds-section {
+    padding: var(--s-10) var(--s-8);
+    border-top: 1px solid var(--border-default);
+}
+
+.ds-section--no-border {
+    border-top: 0;
+}
+
+.ds-section-head {
+    margin-bottom: var(--s-7);
+    max-width: 720px;
+}
+
+.ds-section-head .t-eyebrow {
+    display: block;
+    margin-bottom: var(--s-3);
+}
+
+.ds-section-head h2 {
+    margin-bottom: var(--s-3);
+}
+
+.ds-section-head p {
+    color: var(--ink-muted);
+    font-size: 18px;
+    line-height: 30px;
+}
+
+/* Cover */
+.ds-cover {
+    padding: 200px var(--s-8) var(--s-9);
+}
+
+.ds-cover .t-eyebrow {
+    display: block;
+    margin-bottom: var(--s-3);
+}
+
+.ds-cover h1 {
+    margin-bottom: var(--s-5);
+}
+
+.ds-cover p {
+    color: var(--ink-muted);
+    max-width: 640px;
+    margin-bottom: var(--s-5);
+}
+
+.ds-cover .meta {
+    color: var(--ink-subtle);
+    font-size: 14px;
+    margin-bottom: var(--s-7);
+}
+
+.ds-cover .brand-bar {
+    width: 80px;
+    height: 6px;
+    background: var(--brand-primary);
+}
+
+/* =========================================================
+   Section: Color tokens
+   ========================================================= */
+.swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--s-4);
+}
+
+.swatch {
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+    background: var(--surface-page);
+}
+
+.swatch__color {
+    height: 96px;
+    border-bottom: 1px solid var(--border-default);
+}
+
+.swatch__meta {
+    padding: var(--s-4);
+}
+
+.swatch__name {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink-strong);
+    font-weight: 500;
+    margin-bottom: var(--s-1);
+}
+
+.swatch__hex {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-subtle);
+    margin-bottom: var(--s-2);
+}
+
+.swatch__use {
+    font-size: 13px;
+    color: var(--ink-muted);
+    line-height: 18px;
+}
+
+/* =========================================================
+   Section: Typography
+   ========================================================= */
+.type-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 200px;
+    align-items: baseline;
+    padding: var(--s-5) 0;
+    border-bottom: 1px solid var(--border-default);
+    gap: var(--s-4);
+}
+
+.type-row:last-child {
+    border-bottom: 0;
+}
+
+.type-row__token {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink-subtle);
+}
+
+.type-row__sample {
+    color: var(--ink-strong);
+}
+
+.type-row__meta {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-subtle);
+    text-align: right;
+}
+
+/* =========================================================
+   Section: Spacing & Radius
+   ========================================================= */
+.spacing-list {
+    display: grid;
+    gap: var(--s-2);
+}
+
+.spacing-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 80px;
+    align-items: center;
+    gap: var(--s-4);
+    padding: var(--s-2) 0;
+}
+
+.spacing-row__token {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink-subtle);
+}
+
+.spacing-row__bar {
+    background: var(--brand-primary);
+    height: 12px;
+    border-radius: var(--r-xs);
+}
+
+.spacing-row__px {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink-strong);
+    text-align: right;
+}
+
+.radius-grid {
+    display: flex;
+    gap: var(--s-5);
+    margin-top: var(--s-7);
+    flex-wrap: wrap;
+}
+
+.radius-card {
+    width: 140px;
+}
+
+.radius-shape {
+    width: 100%;
+    height: 100px;
+    background: var(--brand-primary-soft);
+    border: 1px solid var(--brand-primary);
+}
+
+.radius-card__meta {
+    margin-top: var(--s-2);
+    text-align: center;
+}
+
+.radius-card__token {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--ink-strong);
+}
+
+.radius-card__px {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-subtle);
+}
+
+/* =========================================================
+   Component sections
+   ========================================================= */
+.ds-component {
+    padding: var(--s-7) 0;
+    border-bottom: 1px solid var(--border-default);
+}
+
+.ds-component:last-child {
+    border-bottom: 0;
+}
+
+.ds-component__head {
+    margin-bottom: var(--s-5);
+}
+
+.ds-component__name {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    margin-bottom: var(--s-2);
+}
+
+.ds-component__num {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--ink-subtle);
+}
+
+.ds-component__desc {
+    color: var(--ink-muted);
+    font-size: 14px;
+    line-height: 22px;
+}
+
+.ds-component__demo {
+    background: var(--surface-soft);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    padding: var(--s-7);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-4);
+    align-items: center;
+}
+
+.ds-component__demo--column {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.ds-component__demo--row {
+    flex-direction: row;
+}
+
+.demo-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-4);
+    align-items: center;
+    width: 100%;
+}
+
+.demo-row + .demo-row {
+    padding-top: var(--s-4);
+    border-top: 1px dashed var(--border-default);
+    margin-top: var(--s-4);
+}
+
+.demo-row__label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-subtle);
+    width: 100px;
+    flex-shrink: 0;
+}
+
+/* =========================================================
+   Component: Button
+   ========================================================= */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: var(--r-pill);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background-color 120ms, border-color 120ms, color 120ms;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn--sm {
+    font-size: 13px;
+    padding: 6px 14px;
+    line-height: 20px;
+}
+
+.btn--md {
+    font-size: 14px;
+    padding: 10px 18px;
+    line-height: 22px;
+}
+
+.btn--lg {
+    font-size: 16px;
+    padding: 14px 24px;
+    line-height: 24px;
+}
+
+.btn--primary {
+    background: var(--brand-primary);
+    color: #fff;
+}
+
+.btn--primary:hover {
+    background: var(--brand-primary-hover);
+}
+
+.btn--primary[disabled] {
+    background: var(--border-strong);
+    color: var(--ink-subtle);
+    cursor: not-allowed;
+}
+
+.btn--secondary {
+    background: var(--surface-page);
+    color: var(--ink-strong);
+    border-color: var(--border-strong);
+}
+
+.btn--secondary:hover {
+    border-color: var(--ink-strong);
+}
+
+.btn--secondary[disabled] {
+    color: var(--ink-subtle);
+    cursor: not-allowed;
+}
+
+.btn--tertiary {
+    background: transparent;
+    color: var(--brand-primary);
+    padding-left: 4px;
+    padding-right: 4px;
+    border-radius: 0;
+}
+
+.btn--tertiary:hover {
+    color: var(--brand-primary-hover);
+}
+
+.btn--tertiary[disabled] {
+    color: var(--ink-subtle);
+    cursor: not-allowed;
+}
+
+.btn .arrow {
+    transition: transform 120ms;
+}
+
+.btn:hover .arrow {
+    transform: translateX(2px);
+}
+
+/* hover preview state */
+.is-hover.btn--primary {
+    background: var(--brand-primary-hover);
+}
+
+.is-hover.btn--secondary {
+    border-color: var(--ink-strong);
+}
+
+.is-hover.btn--tertiary {
+    color: var(--brand-primary-hover);
+}
+
+/* =========================================================
+   Component: Link
+   ========================================================= */
+.lk {
+    color: var(--brand-primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.lk:hover {
+    text-decoration: underline;
+}
+
+.lk--with-arrow::after {
+    content: ' →';
+}
+
+.is-hover.lk {
+    text-decoration: underline;
+}
+
+/* =========================================================
+   Component: Badge
+   ========================================================= */
+.bdg {
+    display: inline-flex;
+    align-items: center;
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: var(--r-pill);
+    padding: 2px 10px;
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.bdg--md {
+    font-size: 13px;
+    padding: 4px 12px;
+    line-height: 20px;
+}
+
+.bdg--neutral {
+    background: var(--surface-soft);
+    color: var(--ink-muted);
+    border: 1px solid var(--border-default);
+}
+
+.bdg--brand {
+    background: var(--brand-primary-soft);
+    color: var(--brand-primary-hover);
+}
+
+.bdg--success {
+    background: #DCFCE7;
+    color: #15803D;
+}
+
+.bdg--warn {
+    background: #FEF3C7;
+    color: #B45309;
+}
+
+.bdg--danger {
+    background: #FEE2E2;
+    color: #B91C1C;
+}
+
+/* =========================================================
+   Component: Card
+   ========================================================= */
+.card {
+    background: var(--surface-page);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    padding: var(--s-5);
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    width: 280px;
+    transition: border-color 120ms, box-shadow 120ms;
+}
+
+.card:hover {
+    border-color: var(--ink-strong);
+    box-shadow: var(--sh-hover);
+}
+
+.card__title {
+    font-weight: 600;
+    font-size: 18px;
+    line-height: 26px;
+}
+
+.card__desc {
+    color: var(--ink-muted);
+    font-size: 14px;
+    line-height: 22px;
+}
+
+.card__meta {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-subtle);
+    margin-top: auto;
+}
+
+.card__cta {
+    color: var(--brand-primary);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* =========================================================
+   Component: Top Nav
+   ========================================================= */
+.nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--s-5) var(--s-6);
+    background: var(--surface-page);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    width: 100%;
+}
+
+.nav__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    font-weight: 700;
+    font-size: 24px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.nav__brand-mark {
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav__brand-mark svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.nav__menu {
+    display: flex;
+    gap: var(--s-2);
+    list-style: none;
+}
+
+.nav__menu a {
+    display: block;
+    color: var(--ink-strong);
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: 500;
+    padding: 10px 16px;
+    border-radius: var(--r-sm);
+    transition: color 120ms, background-color 120ms;
+}
+
+.nav__menu a:hover {
+    color: var(--brand-primary);
+    background: var(--brand-primary-soft);
+}
+
+.nav__menu a.is-active {
+    color: var(--brand-primary);
+}
+
+.nav--scrolled {
+    box-shadow: var(--sh-hover);
+}
+
+/* =========================================================
+   Component: Footer
+   ========================================================= */
+.footer {
+    background: var(--surface-soft);
+    padding: var(--s-4) var(--s-6);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    width: 100%;
+}
+
+.footer__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-5);
+    flex-wrap: wrap;
+    margin-bottom: var(--s-5);
+}
+
+.footer__brand {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.footer__nav {
+    display: flex;
+    gap: var(--s-5);
+    list-style: none;
+    flex-wrap: wrap;
+}
+
+.footer__nav a {
+    color: var(--ink-strong);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 120ms;
+}
+
+.footer__nav a:hover {
+    color: var(--brand-primary);
+}
+
+.footer__legal {
+    border-top: 1px solid var(--border-default);
+    padding-top: var(--s-5);
+    font-size: 13px;
+    color: var(--ink-subtle);
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-4);
+    flex-wrap: wrap;
+}
+
+/* =========================================================
+   Component: Hero
+   ========================================================= */
+.hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-9);
+    align-items: center;
+    padding: var(--s-9) var(--s-8);
+    background: var(--surface-page);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    width: 100%;
+}
+
+.hero__title {
+    margin-bottom: var(--s-5);
+}
+
+.hero__sub {
+    font-size: 18px;
+    line-height: 30px;
+    color: var(--ink-muted);
+    margin-bottom: var(--s-6);
+    max-width: 480px;
+}
+
+.hero__ctas {
+    display: flex;
+    gap: var(--s-3);
+}
+
+.hero__visual {
+    background: var(--brand-primary-soft);
+    border: 1px solid var(--brand-primary);
+    border-radius: var(--r-lg);
+    height: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--brand-primary-hover);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    text-align: center;
+    padding: var(--s-5);
+}
+
+/* =========================================================
+   Component: Code Block
+   ========================================================= */
+.code-block {
+    background: var(--surface-sunken);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-sm);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    line-height: 22px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.code-block__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border-default);
+    background: var(--surface-page);
+    font-size: 12px;
+    font-family: var(--font-sans);
+}
+
+.code-block__lang {
+    font-weight: 600;
+    color: var(--ink-muted);
+}
+
+.code-block__copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--surface-page);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--brand-primary);
+    font-weight: 600;
+    padding: 4px 10px;
+    transition: background-color 120ms, border-color 120ms, color 120ms;
+}
+
+.code-block__copy:hover {
+    background: var(--brand-primary-soft);
+    border-color: var(--brand-primary);
+}
+
+.code-block__copy.is-copied {
+    background: var(--brand-primary-soft);
+    border-color: var(--brand-primary);
+    color: var(--brand-primary-hover);
+}
+
+.code-block__copy-icon {
+    display: inline-flex;
+    width: 12px;
+    height: 12px;
+}
+
+.code-block__copy-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.code-block pre {
+    margin: 0;
+    padding: var(--s-4);
+    overflow-x: auto;
+    color: var(--ink-strong);
+}
+
+.code-block .tk-key {
+    color: var(--syntax-key);
+}
+
+.code-block .tk-str {
+    color: var(--syntax-string);
+}
+
+.code-block .tk-com {
+    color: var(--syntax-comment);
+    font-style: italic;
+}
+
+.code-block .tk-fn {
+    color: var(--ink-strong);
+    font-weight: 500;
+}
+
+.code-block--dark {
+    background: #0B1416;
+    border-color: #1F2937;
+}
+
+.code-block--dark pre {
+    color: #E5E7EB;
+}
+
+.code-block--dark .code-block__head {
+    background: #111827;
+    border-color: #1F2937;
+}
+
+.code-block--dark .code-block__lang {
+    color: #9CA3AF;
+}
+
+.code-block--dark .code-block__copy {
+    background: #111827;
+    border-color: #1F2937;
+    color: #93C5FD;
+}
+
+.code-block--dark .code-block__copy:hover {
+    background: #1F2937;
+    border-color: #374151;
+}
+
+.code-block--dark .code-block__copy.is-copied {
+    background: rgba(110, 231, 183, 0.12);
+    border-color: #6EE7B7;
+    color: #6EE7B7;
+}
+
+.code-block--dark .tk-key {
+    color: #F472B6;
+}
+
+.code-block--dark .tk-str {
+    color: #6EE7B7;
+}
+
+.code-block--dark .tk-com {
+    color: #6B7280;
+}
+
+/* =========================================================
+   Component: Module Card
+   ========================================================= */
+.mod-card {
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    padding: var(--s-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    width: 280px;
+    text-decoration: none;
+    color: inherit;
+    background: var(--surface-page);
+    transition: border-color 120ms;
+}
+
+.mod-card:hover {
+    border-color: var(--brand-primary);
+}
+
+.mod-card__icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mod-card__icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.mod-card__name {
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.mod-card__desc {
+    color: var(--ink-muted);
+    font-size: 14px;
+    line-height: 22px;
+    flex: 1;
+}
+
+.mod-card__more {
+    color: var(--brand-primary);
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* =========================================================
+   Component: Architecture block
+   ========================================================= */
+.arch {
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr 60px 1fr;
+    gap: var(--s-3);
+    align-items: center;
+    background: var(--surface-page);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    padding: var(--s-7);
+    width: 100%;
+}
+
+.arch__node {
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-sm);
+    padding: var(--s-4);
+    text-align: center;
+    background: var(--surface-soft);
+}
+
+.arch__node--brand {
+    border-color: var(--brand-primary);
+    background: var(--brand-primary-soft);
+}
+
+.arch__node-title {
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: var(--s-1);
+}
+
+.arch__node-sub {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-muted);
+}
+
+.arch__arrow {
+    font-family: var(--font-mono);
+    color: var(--ink-subtle);
+    font-size: 11px;
+    text-align: center;
+}
+
+.arch__arrow .line {
+    font-size: 18px;
+    color: var(--brand-primary);
+    display: block;
+}
+
+/* =========================================================
+   Component: Side Nav (docs)
+   ========================================================= */
+.sidenav {
+    width: 240px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    padding: var(--s-5) var(--s-3);
+    background: var(--surface-page);
+}
+
+.sidenav__group {
+    margin-bottom: var(--s-5);
+}
+
+.sidenav__group:last-child {
+    margin-bottom: 0;
+}
+
+.sidenav__head {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-subtle);
+    margin-bottom: var(--s-2);
+    padding: 0 var(--s-2);
+}
+
+.sidenav__item {
+    display: block;
+    padding: var(--s-2) var(--s-3);
+    border-radius: var(--r-xs);
+    color: var(--ink-muted);
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.sidenav__item:hover {
+    color: var(--ink-strong);
+    background: var(--surface-soft);
+}
+
+.sidenav__item--active {
+    color: var(--brand-primary);
+    font-weight: 600;
+    background: var(--brand-primary-soft);
+}
+
+/* =========================================================
+   Component: Step Card
+   ========================================================= */
+.step-card {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: var(--s-4);
+    padding: var(--s-5);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    background: var(--surface-page);
+    width: 320px;
+}
+
+.step-card__num {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--r-pill);
+    background: var(--brand-primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.step-card__title {
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: var(--s-2);
+}
+
+.step-card__desc {
+    color: var(--ink-muted);
+    font-size: 14px;
+    line-height: 22px;
+    margin-bottom: var(--s-3);
+}
+
+/* =========================================================
+   Component: Callout
+   ========================================================= */
+.callout {
+    display: grid;
+    grid-template-columns: 4px 1fr;
+    gap: var(--s-4);
+    padding: var(--s-4) var(--s-5);
+    background: var(--surface-soft);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-sm);
+    width: 100%;
+}
+
+.callout__bar {
+    background: var(--ink-muted);
+    border-radius: 4px;
+}
+
+.callout__label {
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: var(--s-1);
+}
+
+.callout__body {
+    font-size: 14px;
+    line-height: 22px;
+    color: var(--ink-strong);
+}
+
+.callout--info .callout__bar {
+    background: var(--brand-primary);
+}
+
+.callout--info .callout__label {
+    color: var(--brand-primary-hover);
+}
+
+.callout--warn .callout__bar {
+    background: var(--semantic-warn);
+}
+
+.callout--warn .callout__label {
+    color: #B45309;
+}
+
+.callout--tip .callout__bar {
+    background: #8B5CF6;
+}
+
+.callout--tip .callout__label {
+    color: #6D28D9;
+}
+
+/* =========================================================
+   Component: Table
+   ========================================================= */
+.tbl {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: var(--surface-page);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+}
+
+.tbl th, .tbl td {
+    text-align: left;
+    padding: var(--s-3) var(--s-4);
+    border-bottom: 1px solid var(--border-default);
+}
+
+.tbl tr:last-child td {
+    border-bottom: 0;
+}
+
+.tbl th {
+    font-weight: 600;
+    color: var(--ink-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--surface-soft);
+}
+
+.tbl tr:hover td {
+    background: var(--surface-soft);
+}
+
+/* 큰 변형 — release 페이지 등에서 사용 */
+.tbl--lg {
+    font-size: 17px;
+    box-shadow: 0 0 0 1px var(--surface-sunken);
+}
+
+.tbl--lg th,
+.tbl--lg td {
+    padding: var(--s-4) var(--s-5);
+}
+
+.tbl--lg th {
+    font-size: 16px;
+    background: var(--brand-primary);
+    color: #fff;
+}
+
+
+/* =========================================================
+   Section: Logo (master + modules)
+   ========================================================= */
+.logo-master {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: var(--s-7);
+    align-items: stretch;
+    padding: var(--s-7);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    background: var(--surface-page);
+}
+
+.logo-master__main {
+    background: var(--surface-soft);
+    border-radius: var(--r-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s-6);
+    min-height: 240px;
+}
+
+.logo-master__meta {
+    display: flex;
+    flex-direction: column;
+}
+
+.logo-master__title {
+    margin-bottom: var(--s-2);
+}
+
+.logo-master__desc {
+    color: var(--ink-muted);
+    margin-bottom: var(--s-5);
+    font-size: 14px;
+    line-height: 22px;
+}
+
+.logo-master__sizes {
+    display: flex;
+    gap: var(--s-4);
+    align-items: flex-end;
+    margin-bottom: var(--s-5);
+    padding-bottom: var(--s-5);
+    border-bottom: 1px solid var(--border-default);
+}
+
+.logo-size {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s-2);
+}
+
+.logo-size__box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-page);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-sm);
+    width: 84px;
+    height: 84px;
+}
+
+.logo-size span {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-subtle);
+}
+
+.logo-master__lockup {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+}
+
+.logo-master__wordmark {
+    font-weight: 800;
+    font-size: 32px;
+    letter-spacing: -0.04em;
+    color: var(--ink-strong);
+}
+
+.module-logos-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--s-4);
+}
+
+.module-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--s-3);
+    padding: var(--s-4);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    background: var(--surface-page);
+}
+
+.module-logo__art {
+    background: var(--surface-soft);
+    border-radius: var(--r-sm);
+    width: 100%;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.module-logo__name {
+    font-weight: 700;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--brand-primary-hover);
+    text-align: center;
+}
+
+.module-logo__concept {
+    font-size: 13px;
+    color: var(--ink-muted);
+    line-height: 20px;
+    text-align: center;
+}
+
+/* =========================================================
+   Misc helpers
+   ========================================================= */
+.row {
+    display: flex;
+    gap: var(--s-4);
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+}
+
+.full {
+    width: 100%;
+}
+
+.muted {
+    color: var(--ink-muted);
+}
+
+.subtle {
+    color: var(--ink-subtle);
+}
+
+/* =========================================================
+   Version dropdown
+   ---------------------------------------------------------
+   <details> 기반 드롭다운. 트리거를 클릭하면 메뉴가 열리고,
+   외부 클릭 시 scripts.js에서 닫는다. docs landing의 H1 우측에
+   배치되며, latest 배지는 현재 latest 버전임을 표시한다.
+   ========================================================= */
+.version-dropdown {
+    position: relative;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.version-dropdown__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: 8px 12px 8px 14px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-sm);
+    background: var(--surface-page);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink-strong);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    white-space: nowrap;
+    transition: border-color 120ms, background-color 120ms;
+}
+
+.version-dropdown__trigger::-webkit-details-marker {
+    display: none;
+}
+
+.version-dropdown__trigger::marker {
+    display: none;
+    content: "";
+}
+
+.version-dropdown__trigger:hover,
+.version-dropdown[open] .version-dropdown__trigger {
+    border-color: var(--brand-primary);
+    background: var(--surface-soft);
+}
+
+.version-dropdown__chev {
+    width: 12px;
+    height: 12px;
+    color: var(--ink-muted);
+    margin-left: 4px;
+    transition: transform 120ms;
+}
+
+.version-dropdown[open] .version-dropdown__chev {
+    transform: rotate(180deg);
+}
+
+.version-dropdown__menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+    min-width: 100%;
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-sm);
+    background: var(--surface-page);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+    z-index: 10;
+}
+
+.version-dropdown__menu--right {
+    left: auto;
+    right: 0;
+}
+
+.version-dropdown__menu li {
+    margin: 0;
+    padding: 0;
+}
+
+.version-dropdown__menu a {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 120ms, background-color 120ms;
+}
+
+.version-dropdown__menu a:hover {
+    color: var(--ink-strong);
+    background: var(--surface-soft);
+}
+
+.version-dropdown__menu a.is-active {
+    color: var(--brand-primary);
+    background: var(--brand-primary-soft);
+}
+
+.version-dropdown__badge {
+    font-family: var(--font-pretendard, inherit);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: var(--r-xs);
+    background: var(--brand-primary);
+    color: #fff;
+    letter-spacing: 0.02em;
+}
+
+/* trigger 폭이 latest 버전과 일관되도록 placeholder. 시각적으로는 보이지 않음 */
+.version-dropdown__badge--placeholder {
+    visibility: hidden;
+}
+
+/* release.html: 버전 셀(버전 + latest 배지) 가로 정렬 */
+.release-version-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-3);
+}
+
+/* =========================================================
+   On-this-page TOC (우측 sticky 사이드바)
+   ---------------------------------------------------------
+   소개·시작하기·문서 페이지 등에서 공통으로 사용한다.
+   본문 우측에 위치하며, 현재 보이는 섹션을 active로 강조한다.
+   scroll spy는 각 페이지의 인라인 스크립트에서 처리.
+   ========================================================= */
+.docs-toc {
+    position: sticky;
+    top: var(--s-5);
+    font-size: 13px;
+    width: 100%;
+    /* 항목이 viewport보다 길어지면 TOC 내부에서 스크롤 */
+    max-height: calc(100vh - var(--s-7));
+    overflow-y: auto;
+}
+
+.docs-toc__head {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-subtle);
+    font-size: 11px;
+    margin-bottom: var(--s-3);
+    padding-left: 14px;
+}
+
+.docs-toc ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border-left: 1px solid var(--border-default);
+}
+
+.docs-toc li {
+    display: block;
+}
+
+.docs-toc a {
+    display: block;
+    padding: 6px 12px;
+    color: var(--ink-strong);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    margin-left: -1px;
+    border-radius: 0 var(--r-xs) var(--r-xs) 0;
+    transition: color 120ms, background-color 120ms, padding-left 120ms;
+}
+
+.docs-toc a:hover {
+    color: var(--ink-strong);
+    background: var(--surface-soft);
+    padding-left: 14px;
+}
+
+.docs-toc a.is-active {
+    color: var(--brand-primary);
+    font-weight: 600;
+    border-left-color: var(--brand-primary);
+    background: var(--brand-primary-soft);
+}
+
+.docs-toc a.is-active:hover {
+    background: var(--brand-primary-soft);
+    padding-left: 12px;
+}
+
+/* h2 라인 — 링크 + 토글 버튼을 가로로 배치, 행 전체를 한 덩어리로 호버/액티브 표시 */
+.docs-toc__group-head {
+    display: flex;
+    align-items: stretch;
+    /* ol의 1px 보더와 a의 2px 보더 정렬 (단일 a가 직접 li 자식일 때와 동일) */
+    margin-left: -1px;
+    border-radius: 0 var(--r-xs) var(--r-xs) 0;
+    transition: background-color 120ms;
+}
+
+.docs-toc__group-head:hover {
+    background: var(--surface-soft);
+}
+
+/* 행 안의 링크가 active이면 컨테이너 배경으로 active 시각을 그림 */
+.docs-toc__group-head:has(> a.is-active) {
+    background: var(--brand-primary-soft);
+}
+
+.docs-toc__group-head > a {
+    flex: 1 1 auto;
+    min-width: 0; /* 긴 텍스트가 토글 버튼 영역까지 밀고 들어오지 않도록 */
+    margin-left: 0; /* head에서 이미 margin-left: -1px 줬으므로 중복 방지 */
+}
+
+/* 자식 링크 — 컨테이너에서 호버/액티브 배경을 그리므로 자기 배경 + padding-shift 비움 */
+.docs-toc__group-head > a:hover,
+.docs-toc__group-head > a.is-active,
+.docs-toc__group-head > a.is-active:hover {
+    background: transparent;
+    padding-left: 12px;
+}
+
+/* 토글 버튼 (h3 자식 있는 그룹에만 추가됨) */
+.docs-toc__toggle {
+    background: transparent;
+    border: none;
+    margin: 0;
+    padding: 0 8px;
+    cursor: pointer;
+    color: var(--ink-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 28px;
+    border-radius: var(--r-xs);
+    transition: color 120ms, background-color 120ms;
+}
+
+/* 토글 hover — 색은 진해지고, 배경은 비워서 행 컨테이너 hover bg가 보이게 */
+.docs-toc__toggle:hover {
+    color: var(--ink-strong);
+    background: transparent;
+}
+
+.docs-toc__toggle:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: -2px;
+}
+
+.docs-toc__toggle-icon {
+    width: 12px;
+    height: 12px;
+    transition: transform 200ms ease;
+}
+
+/* 접힘 상태: chevron 회전 + sub 리스트 max-height 0 */
+.docs-toc__group[data-collapsed="true"] .docs-toc__toggle-icon {
+    transform: rotate(-90deg);
+}
+
+/* Nested h3 sub-list — h2 항목 li 내부에 한 단계 더 들여 표시 */
+.docs-toc ol ol,
+.docs-toc__sub {
+    list-style: none;
+    border-left: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    /* 펼침/접힘 애니메이션 — 충분히 큰 max-height로 자연스러운 펼침 */
+    max-height: 80vh;
+    transition: max-height 200ms ease;
+}
+
+.docs-toc__group[data-collapsed="true"] > .docs-toc__sub {
+    max-height: 0;
+}
+
+.docs-toc ol ol a,
+.docs-toc__sub a {
+    padding: 5px 12px 5px 28px;
+    font-size: 12px;
+    color: var(--ink-strong);
+}
+
+.docs-toc ol ol a:hover,
+.docs-toc__sub a:hover {
+    color: var(--ink-strong);
+    background: var(--surface-soft);
+    padding-left: 30px;
+}
+
+.docs-toc ol ol a.is-active,
+.docs-toc__sub a.is-active {
+    color: var(--brand-primary);
+    font-weight: 500;
+    border-left-color: var(--brand-primary);
+    background: var(--brand-primary-soft);
+}
+
+.docs-toc ol ol a.is-active:hover,
+.docs-toc__sub a.is-active:hover {
+    background: var(--brand-primary-soft);
+    padding-left: 28px;
+}
+
+/* =========================================================
+   Responsive — 공통 컴포넌트 미디어쿼리
+   ---------------------------------------------------------
+   브레이크포인트
+     · 1024px 이하: 태블릿. docs 3열 레이아웃 collapse(docs.css)
+     · 768px 이하 : 모바일. nav/footer/typography/shell padding 축소
+     · 480px 이하 : 좁은 모바일. typography/shell padding 추가 축소
+   ========================================================= */
+
+/* 태블릿 — 1024px 이하 */
+@media (max-width: 1024px) {
+    .nav {
+        padding: var(--s-4) var(--s-5);
+    }
+
+    .nav__brand {
+        font-size: 20px;
+    }
+
+    .nav__brand-mark {
+        width: 32px;
+        height: 32px;
+    }
+
+    .nav__menu a {
+        font-size: 16px;
+        padding: 8px 12px;
+    }
+}
+
+/* 모바일 — 768px 이하 */
+@media (max-width: 768px) {
+    .site-shell {
+        padding: 0 var(--s-5);
+    }
+
+    /* Top nav 한 줄에 안 맞으면 wrap */
+    .nav {
+        flex-wrap: wrap;
+        gap: var(--s-3);
+        padding: var(--s-3) var(--s-4);
+    }
+
+    .nav__menu {
+        flex-wrap: wrap;
+        gap: 0;
+        margin: 0;
+        padding: 0;
+    }
+
+    .nav__menu a {
+        font-size: 14px;
+        padding: 6px 10px;
+    }
+
+    /* Typography 축소 */
+    .t-h1 {
+        font-size: 32px;
+        line-height: 40px;
+    }
+
+    .t-h2 {
+        font-size: 24px;
+        line-height: 32px;
+    }
+
+    .t-h3 {
+        font-size: 18px;
+        line-height: 26px;
+    }
+
+    /* Footer */
+    .footer {
+        padding: var(--s-4) var(--s-5);
+    }
+
+    .footer__nav {
+        gap: var(--s-4);
+    }
+
+    /* 표는 가로 스크롤 허용 (필요 시 부모에 overflow-x:auto wrapper 권장) */
+    .tbl {
+        font-size: 13px;
+    }
+
+    .tbl th, .tbl td {
+        padding: var(--s-2) var(--s-3);
+    }
+
+    /* 코드 블록 폰트 축소 (가로 스크롤은 이미 .code-block pre에 적용됨) */
+    .code-block {
+        font-size: 13px;
+    }
+}
+
+/* 좁은 모바일 — 480px 이하 */
+@media (max-width: 480px) {
+    .site-shell {
+        padding: 0 var(--s-4);
+    }
+
+    .t-h1 {
+        font-size: 26px;
+        line-height: 34px;
+    }
+
+    .t-h2 {
+        font-size: 20px;
+        line-height: 28px;
+    }
+
+    .nav__menu a {
+        font-size: 13px;
+        padding: 6px 8px;
+    }
+
+    /* version dropdown — 좁은 화면에서 trigger 폰트 약간 축소 */
+    .version-dropdown__trigger {
+        font-size: 14px;
+        padding: 6px 10px 6px 12px;
+    }
+
+    .version-dropdown__badge {
+        font-size: 12px;
+        padding: 2px 6px;
+    }
+}

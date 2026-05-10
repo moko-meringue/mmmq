@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <title>producer · mmmq 문서 v0.0.2</title>
+    <meta content="mmmq v0.0.2 producer 모듈. broker로 메시지를 발행하는 클라이언트의 설치, 사용, 재시도 정책." name="description"/>
+    <link crossorigin href="https://cdn.jsdelivr.net" rel="preconnect"/>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+          rel="stylesheet"/>
+    <link href="../../styles.css" rel="stylesheet"/>
+    <link href="../../docs.css" rel="stylesheet"/>
+    <script defer src="../../scripts.js"></script>
+</head>
+<body>
+<div class="site-shell">
+
+    <!-- Top Nav -->
+    <div class="site-nav-wrap">
+        <nav class="nav">
+            <a class="nav__brand" href="../../index.html">
+          <span class="nav__brand-mark">
+            <svg aria-hidden="true" viewBox="0 0 32 32">
+              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3" y="6"/>
+              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6" y="13.5"/>
+              <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+            </svg>
+          </span>
+                <span>mmmq</span>
+            </a>
+            <ul class="nav__menu">
+                <li><a href="../../index.html">홈</a></li>
+                <li><a href="../../about.html">소개</a></li>
+                <li><a href="../../quickstart.html">시작하기</a></li>
+                <li><a class="is-active" href="index.html">문서</a></li>
+                <li><a href="../../release.html">릴리즈</a></li>
+                <li><a href="https://github.com/moko-meringue/mmmq">GitHub</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- 3-column docs grid -->
+    <div class="docs-grid">
+
+        <!-- Side nav -->
+        <aside class="docs-sidenav">
+            <div class="docs-sidenav__title">v0.0.2</div>
+            <div class="sidenav">
+                <div class="sidenav__group">
+                    <a class="sidenav__head" href="index.html">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <circle cx="8" cy="10" fill="#6DB33F" r="2"/>
+                            <circle cx="8" cy="16" fill="#6DB33F" r="2"/>
+                            <circle cx="8" cy="22" fill="#6DB33F" r="2"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="26" y1="10"
+                                  y2="10"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="26" y1="16"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="22" y1="22"
+                                  y2="22"/>
+                        </svg>
+                        <span class="sidenav__head-name">개요</span>
+                    </a>
+                </div>
+
+                <div class="sidenav__group">
+                    <a class="sidenav__head" href="core.html">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <rect fill="#6DB33F" height="11" rx="2" width="11" x="4" y="4"/>
+                            <rect fill="#EAF5DD" height="11" rx="2" stroke="#6DB33F" stroke-width="1.5" width="11"
+                                  x="17" y="4"/>
+                            <rect fill="#EAF5DD" height="11" rx="2" stroke="#6DB33F" stroke-width="1.5" width="11"
+                                  x="4" y="17"/>
+                            <rect fill="#6DB33F" height="11" rx="2" width="11" x="17" y="17"/>
+                        </svg>
+                        <span class="sidenav__head-name">core</span>
+                    </a>
+                </div>
+
+                <div class="sidenav__group">
+                    <div class="sidenav__head sidenav__head--active">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <rect fill="#6DB33F" height="12" rx="3" width="12" x="3" y="10"/>
+                            <path d="M16 16 L28 16" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-width="2"/>
+                            <path d="M23 11 L29 16 L23 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-linejoin="round" stroke-width="2"/>
+                        </svg>
+                        <span class="sidenav__head-name">producer</span>
+                    </div>
+                </div>
+
+                <div class="sidenav__group">
+                    <a class="sidenav__head" href="broker.html">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="8"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="16"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="24"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                  y2="8"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                  y2="24"/>
+                            <circle cx="4" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="4" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="4" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="16" cy="16" fill="#6DB33F" r="4.5"/>
+                            <circle cx="28" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="28" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="28" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                        </svg>
+                        <span class="sidenav__head-name">broker</span>
+                    </a>
+                </div>
+
+                <div class="sidenav__group">
+                    <a class="sidenav__head" href="consumer.html">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <path d="M3 16 L15 16" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-width="2"/>
+                            <path d="M10 11 L16 16 L10 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-linejoin="round" stroke-width="2"/>
+                            <rect fill="#6DB33F" height="12" rx="3" width="12" x="17" y="10"/>
+                        </svg>
+                        <span class="sidenav__head-name">consumer</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Content -->
+        <main class="docs-content">
+            <div class="module-hero">
+                <div class="module-hero__icon">
+                    <svg aria-hidden="true" viewBox="0 0 32 32">
+                        <rect fill="#6DB33F" height="12" rx="3" width="12" x="3" y="10"/>
+                        <path d="M16 16 L28 16" fill="none" stroke="#6DB33F" stroke-linecap="round" stroke-width="2"/>
+                        <path d="M23 11 L29 16 L23 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                              stroke-linejoin="round" stroke-width="2"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="module-hero__name">producer</div>
+                    <h1 class="module-hero__title">Producer</h1>
+                </div>
+            </div>
+            <p class="lede">
+                broker로 메시지를 발행하는 모듈입니다.
+            </p>
+
+            <section id="overview">
+                <h2>개요</h2>
+                <p>
+                    사용자 애플리케이션에서 broker로 메시지를 보낼 때 사용하는 모듈입니다.
+                </p>
+            </section>
+
+            <section id="requirements">
+                <h2>요구사항</h2>
+                <p>mmmq를 사용하려면 다음 환경이 필요합니다.</p>
+                <table class="tbl">
+                    <thead>
+                    <tr>
+                        <th>항목</th>
+                        <th>최소 버전</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td>Java</td>
+                        <td><code>17</code></td>
+                    </tr>
+                    <tr>
+                        <td>Spring Boot</td>
+                        <td><code>3.2.0</code></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="installation">
+                <h2>설치</h2>
+                <p>
+                    producer는 <a class="lk" href="https://jitpack.io/#moko-meringue/mmmq">JitPack</a>으로 배포됩니다. <br>
+                    <code>build.gradle</code>에 의존성을 추가해 주세요.
+                </p>
+
+                <h3>build.gradle (Groovy DSL)</h3>
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">build.gradle</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre><span class="tk-key">repositories</span> {
+    mavenCentral()
+    maven { url <span class="tk-str">"https://jitpack.io"</span> }
+}
+
+<span class="tk-key">dependencies</span> {
+    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:producer:0.0.2"</span>
+}</pre>
+                </div>
+
+                <h3>build.gradle.kts (Kotlin DSL)</h3>
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">build.gradle.kts</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre><span class="tk-key">repositories</span> {
+    mavenCentral()
+    maven(<span class="tk-str">"https://jitpack.io"</span>)
+}
+
+<span class="tk-key">dependencies</span> {
+    implementation(<span class="tk-str">"com.github.moko-meringue.mmmq:producer:0.0.2"</span>)
+}</pre>
+                </div>
+            </section>
+
+            <section id="instantiation">
+                <h2>Producer 생성</h2>
+                <p>
+                    <code>Producer</code> Bean을 등록합니다. <br>
+                    옵션은 생성자에서 지정합니다.
+                </p>
+
+                <h3>Spring Bean 등록</h3>
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">ProducerConfig.Java</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre><span class="tk-key">@Configuration</span>
+<span class="tk-key">public class</span> <span class="tk-fn">ProducerConfig</span> {
+
+    <span class="tk-key">@Bean</span>
+    <span class="tk-key">public</span> Producer <span class="tk-fn">producer</span>() {
+        Host brokerHost = <span class="tk-key">new</span> Host(WebProtocol.HTTP, <span class="tk-str">"localhost"</span>, <span
+                                class="tk-str">8080</span>);
+        <span class="tk-key">return</span> <span class="tk-key">new</span> Producer(brokerHost);
+    }
+}</pre>
+                </div>
+
+                <h3>생성자 매개변수</h3>
+                <table class="tbl">
+                    <thead>
+                    <tr>
+                        <th>매개변수</th>
+                        <th>타입</th>
+                        <th>기본값</th>
+                        <th>설명</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td><code>host</code></td>
+                        <td><code>Host</code></td>
+                        <td>필수</td>
+                        <td>broker의 <code>Host</code></td>
+                    </tr>
+                    <tr>
+                        <td><code>maxRetryCount</code></td>
+                        <td><code>int</code></td>
+                        <td><code>3</code></td>
+                        <td><code>NACK</code> 응답에 대한 최대 재시도 횟수. 자세한 내용은 <a class="lk" href="#retry">NACK 재시도</a> 참고</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="publishing">
+                <h2>메시지 발행</h2>
+                <p>
+                    <code>Producer</code>의 <code>produce(Message)</code> 메서드를 통해 broker로 메시지를 전달합니다.
+                </p>
+
+                <p>
+                    가벼운 키–값은 <code>Map</code>으로 즉석에서 만들고, 도메인 객체는 POJO를 그대로 전송합니다.
+                </p>
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">OrderEventPublisher.Java</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre><span class="tk-key">@Service</span>
+<span class="tk-key">public class</span> <span class="tk-fn">OrderEventPublisher</span> {
+
+    <span class="tk-key">private final</span> Producer producer;
+
+    <span class="tk-key">public</span> <span class="tk-fn">OrderEventPublisher</span>(Producer producer) {
+        <span class="tk-key">this</span>.producer = producer;
+    }
+
+    <span class="tk-com">// Map</span>
+    <span class="tk-key">public void</span> <span class="tk-fn">publishOrderCancelled</span>(<span
+                                class="tk-key">long</span> orderId, String reason) {
+        Message message = <span class="tk-key">new</span> Message(
+            <span class="tk-key">new</span> Topic(<span class="tk-str">"order.cancelled"</span>),
+            Map.<span class="tk-fn">of</span>(<span class="tk-str">"id"</span>, orderId, <span
+                                class="tk-str">"reason"</span>, reason)
+        );
+        producer.<span class="tk-fn">produce</span>(message);
+    }
+
+    <span class="tk-com">// Object</span>
+    <span class="tk-key">public void</span> <span class="tk-fn">publishOrderCreated</span>(OrderCreatedEvent event) {
+        Message message = <span class="tk-key">new</span> Message(
+            <span class="tk-key">new</span> Topic(<span class="tk-str">"order.created"</span>),
+            event
+        );
+        producer.<span class="tk-fn">produce</span>(message);
+    }
+}</pre>
+                </div>
+
+                <h3>발행 과정</h3>
+                <p><code>produce(Message)</code>는 <strong>동기</strong>로 동작하며 다음 순서로 처리됩니다.</p>
+                <ol>
+                    <li><code>Message</code>를 요청 바디에 담아 broker의 <code>/messages</code> 엔드포인트로 POST 요청을 전송합니다.</li>
+                    <li>응답이 <code>ACK</code>이면 메시지 발행이 완료된 것으로, 종료합니다.</li>
+                    <li>응답이 <code>NACK</code>이면 재전송합니다 (자세한 내용은 <a class="lk" href="#retry">NACK 재시도</a> 참고).</li>
+                    <li>네트워크 예외가 발생하면 <code>ProduceException</code>이 발생합니다.</li>
+                </ol>
+
+                <h3>전송 포맷</h3>
+                <p>broker로 보내는 요청과 받는 응답은 모두 JSON입니다.</p>
+
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">요청</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre>{
+    <span class="tk-str">"topic"</span>: { <span class="tk-str">"name"</span>: <span
+                                class="tk-str">"order.created"</span> },
+    <span class="tk-str">"content"</span>: { <span class="tk-str">"id"</span>: 1, <span class="tk-str">"customer"</span>: <span
+                                class="tk-str">"meringue"</span> }
+}</pre>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">응답</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre>{ <span class="tk-str">"acknowledgement"</span>: <span class="tk-str">"ACK"</span> }</pre>
+                </div>
+            </section>
+
+            <section id="retry">
+                <h2>NACK 재시도</h2>
+                <p>
+                    broker가 <code>NACK</code>을 반환하면 <code>produce(Message)</code>는 메시지를 재전송합니다.
+                </p>
+
+                <h3>NACK이 발생하는 경우</h3>
+                <p>
+                    <code>NACK</code>은 broker가 메시지를 정상적으로 처리하지 못했을 때 돌려주는 응답입니다. <br>
+                    broker가 메시지를 영속화하는 과정에서 오류가 발생했을 때 <code>NACK</code>이 반환됩니다.
+                </p>
+
+                <h3>재시도 메커니즘</h3>
+                <ol>
+                    <li><code>NACK</code> 응답을 받으면 동일한 <code>Message</code>를 즉시 재전송합니다.</li>
+                    <li><code>maxRetryCount</code>(기본 <code>3</code>)까지 반복합니다. 초기 시도까지 합치면 최대 <code>1 +
+                        maxRetryCount</code>번 요청
+                        전송됩니다.
+                    </li>
+                    <li>중간에 broker가 <code>ACK</code>을 돌려주면 그 자리에서 정상 반환합니다.</li>
+                    <li>마지막 시도까지 <code>NACK</code>이 이어지면 <code>ProduceException</code>이 발생합니다.</li>
+                </ol>
+
+                <h3>재시도 횟수 변경</h3>
+                <p>
+                    기본 재시도 횟수(<code>maxRetryCount</code>)는 <code>3</code>으로, <code>Producer</code> 생성자 인자를 통해 값을 설정할 수
+                    있습니다.
+                </p>
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">Java</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre>Producer producer = <span class="tk-key">new</span> Producer(brokerHost, <span
+                            class="tk-str">5</span>);   <span class="tk-com">// 5번 재시도</span></pre>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- On this page -->
+        <aside class="docs-toc">
+            <div class="docs-toc__head">문서</div>
+            <ol>
+                <li><a href="#overview">개요</a></li>
+                <li><a href="#requirements">요구사항</a></li>
+                <li><a href="#installation">설치</a></li>
+                <li><a href="#instantiation">Producer 만들기</a></li>
+                <li><a href="#publishing">메시지 발행</a></li>
+                <li><a href="#retry">NACK 재시도</a></li>
+            </ol>
+        </aside>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="landing-footer-wrap">
+        <footer class="footer">
+            <div class="footer__top">
+                <div class="footer__brand">
+                    <span class="nav__brand-mark">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                  x="3" y="6"/>
+                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                  x="6" y="13.5"/>
+                            <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                        </svg>
+                    </span>
+                    <span>mmmq</span>
+                </div>
+                <ul class="footer__nav">
+                    <li><a href="../../index.html">홈</a></li>
+                    <li><a href="../../about.html">소개</a></li>
+                    <li><a href="../../quickstart.html">시작하기</a></li>
+                    <li><a href="index.html">문서</a></li>
+                    <li><a href="../../release.html">릴리즈</a></li>
+                    <li><a href="https://github.com/moko-meringue/mmmq">GitHub</a></li>
+                </ul>
+            </div>
+            <div class="footer__legal">
+                <span>2026 Moko-Meringue</span>
+            </div>
+        </footer>
+    </div>
+
+</div>
+
+</body>
+</html>

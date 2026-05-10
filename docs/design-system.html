@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <title>MMMQ 디자인 시스템 v0.1</title>
+    <meta content="mmmq 공식 문서 사이트의 디자인 토큰과 컴포넌트 라이브러리." name="description"/>
+    <link crossorigin href="https://cdn.jsdelivr.net" rel="preconnect"/>
+    <link
+            href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+            rel="stylesheet"
+    />
+    <link href="styles.css" rel="stylesheet"/>
+    <link href="docs.css" rel="stylesheet"/>
+    <script defer src="scripts.js"></script>
+</head>
+<body>
+<main class="ds">
+
+    <!-- ==================================================
+         00 · Cover
+         ================================================== -->
+    <header class="ds-cover ds-section--no-border">
+        <span class="t-eyebrow">MMMQ DOCS · DESIGN SYSTEM</span>
+        <h1 class="t-display">디자인 시스템 v0.1</h1>
+        <p class="t-body-lg">
+            Spring 디자인 언어를 따른 mmmq 공식 문서 사이트의 토큰과 컴포넌트.
+            브랜드 컬러 <code class="t-code">#6DB33F</code> 기반, 한국어 카피 중심,
+            데스크톱 1440px.
+        </p>
+        <div class="meta">2026-05-07 작성 · Round 1: 디자인 시스템 · 이후 라운드에서 페이지 빌드</div>
+        <div class="brand-bar"></div>
+    </header>
+
+    <!-- ==================================================
+         01 · Color tokens
+         ================================================== -->
+    <section class="ds-section">
+        <header class="ds-section-head">
+            <span class="t-eyebrow">01 · COLOR</span>
+            <h2 class="t-h2">색상 토큰</h2>
+            <p>
+                브랜드 그린 한 톤과 무채색 잉크·보더·서피스, 그리고 의미 색상으로 구성된 16개 토큰.
+                모든 컴포넌트는 raw HEX 대신 이 토큰을 참조합니다.
+            </p>
+        </header>
+
+        <div class="swatch-grid">
+
+            <!-- brand -->
+            <div class="swatch">
+                <div class="swatch__color" style="background:#6DB33F"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">brand/primary</div>
+                    <div class="swatch__hex">#6DB33F</div>
+                    <div class="swatch__use">버튼, 링크, 강조</div>
+                </div>
+            </div>
+            <div class="swatch">
+                <div class="swatch__color" style="background:#5A9A33"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">brand/primary-hover</div>
+                    <div class="swatch__hex">#5A9A33</div>
+                    <div class="swatch__use">호버 상태</div>
+                </div>
+            </div>
+            <div class="swatch">
+                <div class="swatch__color" style="background:#EAF5DD"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">brand/primary-soft</div>
+                    <div class="swatch__hex">#EAF5DD</div>
+                    <div class="swatch__use">강조 영역 배경</div>
+                </div>
+            </div>
+            <div class="swatch">
+                <div class="swatch__color" style="background:#FFFFFF;border-right:1px solid #E5E7EB"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">surface/page</div>
+                    <div class="swatch__hex">#FFFFFF</div>
+                    <div class="swatch__use">페이지 기본 배경</div>
+                </div>
+            </div>
+
+            <!-- ink -->
+            <div class="swatch">
+                <div class="swatch__color" style="background:#0B1416"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">ink/strong</div>
+                    <div class="swatch__hex">#0B1416</div>
+                    <div class="swatch__use">메인 텍스트</div>
+                </div>
+            </div>
+            <div class="swatch">
+                <div class="swatch__color" style="background:#4B5563"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">ink/muted</div>
+                    <div class="swatch__hex">#4B5563</div>
+                    <div class="swatch__use">서브 텍스트</div>
+                </div>
+            </div>
+            <div class="swatch">
+                <div class="swatch__color" style="background:#6B7280"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">ink/subtle</div>
+                    <div class="swatch__hex">#6B7280</div>
+                    <div class="swatch__use">캡션·메타</div>
+                </div>
+            </div>
+            <div class="swatch">
+                <div class="swatch__color" style="background:#F8FAFB"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">surface/soft</div>
+                    <div class="swatch__hex">#F8FAFB</div>
+                    <div class="swatch__use">섹션 띠 · 콜아웃</div>
+                </div>
+            </div>
+            <div class="swatch">
+                <div class="swatch__color" style="background:#EEF2F6"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">surface/sunken</div>
+                    <div class="swatch__hex">#EEF2F6</div>
+                    <div class="swatch__use">코드 블록 · 인셋 영역</div>
+                </div>
+            </div>
+
+            <!-- borders -->
+            <div class="swatch">
+                <div class="swatch__color" style="background:#E5E7EB"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">border/default</div>
+                    <div class="swatch__hex">#E5E7EB</div>
+                    <div class="swatch__use">헤어라인</div>
+                </div>
+            </div>
+            <div class="swatch">
+                <div class="swatch__color" style="background:#CBD5E1"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">border/strong</div>
+                    <div class="swatch__hex">#CBD5E1</div>
+                    <div class="swatch__use">강한 분리선</div>
+                </div>
+            </div>
+
+            <!-- semantic -->
+            <div class="swatch">
+                <div class="swatch__color" style="background:#16A34A"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">semantic/success</div>
+                    <div class="swatch__hex">#16A34A</div>
+                    <div class="swatch__use">성공 · ACK</div>
+                </div>
+            </div>
+            <div class="swatch">
+                <div class="swatch__color" style="background:#F59E0B"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">semantic/warn</div>
+                    <div class="swatch__hex">#F59E0B</div>
+                    <div class="swatch__use">주의 · 재시도</div>
+                </div>
+            </div>
+            <div class="swatch">
+                <div class="swatch__color" style="background:#DC2626"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">semantic/danger</div>
+                    <div class="swatch__hex">#DC2626</div>
+                    <div class="swatch__use">에러 · DLQ</div>
+                </div>
+            </div>
+
+            <!-- syntax -->
+            <div class="swatch">
+                <div class="swatch__color" style="background:#BE185D"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">syntax/key</div>
+                    <div class="swatch__hex">#BE185D</div>
+                    <div class="swatch__use">코드 키워드</div>
+                </div>
+            </div>
+            <div class="swatch">
+                <div class="swatch__color" style="background:#047857"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">syntax/string</div>
+                    <div class="swatch__hex">#047857</div>
+                    <div class="swatch__use">코드 문자열</div>
+                </div>
+            </div>
+            <div class="swatch">
+                <div class="swatch__color" style="background:#6B7280"></div>
+                <div class="swatch__meta">
+                    <div class="swatch__name">syntax/comment</div>
+                    <div class="swatch__hex">#6B7280</div>
+                    <div class="swatch__use">코드 주석</div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ==================================================
+         02 · Typography
+         ================================================== -->
+    <section class="ds-section">
+        <header class="ds-section-head">
+            <span class="t-eyebrow">02 · TYPOGRAPHY</span>
+            <h2 class="t-h2">타이포그래피</h2>
+            <p>
+                본문·코드 모두 Pretendard 단일 패밀리. 10개 스케일 토큰.
+            </p>
+        </header>
+
+        <div class="type-row">
+            <div class="type-row__token">display</div>
+            <div class="type-row__sample t-display">메시지 큐를 처음부터.</div>
+            <div class="type-row__meta">72 / 84 / 700</div>
+        </div>
+        <div class="type-row">
+            <div class="type-row__token">h1</div>
+            <div class="type-row__sample t-h1">왜 mmmq 인가</div>
+            <div class="type-row__meta">56 / 64 / 700</div>
+        </div>
+        <div class="type-row">
+            <div class="type-row__token">h2</div>
+            <div class="type-row__sample t-h2">디스크에 직접 쓰는 영속화</div>
+            <div class="type-row__meta">40 / 48 / 700</div>
+        </div>
+        <div class="type-row">
+            <div class="type-row__token">h3</div>
+            <div class="type-row__sample t-h3">단일 라이터 토픽 큐</div>
+            <div class="type-row__meta">24 / 32 / 600</div>
+        </div>
+        <div class="type-row">
+            <div class="type-row__token">h4</div>
+            <div class="type-row__sample t-h4">Dispatcher 체크포인트</div>
+            <div class="type-row__meta">18 / 26 / 600</div>
+        </div>
+        <div class="type-row">
+            <div class="type-row__token">body-lg</div>
+            <div class="type-row__sample t-body-lg">
+                mmmq는 카프카·RabbitMQ를 대체하는 게 아니라 메시지 브로커의 동작 원리를 처음부터 직접 쌓아 올리는 학습용 라이브러리입니다.
+            </div>
+            <div class="type-row__meta">18 / 30 / 400</div>
+        </div>
+        <div class="type-row">
+            <div class="type-row__token">body</div>
+            <div class="type-row__sample t-body">
+                토픽별 단일 라이터 보장으로 메시지 순서를 단순하게 유지합니다. 동시 읽기는 잠금 없이 처리되며, 인플라이트 항목은 인덱스 카운트 경계로 격리됩니다.
+            </div>
+            <div class="type-row__meta">16 / 28 / 400</div>
+        </div>
+        <div class="type-row">
+            <div class="type-row__token">body-sm</div>
+            <div class="type-row__sample t-body-sm">
+                설정 키는 mmmq.broker.* 네임스페이스를 사용합니다. 기본값은 <code class="t-code">./data</code> 디렉토리.
+            </div>
+            <div class="type-row__meta">14 / 22 / 400</div>
+        </div>
+        <div class="type-row">
+            <div class="type-row__token">code</div>
+            <div class="type-row__sample t-code">producer.produce(new Message(new Topic("order.created"), payload));
+            </div>
+            <div class="type-row__meta">14 / 22 / 400 mono</div>
+        </div>
+        <div class="type-row">
+            <div class="type-row__token">eyebrow</div>
+            <div class="type-row__sample t-eyebrow">CORE · MESSAGE FLOW</div>
+            <div class="type-row__meta">12 / 16 / 600</div>
+        </div>
+    </section>
+
+    <!-- ==================================================
+         03 · Spacing & Radius
+         ================================================== -->
+    <section class="ds-section">
+        <header class="ds-section-head">
+            <span class="t-eyebrow">03 · SPACING &amp; RADIUS</span>
+            <h2 class="t-h2">간격과 라디우스</h2>
+            <p>8그리드 기반 11단계 스페이싱과 5단계 라디우스. 섹션 패딩은 상하 120px, 컨테이너 max-width 1200px.</p>
+        </header>
+
+        <div class="spacing-list">
+            <div class="spacing-row">
+                <div class="spacing-row__token">s-1</div>
+                <div class="spacing-row__bar" style="width:4px"></div>
+                <div class="spacing-row__px">4 px</div>
+            </div>
+            <div class="spacing-row">
+                <div class="spacing-row__token">s-2</div>
+                <div class="spacing-row__bar" style="width:8px"></div>
+                <div class="spacing-row__px">8 px</div>
+            </div>
+            <div class="spacing-row">
+                <div class="spacing-row__token">s-3</div>
+                <div class="spacing-row__bar" style="width:12px"></div>
+                <div class="spacing-row__px">12 px</div>
+            </div>
+            <div class="spacing-row">
+                <div class="spacing-row__token">s-4</div>
+                <div class="spacing-row__bar" style="width:16px"></div>
+                <div class="spacing-row__px">16 px</div>
+            </div>
+            <div class="spacing-row">
+                <div class="spacing-row__token">s-5</div>
+                <div class="spacing-row__bar" style="width:24px"></div>
+                <div class="spacing-row__px">24 px</div>
+            </div>
+            <div class="spacing-row">
+                <div class="spacing-row__token">s-6</div>
+                <div class="spacing-row__bar" style="width:32px"></div>
+                <div class="spacing-row__px">32 px</div>
+            </div>
+            <div class="spacing-row">
+                <div class="spacing-row__token">s-7</div>
+                <div class="spacing-row__bar" style="width:48px"></div>
+                <div class="spacing-row__px">48 px</div>
+            </div>
+            <div class="spacing-row">
+                <div class="spacing-row__token">s-8</div>
+                <div class="spacing-row__bar" style="width:64px"></div>
+                <div class="spacing-row__px">64 px</div>
+            </div>
+            <div class="spacing-row">
+                <div class="spacing-row__token">s-9</div>
+                <div class="spacing-row__bar" style="width:80px"></div>
+                <div class="spacing-row__px">80 px</div>
+            </div>
+            <div class="spacing-row">
+                <div class="spacing-row__token">s-10</div>
+                <div class="spacing-row__bar" style="width:120px"></div>
+                <div class="spacing-row__px">120 px</div>
+            </div>
+            <div class="spacing-row">
+                <div class="spacing-row__token">s-11</div>
+                <div class="spacing-row__bar" style="width:160px"></div>
+                <div class="spacing-row__px">160 px</div>
+            </div>
+        </div>
+
+        <div class="radius-grid">
+            <div class="radius-card">
+                <div class="radius-shape" style="border-radius:4px"></div>
+                <div class="radius-card__meta">
+                    <div class="radius-card__token">r-xs</div>
+                    <div class="radius-card__px">4 px</div>
+                </div>
+            </div>
+            <div class="radius-card">
+                <div class="radius-shape" style="border-radius:8px"></div>
+                <div class="radius-card__meta">
+                    <div class="radius-card__token">r-sm</div>
+                    <div class="radius-card__px">8 px</div>
+                </div>
+            </div>
+            <div class="radius-card">
+                <div class="radius-shape" style="border-radius:12px"></div>
+                <div class="radius-card__meta">
+                    <div class="radius-card__token">r-md</div>
+                    <div class="radius-card__px">12 px</div>
+                </div>
+            </div>
+            <div class="radius-card">
+                <div class="radius-shape" style="border-radius:20px"></div>
+                <div class="radius-card__meta">
+                    <div class="radius-card__token">r-lg</div>
+                    <div class="radius-card__px">20 px</div>
+                </div>
+            </div>
+            <div class="radius-card">
+                <div class="radius-shape" style="border-radius:9999px"></div>
+                <div class="radius-card__meta">
+                    <div class="radius-card__token">r-pill</div>
+                    <div class="radius-card__px">9999 px</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================================================
+         04 · Shadows
+         ================================================== -->
+    <section class="ds-section">
+        <header class="ds-section-head">
+            <span class="t-eyebrow">04 · ELEVATION</span>
+            <h2 class="t-h2">그림자</h2>
+            <p>Spring 톤을 따라 거의 사용하지 않습니다. 호버용 미세 그림자 1종만 정의.</p>
+        </header>
+
+        <div class="row" style="gap:24px">
+            <div style="background:#fff; border:1px solid var(--border-default); border-radius:12px; padding:24px; width:240px; box-shadow: 0 1px 0 rgba(0,0,0,0.04);">
+                <div class="t-h4">sh/hover</div>
+                <div class="t-body-sm">0 1px 0 rgba(0,0,0,0.04)</div>
+            </div>
+            <div style="background:#fff; border:1px solid var(--border-default); border-radius:12px; padding:24px; width:240px;">
+                <div class="t-h4">기본</div>
+                <div class="t-body-sm">no shadow</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================================================
+         05 · Components
+         ================================================== -->
+    <section class="ds-section">
+        <header class="ds-section-head">
+            <span class="t-eyebrow">05 · COMPONENTS</span>
+            <h2 class="t-h2">컴포넌트</h2>
+            <p>14종 컴포넌트. 각 컴포넌트는 모든 변형(variant)이 노출된 데모 행을 보여줍니다.</p>
+        </header>
+
+        <!-- 1. Button -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.1</span>
+                    <h3 class="t-h3">Button</h3>
+                </div>
+                <p class="ds-component__desc">3 variant × 3 size × default/hover/disabled. pill radius. 우측 화살표 옵션.</p>
+            </header>
+            <div class="ds-component__demo ds-component__demo--column">
+                <div class="demo-row">
+                    <div class="demo-row__label">primary · md</div>
+                    <button class="btn btn--primary btn--md">시작하기</button>
+                    <button class="btn btn--primary btn--md is-hover">시작하기</button>
+                    <button class="btn btn--primary btn--md" disabled>시작하기</button>
+                    <button class="btn btn--primary btn--md">자세히 <span class="arrow">→</span></button>
+                </div>
+                <div class="demo-row">
+                    <div class="demo-row__label">primary · sizes</div>
+                    <button class="btn btn--primary btn--sm">시작하기</button>
+                    <button class="btn btn--primary btn--md">시작하기</button>
+                    <button class="btn btn--primary btn--lg">시작하기</button>
+                </div>
+                <div class="demo-row">
+                    <div class="demo-row__label">secondary · md</div>
+                    <button class="btn btn--secondary btn--md">GitHub</button>
+                    <button class="btn btn--secondary btn--md is-hover">GitHub</button>
+                    <button class="btn btn--secondary btn--md" disabled>GitHub</button>
+                    <button class="btn btn--secondary btn--md">전체 보기 <span class="arrow">→</span></button>
+                </div>
+                <div class="demo-row">
+                    <div class="demo-row__label">tertiary · md</div>
+                    <button class="btn btn--tertiary btn--md">더 알아보기</button>
+                    <button class="btn btn--tertiary btn--md is-hover">더 알아보기</button>
+                    <button class="btn btn--tertiary btn--md" disabled>더 알아보기</button>
+                    <button class="btn btn--tertiary btn--md">레퍼런스 <span class="arrow">→</span></button>
+                </div>
+            </div>
+        </article>
+
+        <!-- 2. Link -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.2</span>
+                    <h3 class="t-h3">Link</h3>
+                </div>
+                <p class="ds-component__desc">본문 인라인 링크. 화살표 옵션. 호버 시 밑줄.</p>
+            </header>
+            <div class="ds-component__demo">
+                <span class="t-body">기본 텍스트 안에 <a class="lk" href="#">개념 페이지</a>로 가는 링크가 들어갑니다.</span>
+                <span class="t-body">화살표 변형은 <a class="lk lk--with-arrow" href="#">자세히 보기</a> 형태입니다.</span>
+            </div>
+        </article>
+
+        <!-- 3. Badge -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.3</span>
+                    <h3 class="t-h3">Badge</h3>
+                </div>
+                <p class="ds-component__desc">버전·상태 라벨용 5종 톤 × 2 사이즈.</p>
+            </header>
+            <div class="ds-component__demo ds-component__demo--column">
+                <div class="demo-row">
+                    <div class="demo-row__label">sm</div>
+                    <span class="bdg bdg--neutral">v0.0.1</span>
+                    <span class="bdg bdg--brand">brand</span>
+                    <span class="bdg bdg--success">ACK</span>
+                    <span class="bdg bdg--warn">RETRY</span>
+                    <span class="bdg bdg--danger">DLQ</span>
+                </div>
+                <div class="demo-row">
+                    <div class="demo-row__label">md</div>
+                    <span class="bdg bdg--neutral bdg--md">v0.0.1</span>
+                    <span class="bdg bdg--brand bdg--md">latest</span>
+                    <span class="bdg bdg--success bdg--md">정상</span>
+                    <span class="bdg bdg--warn bdg--md">재시도</span>
+                    <span class="bdg bdg--danger bdg--md">에러</span>
+                </div>
+            </div>
+        </article>
+
+        <!-- 4. Card -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.4</span>
+                    <h3 class="t-h3">Card</h3>
+                </div>
+                <p class="ds-component__desc">project / feature / guide / blog 4종. 보더 1px, 무광택, 호버 시 보더만 변화.</p>
+            </header>
+            <div class="ds-component__demo">
+                <a class="card" href="#">
+                    <div class="t-eyebrow">FEATURE</div>
+                    <div class="card__title">디스크 영속화</div>
+                    <div class="card__desc">FileChannel + fsync로 메시지를 디스크에 기록하고 인덱스로 가시성 경계를 만듭니다.</div>
+                    <div class="card__cta">자세히 →</div>
+                </a>
+                <a class="card" href="#">
+                    <div class="t-eyebrow">GUIDE</div>
+                    <div class="card__title">5분 안에 첫 메시지 보내기</div>
+                    <div class="card__desc">JitPack에서 의존성 설치 후 Producer · Consumer · Broker를 한 번에 띄우는 가장 짧은 경로.</div>
+                    <div class="card__cta">시작하기 →</div>
+                </a>
+                <a class="card" href="#">
+                    <div class="t-eyebrow">BLOG · 2026-05</div>
+                    <div class="card__title">v0.0.1 릴리스 노트</div>
+                    <div class="card__desc">첫 공개 버전. 영속화 · DLQ · 패턴 구독을 포함한 기본 기능 셋이 정리되었습니다.</div>
+                    <div class="card__meta">읽는 데 4분</div>
+                </a>
+            </div>
+        </article>
+
+        <!-- 5. Top Nav -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.5</span>
+                    <h3 class="t-h3">Top Nav</h3>
+                </div>
+                <p class="ds-component__desc">로고는 좌측, 메뉴는 우측 끝. 메뉴 항목은 텍스트 주변 padding까지 확장된 hit 영역을 가지며, hover 시 brand-primary-soft 배경이 표시됩니다.</p>
+            </header>
+            <div class="ds-component__demo ds-component__demo--column">
+                <nav class="nav">
+                    <div class="nav__brand">
+                        <span class="nav__brand-mark"><svg aria-hidden="true" viewBox="0 0 32 32"><rect fill="#EAF5DD"
+                                                                                                        height="5"
+                                                                                                        rx="2.5"
+                                                                                                        stroke="#6DB33F"
+                                                                                                        stroke-width="1.5"
+                                                                                                        width="20"
+                                                                                                        x="3"
+                                                                                                        y="6"/><rect
+                                fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6"
+                                y="13.5"/><rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9"
+                                                y="21"/></svg></span>
+                        <span>mmmq</span>
+                    </div>
+                    <ul class="nav__menu">
+                        <li><a class="is-active" href="#">홈</a></li>
+                        <li><a href="#">소개</a></li>
+                        <li><a href="#">시작하기</a></li>
+                        <li><a href="#">문서</a></li>
+                        <li><a href="#">릴리즈</a></li>
+                        <li><a href="#">GitHub</a></li>
+                    </ul>
+                </nav>
+                <nav class="nav nav--scrolled">
+                    <div class="nav__brand">
+                        <span class="nav__brand-mark"><svg aria-hidden="true" viewBox="0 0 32 32"><rect fill="#EAF5DD"
+                                                                                                        height="5"
+                                                                                                        rx="2.5"
+                                                                                                        stroke="#6DB33F"
+                                                                                                        stroke-width="1.5"
+                                                                                                        width="20"
+                                                                                                        x="3"
+                                                                                                        y="6"/><rect
+                                fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6"
+                                y="13.5"/><rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9"
+                                                y="21"/></svg></span>
+                        <span>mmmq</span>
+                    </div>
+                    <ul class="nav__menu">
+                        <li><a href="#">홈</a></li>
+                        <li><a href="#">소개</a></li>
+                        <li><a class="is-active" href="#">시작하기</a></li>
+                        <li><a href="#">문서</a></li>
+                        <li><a href="#">릴리즈</a></li>
+                        <li><a href="#">GitHub</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </article>
+
+        <!-- 6. Footer -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.6</span>
+                    <h3 class="t-h3">Footer</h3>
+                </div>
+                <p class="ds-component__desc">상단에 로고 + 헤더와 동일한 메뉴, 아래에 카피라이트 한 줄. 배경 surface/soft.</p>
+            </header>
+            <div class="ds-component__demo">
+                <footer class="footer">
+                    <div class="footer__top">
+                        <div class="footer__brand">
+                            <span class="nav__brand-mark">
+                                <svg aria-hidden="true" viewBox="0 0 32 32">
+                                    <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3" y="6"/>
+                                    <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6" y="13.5"/>
+                                    <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                                </svg>
+                            </span>
+                            <span>mmmq</span>
+                        </div>
+                        <ul class="footer__nav">
+                            <li><a href="index.html">홈</a></li>
+                            <li><a href="about.html">소개</a></li>
+                            <li><a href="quickstart.html">시작하기</a></li>
+                            <li><a href="docs/0.0.2/index.html">문서</a></li>
+                            <li><a href="release.html">릴리즈</a></li>
+                            <li><a href="https://github.com/moko-meringue/mmmq">GitHub</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer__legal">
+                        <span>2026 Moko-Meringue</span>
+                    </div>
+                </footer>
+            </div>
+        </article>
+
+        <!-- 7. Hero -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.7</span>
+                    <h3 class="t-h3">Hero</h3>
+                </div>
+                <p class="ds-component__desc">홈 hero 변형. 좌측 텍스트 + 우측 비주얼 자리.</p>
+            </header>
+            <div class="ds-component__demo">
+                <div class="hero">
+                    <div>
+                        <h1 class="t-h1 hero__title">
+                            내구성 있는.<br/>
+                            관찰 가능한.<br/>
+                            이벤트 기반의.<br/>
+                            <span style="color:var(--brand-primary)">교육용 메시지 큐.</span>
+                        </h1>
+                        <p class="hero__sub">
+                            mmmq는 카프카·RabbitMQ를 대체하는 게 아니라, 메시지 브로커의 동작 원리를
+                            바닥부터 쌓아 올리는 라이브러리입니다.
+                        </p>
+                        <div class="hero__ctas">
+                            <a class="btn btn--primary btn--lg">시작하기</a>
+                            <a class="btn btn--secondary btn--lg">GitHub</a>
+                        </div>
+                    </div>
+                    <div class="hero__visual">
+                        [ 일러스트 자리 ]<br/>
+                        Producer → Broker → Consumer
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- 8. Code Block -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.8</span>
+                    <h3 class="t-h3">Code Block</h3>
+                </div>
+                <p class="ds-component__desc">언어 탭 · 복사 버튼 · 라이트/다크 테마 · 신택스 컬러. 복사 버튼을 누르면 체크 아이콘과 함께 라벨이
+                    <code>복사</code> → <code>✓ 복사됨</code>으로 1초간 바뀌어 클립보드 복사가 끝났음을 알립니다.</p>
+            </header>
+            <div class="ds-component__demo ds-component__demo--column">
+                <!-- light java -->
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">Java</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre><span class="tk-com">// 첫 메시지 발송</span>
+producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Message(
+    <span class="tk-key">new</span> Topic(<span class="tk-str">"order.created"</span>),
+    Map.<span class="tk-fn">of</span>(<span class="tk-str">"id"</span>, <span class="tk-str">123</span>, <span
+                                class="tk-str">"customer"</span>, <span class="tk-str">"Alice"</span>)
+));</pre>
+                </div>
+                <!-- light yaml -->
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">application.yml</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre><span class="tk-key">mmmq</span>:
+  <span class="tk-key">broker</span>:
+    <span class="tk-key">storage</span>:
+      <span class="tk-key">root-dir</span>: <span class="tk-str">./data</span>
+    <span class="tk-key">segment</span>:
+      <span class="tk-key">max-bytes</span>: <span class="tk-str">67108864</span>  <span class="tk-com"># 64 MiB soft cap</span></pre>
+                </div>
+                <!-- dark gradle -->
+                <div class="code-block code-block--dark">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">build.gradle</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre><span class="tk-key">repositories</span> {
+    maven { url <span class="tk-str">"https://jitpack.io"</span> }
+}
+
+<span class="tk-key">dependencies</span> {
+    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:producer:0.0.1"</span>
+    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:consumer:0.0.1"</span>
+    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:broker:0.0.1"</span>
+}</pre>
+                </div>
+            </div>
+        </article>
+
+        <!-- 9. Module Card -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.9</span>
+                    <h3 class="t-h3">Module Card</h3>
+                </div>
+                <p class="ds-component__desc">core · producer · consumer · broker. 4개 모듈을 같은 형식으로 노출.</p>
+            </header>
+            <div class="ds-component__demo">
+                <a class="mod-card" href="#">
+                    <div class="mod-card__icon">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <rect fill="#EAF5DD" height="24" rx="5" stroke="#6DB33F" stroke-width="1.5" width="24" x="4"
+                                  y="4"/>
+                            <rect fill="#6DB33F" height="10" rx="2" width="10" x="11" y="11"/>
+                        </svg>
+                    </div>
+                    <div class="mod-card__name">core</div>
+                    <div class="mod-card__desc">Message · Topic · TopicPattern · Acknowledgement 등 공유 도메인 타입.</div>
+                    <div class="mod-card__more">자세히 →</div>
+                </a>
+                <a class="mod-card" href="#">
+                    <div class="mod-card__icon">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <rect fill="#6DB33F" height="12" rx="3" width="12" x="3" y="10"/>
+                            <path d="M16 16 L28 16" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-width="2"/>
+                            <path d="M23 11 L29 16 L23 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-linejoin="round" stroke-width="2"/>
+                        </svg>
+                    </div>
+                    <div class="mod-card__name">producer</div>
+                    <div class="mod-card__desc">Broker로 메시지를 보내는 클라이언트. 재시도 정책을 빌더로 구성.</div>
+                    <div class="mod-card__more">자세히 →</div>
+                </a>
+                <a class="mod-card" href="#">
+                    <div class="mod-card__icon">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <path d="M3 16 L15 16" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-width="2"/>
+                            <path d="M10 11 L16 16 L10 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-linejoin="round" stroke-width="2"/>
+                            <rect fill="#6DB33F" height="12" rx="3" width="12" x="17" y="10"/>
+                        </svg>
+                    </div>
+                    <div class="mod-card__name">consumer</div>
+                    <div class="mod-card__desc">@MMMQListener 어노테이션 또는 인터페이스로 메시지 핸들러 등록.</div>
+                    <div class="mod-card__more">자세히 →</div>
+                </a>
+                <a class="mod-card" href="#">
+                    <div class="mod-card__icon">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="8"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="16"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="24"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                  y2="8"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                  y2="24"/>
+                            <circle cx="4" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="4" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="4" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="16" cy="16" fill="#6DB33F" r="4.5"/>
+                            <circle cx="28" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="28" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="28" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                        </svg>
+                    </div>
+                    <div class="mod-card__name">broker</div>
+                    <div class="mod-card__desc">디스크 영속화 + Dispatcher 라우팅 + DLQ. 토픽별 단일 라이터 보장.</div>
+                    <div class="mod-card__more">자세히 →</div>
+                </a>
+            </div>
+        </article>
+
+        <!-- 10. Architecture -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.10</span>
+                    <h3 class="t-h3">Architecture Block</h3>
+                </div>
+                <p class="ds-component__desc">Producer → Broker → Consumer 흐름을 한 화면에 압축.</p>
+            </header>
+            <div class="ds-component__demo">
+                <div class="arch">
+                    <div class="arch__node">
+                        <div class="arch__node-title">Producer</div>
+                        <div class="arch__node-sub">produce()</div>
+                    </div>
+                    <div class="arch__arrow">
+                        <span>POST /messages</span>
+                        <span class="line">→</span>
+                    </div>
+                    <div class="arch__node arch__node--brand">
+                        <div class="arch__node-title">Broker</div>
+                        <div class="arch__node-sub">TopicQueue + fsync</div>
+                    </div>
+                    <div class="arch__arrow">
+                        <span>Dispatcher</span>
+                        <span class="line">→</span>
+                    </div>
+                    <div class="arch__node">
+                        <div class="arch__node-title">Consumer</div>
+                        <div class="arch__node-sub">@MMMQListener</div>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- 11. Side Nav -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.11</span>
+                    <h3 class="t-h3">Side Nav (Docs)</h3>
+                </div>
+                <p class="ds-component__desc">문서 페이지 좌측 트리. 활성 항목은 좌측 바 + 브랜드 컬러.</p>
+            </header>
+            <div class="ds-component__demo">
+                <aside class="sidenav">
+                    <div class="sidenav__group">
+                        <div class="sidenav__head">시작하기</div>
+                        <a class="sidenav__item" href="#">설치</a>
+                        <a class="sidenav__item sidenav__item--active" href="#">5분 만에 띄우기</a>
+                        <a class="sidenav__item" href="#">예제 프로젝트</a>
+                    </div>
+                    <div class="sidenav__group">
+                        <div class="sidenav__head">개념</div>
+                        <a class="sidenav__item" href="#">토픽과 패턴</a>
+                        <a class="sidenav__item" href="#">오프셋 · 체크포인트</a>
+                        <a class="sidenav__item" href="#">세그먼트와 영속화</a>
+                        <a class="sidenav__item" href="#">DLQ</a>
+                    </div>
+                    <div class="sidenav__group">
+                        <div class="sidenav__head">레퍼런스</div>
+                        <a class="sidenav__item" href="#">설정 키</a>
+                        <a class="sidenav__item" href="#">공개 API</a>
+                        <a class="sidenav__item" href="#">예외</a>
+                        <a class="sidenav__item" href="#">이벤트</a>
+                    </div>
+                </aside>
+            </div>
+        </article>
+
+        <!-- 12. Step Card -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.12</span>
+                    <h3 class="t-h3">Step Card</h3>
+                </div>
+                <p class="ds-component__desc">Quickstart 단계 카드. 숫자 원 + 제목 + 설명 + 코드 슬롯.</p>
+            </header>
+            <div class="ds-component__demo">
+                <div class="step-card">
+                    <div class="step-card__num">1</div>
+                    <div>
+                        <div class="step-card__title">JitPack 설치</div>
+                        <div class="step-card__desc">build.gradle에 JitPack 저장소와 mmmq 의존성을 추가합니다.</div>
+                        <div class="t-code subtle">implementation "com.github.moko-meringue.mmmq:producer:0.0.1"</div>
+                    </div>
+                </div>
+                <div class="step-card">
+                    <div class="step-card__num">2</div>
+                    <div>
+                        <div class="step-card__title">Broker 설정</div>
+                        <div class="step-card__desc">application.yml의 mmmq.broker.* 값을 지정하고 Spring 빈을 등록합니다.</div>
+                        <div class="t-code subtle">mmmq.broker.storage.root-dir: ./data</div>
+                    </div>
+                </div>
+                <div class="step-card">
+                    <div class="step-card__num">3</div>
+                    <div>
+                        <div class="step-card__title">첫 메시지 보내기</div>
+                        <div class="step-card__desc">@MMMQListener를 단 메서드를 만들고 Producer로 메시지를 발행합니다.</div>
+                        <div class="t-code subtle">producer.produce(new Message(topic, payload));</div>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- 13. Callout -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.13</span>
+                    <h3 class="t-h3">Callout</h3>
+                </div>
+                <p class="ds-component__desc">참고 / 주의 / 팁 3종. 좌측 컬러 바.</p>
+            </header>
+            <div class="ds-component__demo ds-component__demo--column">
+                <div class="callout callout--info">
+                    <div class="callout__bar"></div>
+                    <div>
+                        <div class="callout__label">참고</div>
+                        <div class="callout__body">
+                            커밋 포인트는 인덱스 파일의 fsync가 끝난 시점입니다. 데이터 파일만 fsync해서는 충분하지 않습니다.
+                        </div>
+                    </div>
+                </div>
+                <div class="callout callout--warn">
+                    <div class="callout__bar"></div>
+                    <div>
+                        <div class="callout__label">주의</div>
+                        <div class="callout__body">
+                            Dispatcher 이름은 체크포인트 파일명으로 사용되므로 <code class="t-code">[A-Za-z0-9._-]+</code> 패턴만 허용됩니다.
+                        </div>
+                    </div>
+                </div>
+                <div class="callout callout--tip">
+                    <div class="callout__bar"></div>
+                    <div>
+                        <div class="callout__label">팁</div>
+                        <div class="callout__body">
+                            여러 DLQ 빈을 등록하면 모두에게 같은 dead letter가 브로드캐스트됩니다.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- 14. Table -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.14</span>
+                    <h3 class="t-h3">Table</h3>
+                </div>
+                <p class="ds-component__desc">설정값 · 메서드 시그니처 표. 헤어라인 분리, 호버 행 강조.</p>
+            </header>
+            <div class="ds-component__demo">
+                <table class="tbl">
+                    <thead>
+                    <tr>
+                        <th>설정 키</th>
+                        <th>타입</th>
+                        <th>기본값</th>
+                        <th>설명</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td><code>mmmq.broker.storage.root-dir</code></td>
+                        <td>String</td>
+                        <td><code>./data</code></td>
+                        <td>토픽별 데이터·인덱스·체크포인트가 저장되는 루트 디렉토리.</td>
+                    </tr>
+                    <tr>
+                        <td><code>mmmq.broker.segment.max-bytes</code></td>
+                        <td>long</td>
+                        <td><code>67108864</code></td>
+                        <td>세그먼트 회전 소프트 캡(기본 64 MiB).</td>
+                    </tr>
+                    <tr>
+                        <td><code>producer.maxRetryCount</code></td>
+                        <td>int</td>
+                        <td><code>3</code></td>
+                        <td>NACK 응답에 대한 재시도 횟수.</td>
+                    </tr>
+                    <tr>
+                        <td><code>dispatcher.deadLetterQueues</code></td>
+                        <td>List&lt;DLQ&gt;</td>
+                        <td>—</td>
+                        <td>NACK 재시도 모두 실패 시 메시지가 전달될 DLQ 목록.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <!-- 15. Version Dropdown -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.15</span>
+                    <h3 class="t-h3">Version Dropdown</h3>
+                </div>
+                <p class="ds-component__desc">
+                    docs landing 전용 버전 셀렉터. <code>&lt;details&gt;</code> 기반으로 동작하며 외부 클릭 시
+                    scripts.js가 닫는다. 트리거 우측에 latest 배지를 표시하고, latest가 아닌 버전 페이지에는
+                    <code>visibility: hidden</code> placeholder 배지를 같은 자리에 두어 폭이 일정하게 유지된다.
+                </p>
+            </header>
+            <div class="ds-component__demo ds-component__demo--column">
+                <div class="demo-row">
+                    <div class="demo-row__label">latest</div>
+                    <details class="version-dropdown">
+                        <summary class="version-dropdown__trigger" aria-haspopup="listbox">
+                            <span>v0.0.2</span>
+                            <span class="version-dropdown__badge">latest</span>
+                            <svg class="version-dropdown__chev" aria-hidden="true" viewBox="0 0 12 12">
+                                <path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor"
+                                      stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
+                            </svg>
+                        </summary>
+                        <ul class="version-dropdown__menu" role="listbox">
+                            <li><a class="is-active" href="#">v0.0.2 <span class="version-dropdown__badge">latest</span></a>
+                            </li>
+                            <li><a href="#">v0.0.1</a></li>
+                        </ul>
+                    </details>
+                </div>
+                <div class="demo-row">
+                    <div class="demo-row__label">older</div>
+                    <details class="version-dropdown">
+                        <summary class="version-dropdown__trigger" aria-haspopup="listbox">
+                            <span>v0.0.1</span>
+                            <span aria-hidden="true" class="version-dropdown__badge version-dropdown__badge--placeholder"
+                                 >latest</span>
+                            <svg class="version-dropdown__chev" aria-hidden="true" viewBox="0 0 12 12">
+                                <path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor"
+                                      stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
+                            </svg>
+                        </summary>
+                        <ul class="version-dropdown__menu" role="listbox">
+                            <li><a href="#">v0.0.2 <span class="version-dropdown__badge">latest</span></a></li>
+                            <li><a class="is-active" href="#">v0.0.1</a></li>
+                        </ul>
+                    </details>
+                </div>
+            </div>
+        </article>
+
+        <!-- 16. On-this-page TOC -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.16</span>
+                    <h3 class="t-h3">On-this-page TOC</h3>
+                </div>
+                <p class="ds-component__desc">
+                    본문 우측에 sticky로 붙는 페이지 내 섹션 목차. 소개·시작하기·문서 페이지에서 공통으로 사용한다.
+                    현재 화면에 보이는 섹션을 <code>is-active</code>로 강조하고, 스크롤 스파이는 각 페이지 인라인 스크립트가 담당한다.
+                    너비는 부모 컬럼(200px)에 맞춰 자동 조정된다.
+                </p>
+            </header>
+            <div class="ds-component__demo">
+                <div style="width: 200px;">
+                    <aside class="docs-toc" data-toc-static="true">
+                        <div class="docs-toc__head">문서</div>
+                        <ol>
+                            <li><a href="#">개요</a></li>
+                            <li><a class="is-active" href="#">기능</a></li>
+                            <li><a href="#">설치</a></li>
+                            <li><a href="#">설정</a></li>
+                            <li><a href="#">사용 예제</a></li>
+                            <li><a href="#">API 레퍼런스</a></li>
+                        </ol>
+                    </aside>
+                </div>
+            </div>
+        </article>
+
+        <!-- 17. Pillar Card -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.17</span>
+                    <h3 class="t-h3">Pillar Card</h3>
+                </div>
+                <p class="ds-component__desc">
+                    home의 "왜 mmmq인가" 섹션에서 사용하는 4-카드 그리드의 단위. 영문 라벨 + 한글 타이틀 + 설명 한 줄 구조.
+                    호버 시 brand-primary 보더 + 살짝 위로 떠오르는 효과.
+                </p>
+            </header>
+            <div class="ds-component__demo">
+                <div class="pillar-grid">
+                    <article class="pillar-card">
+                        <div class="pillar-card__num">01 · RELIABILITY</div>
+                        <h3 class="pillar-card__title">신뢰성</h3>
+                        <p class="pillar-card__desc">메시지가 손실되지 않고, 잘못된 소비자에게 전달되지 않습니다.</p>
+                    </article>
+                    <article class="pillar-card">
+                        <div class="pillar-card__num">02 · DURABILITY</div>
+                        <h3 class="pillar-card__title">내구성</h3>
+                        <p class="pillar-card__desc">예기치 못한 장애와 재시작 후에도 메시지는 살아남습니다.</p>
+                    </article>
+                </div>
+            </div>
+        </article>
+
+        <!-- 18. CTA Band -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.18</span>
+                    <h3 class="t-h3">CTA Band</h3>
+                </div>
+                <p class="ds-component__desc">
+                    home의 마지막에 배치하는 큰 CTA 영역. brand-primary-soft 배경 + brand-primary 보더, 가운데 정렬.
+                    1차/2차 버튼 두 개를 함께 노출한다.
+                </p>
+            </header>
+            <div class="ds-component__demo">
+                <div class="cta-band">
+                    <h2 class="cta-band__title">5분이면 띄울 수 있습니다.</h2>
+                    <p class="cta-band__sub">가장 짧은 가이드를 따라가면, 첫 메시지가 broker를 거쳐 consumer까지 흐르는 모습을 직접 확인할 수 있습니다.</p>
+                    <div class="cta-band__actions">
+                        <a class="btn btn--primary btn--lg" href="#">시작하기</a>
+                        <a class="btn btn--secondary btn--lg" href="#">mmmq에 대해 →</a>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- 19. Preview Steps -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.19</span>
+                    <h3 class="t-h3">Preview Steps</h3>
+                </div>
+                <p class="ds-component__desc">
+                    home의 "간단하게 시작합니다" 섹션에서 사용하는 번호 매겨진 단계 리스트.
+                    좌측 코드 블록과 한 행에 배치되는 가독성 위주 컴포넌트.
+                </p>
+            </header>
+            <div class="ds-component__demo">
+                <ol class="preview-steps">
+                    <li>
+                        <span class="preview-steps__num">1</span>
+                        <div class="preview-steps__body">
+                            JitPack 저장소와 <code>producer</code> 의존성을 추가합니다.
+                        </div>
+                    </li>
+                    <li>
+                        <span class="preview-steps__num">2</span>
+                        <div class="preview-steps__body">
+                            <code>@Configuration</code>에서 <code>Producer</code> 빈을 등록합니다.
+                        </div>
+                    </li>
+                    <li>
+                        <span class="preview-steps__num">3</span>
+                        <div class="preview-steps__body">
+                            <code>produce(Message)</code>를 호출하면 끝입니다.
+                        </div>
+                    </li>
+                </ol>
+            </div>
+        </article>
+
+    </section>
+
+    <!-- ==================================================
+         06 · Logo (master + modules)
+         ================================================== -->
+    <section class="ds-section">
+        <header class="ds-section-head">
+            <span class="t-eyebrow">06 · LOGO</span>
+            <h2 class="t-h2">로고</h2>
+            <p>
+                mmmq 마스터 마크 1개 + 모듈 마크 4개. 모두 brand/primary 한 톤만 사용하고
+                같은 32×32 viewBox · 동일 stroke 두께(1.5)로 그려 한 가족처럼 보입니다.
+                16px favicon에서도 읽히고, 각 모듈의 책임을 한눈에 전달합니다.
+            </p>
+        </header>
+
+        <!-- ===== Master mark ===== -->
+        <div class="logo-master">
+            <div class="logo-master__main">
+                <svg aria-hidden="true" height="180" viewBox="0 0 32 32" width="180">
+                    <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3"
+                          y="6"/>
+                    <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6"
+                          y="13.5"/>
+                    <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                </svg>
+            </div>
+            <div class="logo-master__meta">
+                <span class="t-eyebrow" style="color: var(--ink-subtle); margin-bottom: 8px;">MASTER</span>
+                <div class="logo-master__title t-h3">mmmq</div>
+                <p class="logo-master__desc">
+                    세 메시지가 큐에 쌓이며 우측으로 흘러가는 형태. 가장 아래(현재 처리 중)는 솔리드,
+                    위 둘은 아웃라인. "MMM = 3개" 펀과 메시지 큐 본질을 동시에 전달.
+                </p>
+
+                <div class="logo-master__sizes">
+                    <div class="logo-size">
+                        <div class="logo-size__box">
+                            <svg aria-hidden="true" height="64" viewBox="0 0 32 32" width="64">
+                                <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                      x="3"
+                                      y="6"/>
+                                <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                      x="6"
+                                      y="13.5"/>
+                                <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                            </svg>
+                        </div>
+                        <span>64 px</span>
+                    </div>
+                    <div class="logo-size">
+                        <div class="logo-size__box">
+                            <svg aria-hidden="true" height="32" viewBox="0 0 32 32" width="32">
+                                <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                      x="3"
+                                      y="6"/>
+                                <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                      x="6"
+                                      y="13.5"/>
+                                <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                            </svg>
+                        </div>
+                        <span>32 px</span>
+                    </div>
+                    <div class="logo-size">
+                        <div class="logo-size__box">
+                            <svg aria-hidden="true" height="16" viewBox="0 0 32 32" width="16">
+                                <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                      x="3"
+                                      y="6"/>
+                                <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                      x="6"
+                                      y="13.5"/>
+                                <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                            </svg>
+                        </div>
+                        <span>16 px</span>
+                    </div>
+                </div>
+
+                <div class="logo-master__lockup">
+                    <svg aria-hidden="true" height="40" viewBox="0 0 32 32" width="40">
+                        <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3"
+                              y="6"/>
+                        <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6"
+                              y="13.5"/>
+                        <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                    </svg>
+                    <span class="logo-master__wordmark">mmmq</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Module marks ===== -->
+        <div class="t-eyebrow" style="color: var(--ink-subtle); margin: 48px 0 16px;">MODULES</div>
+        <div class="module-logos-grid">
+
+            <article class="module-logo">
+                <div class="module-logo__art">
+                    <svg aria-hidden="true" height="72" viewBox="0 0 32 32" width="72">
+                        <rect fill="#6DB33F" height="11" rx="2" width="11" x="4" y="4"/>
+                        <rect fill="#EAF5DD" height="11" rx="2" stroke="#6DB33F" stroke-width="1.5" width="11" x="17"
+                              y="4"/>
+                        <rect fill="#EAF5DD" height="11" rx="2" stroke="#6DB33F" stroke-width="1.5" width="11" x="4"
+                              y="17"/>
+                        <rect fill="#6DB33F" height="11" rx="2" width="11" x="17" y="17"/>
+                    </svg>
+                </div>
+                <div class="module-logo__name">core</div>
+                <p class="module-logo__concept">
+                    맞물린 네 사각형 = 모든 모듈이 공유하는 도메인 타입의 모음.
+                </p>
+            </article>
+
+            <article class="module-logo">
+                <div class="module-logo__art">
+                    <svg aria-hidden="true" height="72" viewBox="0 0 32 32" width="72">
+                        <rect fill="#6DB33F" height="12" rx="3" width="12" x="3" y="10"/>
+                        <path d="M16 16 L28 16" fill="none" stroke="#6DB33F" stroke-linecap="round" stroke-width="2"/>
+                        <path d="M23 11 L29 16 L23 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                              stroke-linejoin="round" stroke-width="2"/>
+                    </svg>
+                </div>
+                <div class="module-logo__name">producer</div>
+                <p class="module-logo__concept">
+                    상자에서 화살표가 우측으로 = broker로 메시지를 보내는 발신자.
+                </p>
+            </article>
+
+            <article class="module-logo">
+                <div class="module-logo__art">
+                    <svg aria-hidden="true" height="72" viewBox="0 0 32 32" width="72">
+                        <path d="M3 16 L15 16" fill="none" stroke="#6DB33F" stroke-linecap="round" stroke-width="2"/>
+                        <path d="M10 11 L16 16 L10 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                              stroke-linejoin="round" stroke-width="2"/>
+                        <rect fill="#6DB33F" height="12" rx="3" width="12" x="17" y="10"/>
+                    </svg>
+                </div>
+                <div class="module-logo__name">consumer</div>
+                <p class="module-logo__concept">
+                    화살표가 좌에서 상자로 = broker에서 메시지를 받아 처리하는 수신자.
+                </p>
+            </article>
+
+            <article class="module-logo">
+                <div class="module-logo__art">
+                    <svg aria-hidden="true" height="72" viewBox="0 0 32 32" width="72">
+                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="8" y2="16"/>
+                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="16"
+                              y2="16"/>
+                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="24"
+                              y2="16"/>
+                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                              y2="8"/>
+                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                              y2="16"/>
+                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                              y2="24"/>
+                        <circle cx="4" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                        <circle cx="4" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                        <circle cx="4" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                        <circle cx="16" cy="16" fill="#6DB33F" r="4.5"/>
+                        <circle cx="28" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                        <circle cx="28" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                        <circle cx="28" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                    </svg>
+                </div>
+                <div class="module-logo__name">broker</div>
+                <p class="module-logo__concept">
+                    여러 producer ↔ 중앙 디스크 ↔ 여러 consumer = 영속화하고 양방향 라우팅하는 허브.
+                </p>
+            </article>
+
+        </div>
+    </section>
+
+    <!-- ==================================================
+         Footer note
+         ================================================== -->
+    <section class="ds-section" style="text-align:center; padding: 80px 64px;">
+        <p class="t-body-sm">MMMQ Design System v0.1 · Round 1 · 2026-05-07</p>
+    </section>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <title>mmmq · 신뢰성·내구성·처리량을 갖춘 메시지 브로커</title>
+    <meta content="mmmq는 디스크에 안전하게 영속되고, 토픽당 단일 라이터로 순서가 지켜지며, 잠금 없는 읽기로 처리량까지 챙긴 메시지 브로커입니다." name="description"/>
+    <link crossorigin href="https://cdn.jsdelivr.net" rel="preconnect"/>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+          rel="stylesheet"/>
+    <link href="styles.css" rel="stylesheet"/>
+    <link href="docs.css" rel="stylesheet"/>
+    <script defer src="scripts.js"></script>
+</head>
+<body>
+<div class="site-shell">
+
+    <!-- ==================================================
+         Top Nav
+         ================================================== -->
+    <div class="site-nav-wrap">
+        <nav class="nav">
+            <a class="nav__brand" href="index.html">
+          <span class="nav__brand-mark">
+            <svg aria-hidden="true" viewBox="0 0 32 32">
+              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3" y="6"/>
+              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6" y="13.5"/>
+              <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+            </svg>
+          </span>
+                <span>mmmq</span>
+            </a>
+            <ul class="nav__menu">
+                <li><a class="is-active" href="index.html">홈</a></li>
+                <li><a href="about.html">소개</a></li>
+                <li><a href="quickstart.html">시작하기</a></li>
+                <li><a href="docs/0.0.2/index.html">문서</a></li>
+                <li><a href="release.html">릴리즈</a></li>
+                <li><a href="https://github.com/moko-meringue/mmmq">GitHub</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- ==================================================
+         Hero
+         ================================================== -->
+    <section class="landing-hero">
+        <div>
+            <h1 class="t-display">
+                신뢰할 수 있는<br/>
+                <span class="brand-accent">메시지 브로커</span>를 만듭니다.
+            </h1>
+            <p class="landing-hero__sub">
+                디스크에 안전하게 기록되고, 토픽당 단일 라이터로 순서가 지켜지며,
+                잠금 없는 읽기로 처리량까지 챙긴 메시지 브로커입니다.
+            </p>
+            <div class="landing-hero__ctas">
+                <a class="btn btn--primary btn--lg" href="quickstart.html">시작하기</a>
+                <a class="btn btn--secondary btn--lg" href="docs/0.0.2/index.html">문서 보기 →</a>
+            </div>
+        </div>
+        <div class="landing-hero__visual">
+            <svg aria-hidden="true" viewBox="0 0 200 160">
+                <circle cx="22" cy="36" fill="#FFFFFF" r="12" stroke="#6DB33F" stroke-width="1.5"/>
+                <circle cx="22" cy="80" fill="#FFFFFF" r="12" stroke="#6DB33F" stroke-width="1.5"/>
+                <circle cx="22" cy="124" fill="#FFFFFF" r="12" stroke="#6DB33F" stroke-width="1.5"/>
+                <text fill="#6DB33F" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700"
+                      text-anchor="middle" x="22" y="40">P
+                </text>
+                <text fill="#6DB33F" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700"
+                      text-anchor="middle" x="22" y="84">P
+                </text>
+                <text fill="#6DB33F" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700"
+                      text-anchor="middle" x="22" y="128">P
+                </text>
+                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="34" x2="88" y1="36" y2="80"/>
+                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="34" x2="88" y1="80" y2="80"/>
+                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="34" x2="88" y1="124" y2="80"/>
+                <circle cx="100" cy="80" fill="#6DB33F" r="22"/>
+                <text fill="#FFFFFF" font-family="Pretendard, sans-serif" font-size="11" font-weight="700"
+                      text-anchor="middle" x="100" y="84">broker
+                </text>
+                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="112" x2="166" y1="80" y2="36"/>
+                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="112" x2="166" y1="80" y2="80"/>
+                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="112" x2="166" y1="80" y2="124"/>
+                <circle cx="178" cy="36" fill="#FFFFFF" r="12" stroke="#6DB33F" stroke-width="1.5"/>
+                <circle cx="178" cy="80" fill="#FFFFFF" r="12" stroke="#6DB33F" stroke-width="1.5"/>
+                <circle cx="178" cy="124" fill="#FFFFFF" r="12" stroke="#6DB33F" stroke-width="1.5"/>
+                <text fill="#6DB33F" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700"
+                      text-anchor="middle" x="178" y="40">C
+                </text>
+                <text fill="#6DB33F" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700"
+                      text-anchor="middle" x="178" y="84">C
+                </text>
+                <text fill="#6DB33F" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700"
+                      text-anchor="middle" x="178" y="128">C
+                </text>
+            </svg>
+        </div>
+    </section>
+
+    <!-- ==================================================
+         Pillars — Why mmmq
+         ================================================== -->
+    <section class="landing-section" id="pillars">
+        <div class="landing-section__head">
+            <span class="t-eyebrow">PILLARS</span>
+            <h2 class="t-h2">왜 mmmq인가</h2>
+            <p>신뢰할 수 있는 메시징을 위한 네 가지 기준을 두고 만들어 갑니다.</p>
+        </div>
+
+        <div class="pillar-grid">
+            <article class="pillar-card">
+                <div class="pillar-card__num">01 · RELIABILITY</div>
+                <h3 class="pillar-card__title">신뢰성</h3>
+                <p class="pillar-card__desc">메시지가 손실되지 않고, 잘못된 소비자에게 전달되지 않습니다.</p>
+            </article>
+
+            <article class="pillar-card">
+                <div class="pillar-card__num">02 · DURABILITY</div>
+                <h3 class="pillar-card__title">내구성</h3>
+                <p class="pillar-card__desc">예기치 못한 장애와 재시작 후에도 메시지는 살아남습니다.</p>
+            </article>
+
+            <article class="pillar-card">
+                <div class="pillar-card__num">03 · PERSISTENCE</div>
+                <h3 class="pillar-card__title">영속화</h3>
+                <p class="pillar-card__desc">디스크에 안전하게 기록되어 사라지지 않습니다.</p>
+            </article>
+
+            <article class="pillar-card">
+                <div class="pillar-card__num">04 · THROUGHPUT</div>
+                <h3 class="pillar-card__title">높은 처리량</h3>
+                <p class="pillar-card__desc">안정성을 잃지 않으면서 빠르게 흐릅니다.</p>
+            </article>
+        </div>
+    </section>
+
+    <!-- ==================================================
+         At a glance — code preview + steps
+         ================================================== -->
+    <section class="landing-section" id="preview">
+        <div class="landing-section__head">
+            <span class="t-eyebrow">AT A GLANCE</span>
+            <h2 class="t-h2">간단하게 시작합니다</h2>
+            <p>의존성을 추가하고 빈을 등록한 뒤, 한 번의 메서드 호출로 메시지를 발행합니다.</p>
+        </div>
+
+        <div class="preview-grid">
+            <div class="code-block">
+                <div class="code-block__head">
+                    <span class="code-block__lang">Java</span>
+                    <button class="code-block__copy">복사</button>
+                </div>
+                <pre><span class="tk-key">@Service</span>
+<span class="tk-key">public class</span> <span class="tk-fn">OrderEventPublisher</span> {
+
+    <span class="tk-key">private final</span> Producer producer;
+
+    <span class="tk-key">public</span> <span class="tk-fn">OrderEventPublisher</span>(Producer producer) {
+        <span class="tk-key">this</span>.producer = producer;
+    }
+
+    <span class="tk-key">public void</span> <span class="tk-fn">publish</span>(<span class="tk-key">long</span> orderId) {
+        producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Message(
+            <span class="tk-key">new</span> Topic(<span class="tk-str">"order.created"</span>),
+            Map.<span class="tk-fn">of</span>(<span class="tk-str">"id"</span>, orderId)
+        ));
+    }
+}</pre>
+            </div>
+
+            <ol class="preview-steps">
+                <li>
+                    <span class="preview-steps__num">1</span>
+                    <div class="preview-steps__body">
+                        JitPack 저장소와 <code>producer</code> 의존성을 추가합니다.
+                    </div>
+                </li>
+                <li>
+                    <span class="preview-steps__num">2</span>
+                    <div class="preview-steps__body">
+                        <code>@Configuration</code>에서 <code>Producer</code> 빈을 등록합니다.
+                    </div>
+                </li>
+                <li>
+                    <span class="preview-steps__num">3</span>
+                    <div class="preview-steps__body">
+                        주입받은 <code>Producer</code>의 <code>produce(Message)</code>를 호출하면 끝입니다.
+                    </div>
+                </li>
+                <li>
+                    <span class="preview-steps__num">4</span>
+                    <div class="preview-steps__body">
+                        실패 시에는 <code>ProduceException</code>이 던져집니다.
+                    </div>
+                </li>
+            </ol>
+        </div>
+    </section>
+
+    <!-- ==================================================
+         Modules — 3 modules at a glance
+         ================================================== -->
+    <section class="landing-section" id="modules">
+        <div class="landing-section__head">
+            <span class="t-eyebrow">MODULES</span>
+            <h2 class="t-h2">세 모듈로 구성됩니다</h2>
+            <p>각 모듈은 독립적으로 의존성에 추가해 사용합니다.</p>
+        </div>
+
+        <div class="modules-grid-3">
+            <a class="mod-card" href="docs/0.0.2/producer.html">
+                <div class="mod-card__icon">
+                    <svg aria-hidden="true" viewBox="0 0 32 32">
+                        <rect fill="#6DB33F" height="12" rx="3" width="12" x="3" y="10"/>
+                        <path d="M16 16 L28 16" fill="none" stroke="#6DB33F" stroke-linecap="round" stroke-width="2"/>
+                        <path d="M23 11 L29 16 L23 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                              stroke-linejoin="round" stroke-width="2"/>
+                    </svg>
+                </div>
+                <div class="mod-card__name">producer</div>
+                <div class="mod-card__desc">broker로 메시지를 보내는 클라이언트. 빌더로 재시도 정책을 설정하고, 실패 시 ProduceException을 던집니다.</div>
+                <div class="mod-card__more">producer 문서 →</div>
+            </a>
+
+            <a class="mod-card" href="docs/0.0.2/broker.html">
+                <div class="mod-card__icon">
+                    <svg aria-hidden="true" viewBox="0 0 32 32">
+                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="8" y2="16"/>
+                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="16"
+                              y2="16"/>
+                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="24"
+                              y2="16"/>
+                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16" y2="8"/>
+                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                              y2="16"/>
+                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                              y2="24"/>
+                        <circle cx="4" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                        <circle cx="4" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                        <circle cx="4" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                        <circle cx="16" cy="16" fill="#6DB33F" r="4.5"/>
+                        <circle cx="28" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                        <circle cx="28" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                        <circle cx="28" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                    </svg>
+                </div>
+                <div class="mod-card__name">broker</div>
+                <div class="mod-card__desc">메시지를 디스크에 저장하고 Dispatcher로 라우팅합니다. TopicQueue, 세그먼트, 체크포인트, DLQ가 포함됩니다.</div>
+                <div class="mod-card__more">broker 문서 →</div>
+            </a>
+
+            <a class="mod-card" href="docs/0.0.2/consumer.html">
+                <div class="mod-card__icon">
+                    <svg aria-hidden="true" viewBox="0 0 32 32">
+                        <path d="M3 16 L15 16" fill="none" stroke="#6DB33F" stroke-linecap="round" stroke-width="2"/>
+                        <path d="M10 11 L16 16 L10 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                              stroke-linejoin="round" stroke-width="2"/>
+                        <rect fill="#6DB33F" height="12" rx="3" width="12" x="17" y="10"/>
+                    </svg>
+                </div>
+                <div class="mod-card__name">consumer</div>
+                <div class="mod-card__desc">@MMMQListener와 MMMQListener&lt;T&gt; 두 가지 방식으로 핸들러를 등록합니다. 패턴 매칭과 ACK/NACK는 자동입니다.</div>
+                <div class="mod-card__more">consumer 문서 →</div>
+            </a>
+        </div>
+    </section>
+
+    <!-- ==================================================
+         Closing CTA
+         ================================================== -->
+    <section class="landing-section" id="get-started">
+        <div class="cta-band">
+            <h2 class="cta-band__title">5분이면 띄울 수 있습니다.</h2>
+            <p class="cta-band__sub">가장 짧은 가이드를 따라가면, 첫 메시지가 broker를 거쳐 consumer까지 흐르는 모습을 직접 확인할 수 있습니다.</p>
+            <div class="cta-band__actions">
+                <a class="btn btn--primary btn--lg" href="quickstart.html">시작하기</a>
+                <a class="btn btn--secondary btn--lg" href="about.html">mmmq에 대해 →</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================================================
+         Footer
+         ================================================== -->
+    <div class="landing-footer-wrap">
+        <footer class="footer">
+            <div class="footer__top">
+                <div class="footer__brand">
+                    <span class="nav__brand-mark">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3" y="6"/>
+                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6" y="13.5"/>
+                            <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                        </svg>
+                    </span>
+                    <span>mmmq</span>
+                </div>
+                <ul class="footer__nav">
+                    <li><a href="index.html">홈</a></li>
+                    <li><a href="about.html">소개</a></li>
+                    <li><a href="quickstart.html">시작하기</a></li>
+                    <li><a href="docs/0.0.2/index.html">문서</a></li>
+                    <li><a href="release.html">릴리즈</a></li>
+                    <li><a href="https://github.com/moko-meringue/mmmq">GitHub</a></li>
+                </ul>
+            </div>
+            <div class="footer__legal">
+                <span>2026 Moko-Meringue</span>
+            </div>
+        </footer>
+    </div>
+
+</div>
+</body>
+</html>

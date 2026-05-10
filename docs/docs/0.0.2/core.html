@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <title>core · mmmq 문서 v0.0.2</title>
+    <meta content="mmmq v0.0.2 core 모듈. producer · broker · consumer가 공유하는 도메인 타입(Host, Message, Topic, TopicPattern)의 구조와 사용법."
+          name="description"/>
+    <link crossorigin href="https://cdn.jsdelivr.net" rel="preconnect"/>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+          rel="stylesheet"/>
+    <link href="../../styles.css" rel="stylesheet"/>
+    <link href="../../docs.css" rel="stylesheet"/>
+    <script defer src="../../scripts.js"></script>
+</head>
+<body>
+<div class="site-shell">
+
+    <!-- Top Nav -->
+    <div class="site-nav-wrap">
+        <nav class="nav">
+            <a class="nav__brand" href="../../index.html">
+          <span class="nav__brand-mark">
+            <svg aria-hidden="true" viewBox="0 0 32 32">
+              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3" y="6"/>
+              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6" y="13.5"/>
+              <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+            </svg>
+          </span>
+                <span>mmmq</span>
+            </a>
+            <ul class="nav__menu">
+                <li><a href="../../index.html">홈</a></li>
+                <li><a href="../../about.html">소개</a></li>
+                <li><a href="../../quickstart.html">시작하기</a></li>
+                <li><a class="is-active" href="index.html">문서</a></li>
+                <li><a href="../../release.html">릴리즈</a></li>
+                <li><a href="https://github.com/moko-meringue/mmmq">GitHub</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- 3-column docs grid -->
+    <div class="docs-grid">
+
+        <!-- Side nav -->
+        <aside class="docs-sidenav">
+            <div class="docs-sidenav__title">v0.0.2</div>
+            <div class="sidenav">
+                <div class="sidenav__group">
+                    <a class="sidenav__head" href="index.html">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <circle cx="8" cy="10" fill="#6DB33F" r="2"/>
+                            <circle cx="8" cy="16" fill="#6DB33F" r="2"/>
+                            <circle cx="8" cy="22" fill="#6DB33F" r="2"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="26" y1="10"
+                                  y2="10"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="26" y1="16"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="22" y1="22"
+                                  y2="22"/>
+                        </svg>
+                        <span class="sidenav__head-name">개요</span>
+                    </a>
+                </div>
+
+                <div class="sidenav__group">
+                    <div class="sidenav__head sidenav__head--active">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <rect fill="#6DB33F" height="11" rx="2" width="11" x="4" y="4"/>
+                            <rect fill="#EAF5DD" height="11" rx="2" stroke="#6DB33F" stroke-width="1.5" width="11"
+                                  x="17" y="4"/>
+                            <rect fill="#EAF5DD" height="11" rx="2" stroke="#6DB33F" stroke-width="1.5" width="11"
+                                  x="4" y="17"/>
+                            <rect fill="#6DB33F" height="11" rx="2" width="11" x="17" y="17"/>
+                        </svg>
+                        <span class="sidenav__head-name">core</span>
+                    </div>
+                </div>
+
+                <div class="sidenav__group">
+                    <a class="sidenav__head" href="producer.html">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <rect fill="#6DB33F" height="12" rx="3" width="12" x="3" y="10"/>
+                            <path d="M16 16 L28 16" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-width="2"/>
+                            <path d="M23 11 L29 16 L23 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-linejoin="round" stroke-width="2"/>
+                        </svg>
+                        <span class="sidenav__head-name">producer</span>
+                    </a>
+                </div>
+
+                <div class="sidenav__group">
+                    <a class="sidenav__head" href="broker.html">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="8"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="16"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="24"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                  y2="8"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                  y2="24"/>
+                            <circle cx="4" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="4" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="4" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="16" cy="16" fill="#6DB33F" r="4.5"/>
+                            <circle cx="28" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="28" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="28" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                        </svg>
+                        <span class="sidenav__head-name">broker</span>
+                    </a>
+                </div>
+
+                <div class="sidenav__group">
+                    <a class="sidenav__head" href="consumer.html">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <path d="M3 16 L15 16" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-width="2"/>
+                            <path d="M10 11 L16 16 L10 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-linejoin="round" stroke-width="2"/>
+                            <rect fill="#6DB33F" height="12" rx="3" width="12" x="17" y="10"/>
+                        </svg>
+                        <span class="sidenav__head-name">consumer</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Content -->
+        <main class="docs-content">
+            <div class="module-hero">
+                <div class="module-hero__icon">
+                    <svg aria-hidden="true" viewBox="0 0 32 32">
+                        <rect fill="#6DB33F" height="11" rx="2" width="11" x="4" y="4"/>
+                        <rect fill="#EAF5DD" height="11" rx="2" stroke="#6DB33F" stroke-width="1.5" width="11" x="17"
+                              y="4"/>
+                        <rect fill="#EAF5DD" height="11" rx="2" stroke="#6DB33F" stroke-width="1.5" width="11" x="4"
+                              y="17"/>
+                        <rect fill="#6DB33F" height="11" rx="2" width="11" x="17" y="17"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="module-hero__name">core</div>
+                    <h1 class="module-hero__title">Core</h1>
+                </div>
+            </div>
+            <p class="lede">
+                모든 모듈이 공유하는 도메인을 정의하는 중앙 모듈입니다.
+            </p>
+
+            <section id="overview">
+                <h2>개요</h2>
+                <p>
+                    mmmq의 모든 모듈이 공통으로 사용하는 객체를 한곳에 모아 둔 모듈입니다.
+                </p>
+            </section>
+
+            <section id="host">
+                <h2>Host</h2>
+                <p>
+                    다른 모듈과 통신할 때 사용하는 프로토콜, 주소, 포트를 표현하는 객체입니다.
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">Java</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre>Host brokerHost = <span class="tk-key">new</span> Host(WebProtocol.HTTP, <span class="tk-str">"localhost"</span>, <span
+                            class="tk-str">8080</span>);</pre>
+                </div>
+
+                <h3>생성자 매개변수</h3>
+                <table class="tbl">
+                    <thead>
+                    <tr>
+                        <th>매개변수</th>
+                        <th>타입</th>
+                        <th>설명</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td><code>protocol</code></td>
+                        <td><code>WebProtocol</code></td>
+                        <td>통신 프로토콜. <code>HTTP</code>, <code>HTTPS</code> 중 하나</td>
+                    </tr>
+                    <tr>
+                        <td><code>address</code></td>
+                        <td><code>String</code></td>
+                        <td>호스트명 또는 IP 주소</td>
+                    </tr>
+                    <tr>
+                        <td><code>port</code></td>
+                        <td><code>int</code></td>
+                        <td>포트 번호</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="topic">
+                <h2>Topic</h2>
+                <p>
+                    토픽 이름을 담는 record입니다. <br>
+                    이름은 점(<code>.</code>)을 구분자로 하는 segment의 조합으로 구성됩니다.
+                </p>
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">Java</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre><span class="tk-key">new</span> Topic(<span class="tk-str">"order.created"</span>);
+<span class="tk-key">new</span> Topic(<span class="tk-str">"news.world.europe"</span>);</pre>
+                </div>
+            </section>
+
+            <section id="message">
+                <h2>Message</h2>
+                <p>
+                    broker로 발행되거나 consumer가 수신하는 메시지를 표현하는 객체입니다.
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">Java</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre>Message message = <span class="tk-key">new</span> Message(
+    <span class="tk-key">new</span> Topic(<span class="tk-str">"order.created"</span>),
+    <span class="tk-key">new</span> OrderCreatedEvent(<span class="tk-str">1L</span>, <span
+                                class="tk-str">"meringue"</span>)
+);</pre>
+                </div>
+
+                <h3>구조</h3>
+                <table class="tbl">
+                    <thead>
+                    <tr>
+                        <th>필드</th>
+                        <th>타입</th>
+                        <th>설명</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td><code>topic</code></td>
+                        <td><code>Topic</code></td>
+                        <td>메시지가 속한 토픽</td>
+                    </tr>
+                    <tr>
+                        <td><code>content</code></td>
+                        <td><code>Object</code></td>
+                        <td>메시지 본문</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="topic-pattern">
+                <h2>TopicPattern</h2>
+                <p>
+                    consumer가 어떤 토픽을 구독할지 표현하는 패턴입니다.
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">Java</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre>TopicPattern pattern = <span class="tk-key">new</span> TopicPattern(<span class="tk-str">"order.*"</span>);
+Topic topic = <span class="tk-key">new</span> Topic(<span class="tk-str">"order.created"</span>);
+<span class="tk-key">boolean</span> matched = pattern.<span class="tk-fn">matches</span>(topic);   <span class="tk-com">// true</span></pre>
+                </div>
+
+                <h3>매칭 규칙</h3>
+                <p>
+                    Spring Framework의
+                    <a class="lk lk--with-arrow"
+                       href="https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/util/AntPathMatcher.html"
+                       rel="noopener" target="_blank">AntPathMatcher</a>를
+                    기반으로 한 Ant 스타일 패턴을 사용합니다. <br>
+                    와일드카드(<code>*</code>, <code>**</code>)로 토픽의 임의 부분을 표현할 수 있습니다.
+                </p>
+                <table class="tbl">
+                    <thead>
+                    <tr>
+                        <th>와일드카드</th>
+                        <th>의미</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td><code>*</code></td>
+                        <td>점(<code>.</code>)을 포함하지 않는 임의의 문자열과 매칭합니다.</td>
+                    </tr>
+                    <tr>
+                        <td><code>**</code></td>
+                        <td>점(<code>.</code>)을 포함한 임의의 문자열과 매칭합니다. 빈 문자열도 매칭됩니다.</td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <h3>매칭 예시</h3>
+                <table class="tbl">
+                    <thead>
+                    <tr>
+                        <th>패턴</th>
+                        <th>토픽</th>
+                        <th>매칭</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td><code>sports.*</code></td>
+                        <td><code>sports.football</code></td>
+                        <td>O</td>
+                    </tr>
+                    <tr>
+                        <td><code>sports.*</code></td>
+                        <td><code>sports.basketball</code></td>
+                        <td>O</td>
+                    </tr>
+                    <tr>
+                        <td><code>sports.*</code></td>
+                        <td><code>news.politics</code></td>
+                        <td>X</td>
+                    </tr>
+                    <tr>
+                        <td><code>news.**</code></td>
+                        <td><code>news</code></td>
+                        <td>O</td>
+                    </tr>
+                    <tr>
+                        <td><code>news.**</code></td>
+                        <td><code>news.world.europe</code></td>
+                        <td>O</td>
+                    </tr>
+                    <tr>
+                        <td><code>news.**</code></td>
+                        <td><code>sports.football</code></td>
+                        <td>X</td>
+                    </tr>
+                    <tr>
+                        <td><code>order.new</code></td>
+                        <td><code>order.new</code></td>
+                        <td>O</td>
+                    </tr>
+                    </tbody>
+                </table>
+                /
+            </section>
+
+        </main>
+
+        <!-- On this page -->
+        <aside class="docs-toc">
+            <div class="docs-toc__head">문서</div>
+            <ol>
+                <li><a href="#overview">개요</a></li>
+                <li><a href="#host">Host</a></li>
+                <li><a href="#topic">Topic</a></li>
+                <li><a href="#message">Message</a></li>
+                <li><a href="#topic-pattern">TopicPattern</a></li>
+            </ol>
+        </aside>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="landing-footer-wrap">
+        <footer class="footer">
+            <div class="footer__top">
+                <div class="footer__brand">
+                    <span class="nav__brand-mark">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                  x="3" y="6"/>
+                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                  x="6" y="13.5"/>
+                            <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                        </svg>
+                    </span>
+                    <span>mmmq</span>
+                </div>
+                <ul class="footer__nav">
+                    <li><a href="../../index.html">홈</a></li>
+                    <li><a href="../../about.html">소개</a></li>
+                    <li><a href="../../quickstart.html">시작하기</a></li>
+                    <li><a href="index.html">문서</a></li>
+                    <li><a href="../../release.html">릴리즈</a></li>
+                    <li><a href="https://github.com/moko-meringue/mmmq">GitHub</a></li>
+                </ul>
+            </div>
+            <div class="footer__legal">
+                <span>2026 Moko-Meringue</span>
+            </div>
+        </footer>
+    </div>
+
+</div>
+
+</body>
+</html>

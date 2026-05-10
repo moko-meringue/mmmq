@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <title>릴리즈 · mmmq</title>
+    <meta content="mmmq 버전별 릴리즈 이력. 첫 공개부터 가장 최근 릴리즈까지 한 페이지에서 확인할 수 있습니다." name="description"/>
+    <link crossorigin href="https://cdn.jsdelivr.net" rel="preconnect"/>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+          rel="stylesheet"/>
+    <link href="styles.css" rel="stylesheet"/>
+    <link href="docs.css" rel="stylesheet"/>
+    <script defer src="scripts.js"></script>
+</head>
+<body>
+<div class="site-shell">
+
+    <!-- Top Nav -->
+    <div class="site-nav-wrap">
+        <nav class="nav">
+            <a class="nav__brand" href="index.html">
+          <span class="nav__brand-mark">
+            <svg aria-hidden="true" viewBox="0 0 32 32">
+              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3" y="6"/>
+              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6" y="13.5"/>
+              <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+            </svg>
+          </span>
+                <span>mmmq</span>
+            </a>
+            <ul class="nav__menu">
+                <li><a href="index.html">홈</a></li>
+                <li><a href="about.html">소개</a></li>
+                <li><a href="quickstart.html">시작하기</a></li>
+                <li><a href="docs/0.0.2/index.html">문서</a></li>
+                <li><a class="is-active" href="release.html">릴리즈</a></li>
+                <li><a href="https://github.com/moko-meringue/mmmq">GitHub</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Hero -->
+    <section class="landing-hero landing-hero--single">
+        <div>
+            <span class="t-eyebrow">RELEASE</span>
+            <h1 class="t-h1">릴리즈</h1>
+            <p class="landing-hero__sub">
+                버전 별 주요 변경점입니다. <br>
+                자세한 내용은
+                <a class="lk lk--with-arrow"
+                   href="https://github.com/moko-meringue/mmmq/releases"
+                   rel="noopener" target="_blank">
+                    GitHub 릴리즈 노트
+                </a>
+                에서 확인할 수 있습니다.
+            </p>
+        </div>
+    </section>
+
+    <!-- Releases -->
+    <section class="landing-section landing-section--no-border">
+        <table class="tbl tbl--lg">
+            <thead>
+            <tr>
+                <th>버전</th>
+                <th>릴리즈일</th>
+                <th>주요 변화</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>
+                    <span class="release-version-cell">
+                        0.0.2 <span class="version-dropdown__badge">latest</span>
+                    </span>
+                </td>
+                <td>2026-05-08</td>
+                <td>두 번째 릴리즈. (변경 사항 정리 예정)</td>
+            </tr>
+            <tr>
+                <td>0.0.1</td>
+                <td>2026-05-07</td>
+                <td>첫 공개. 영속화 · 패턴 구독 · DLQ · 기본 재시도 정책 포함.</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Footer -->
+    <div class="landing-footer-wrap">
+        <footer class="footer">
+            <div class="footer__top">
+                <div class="footer__brand">
+                    <span class="nav__brand-mark">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                  x="3" y="6"/>
+                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                  x="6" y="13.5"/>
+                            <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                        </svg>
+                    </span>
+                    <span>mmmq</span>
+                </div>
+                <ul class="footer__nav">
+                    <li><a href="index.html">홈</a></li>
+                    <li><a href="about.html">소개</a></li>
+                    <li><a href="quickstart.html">시작하기</a></li>
+                    <li><a href="docs/0.0.2/index.html">문서</a></li>
+                    <li><a href="release.html">릴리즈</a></li>
+                    <li><a href="https://github.com/moko-meringue/mmmq">GitHub</a></li>
+                </ul>
+            </div>
+            <div class="footer__legal">
+                <span>2026 Moko-Meringue</span>
+            </div>
+        </footer>
+    </div>
+
+</div>
+</body>
+</html>
