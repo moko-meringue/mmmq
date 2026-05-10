@@ -111,12 +111,10 @@ Producer.produce(message)
 | `Producer` | 메시지 발행 클라이언트. `produce(Message)`로 브로커에 메시지 전송 |
 | `Gateway` | `RestClient`를 통해 브로커로 HTTP POST 요청 전송 |
 
-**Builder 패턴으로 재시도 횟수 커스터마이징:**
+**재시도 횟수 커스터마이징:**
 
 ```java
-Producer producer = Producer.builder(brokerHost)
-    .maxRetryCount(5)
-    .build();
+Producer producer = new Producer(brokerHost, 5);
 ```
 
 ---
@@ -402,9 +400,7 @@ public class ProducerConfig {
         return new Producer(brokerHost);
 
         // 재시도 횟수 커스터마이징 (기본값: 3)
-        // return Producer.builder(brokerHost)
-        //         .maxRetryCount(5)
-        //         .build();
+        // return new Producer(brokerHost, 5);
     }
 }
 ```

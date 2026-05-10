@@ -12,17 +12,12 @@ public class Producer {
     final int maxRetryCount;
 
     public Producer(Host host) {
-        this.gateway = new Gateway(host);
-        this.maxRetryCount = DEFAULT_MAX_RETRY_COUNT;
+        this(host, DEFAULT_MAX_RETRY_COUNT);
     }
 
     public Producer(Host host, int maxRetryCount) {
         this.gateway = new Gateway(host);
         this.maxRetryCount = maxRetryCount;
-    }
-
-    public static Builder builder(Host host) {
-        return new Builder(host);
     }
 
     public void produce(Message message) {
@@ -34,25 +29,6 @@ public class Producer {
             }
         } catch (Exception e) {
             throw new ProduceException("Failed to produce message", e);
-        }
-    }
-
-    public static class Builder {
-
-        private final Host host;
-        private int maxRetryCount = DEFAULT_MAX_RETRY_COUNT;
-
-        private Builder(Host host) {
-            this.host = host;
-        }
-
-        public Builder maxRetryCount(int maxRetryCount) {
-            this.maxRetryCount = maxRetryCount;
-            return this;
-        }
-
-        public Producer build() {
-            return new Producer(host, maxRetryCount);
         }
     }
 }
