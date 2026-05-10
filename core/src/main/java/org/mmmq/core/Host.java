@@ -18,21 +18,9 @@ public class Host {
 
     private InetAddress convertAddress(String address) {
         try {
-            InetAddress inetAddress = InetAddress.getByName(address);
-            if (!healthCheck(inetAddress)) {
-                throw new IllegalArgumentException("Host is not reachable: " + inetAddress);
-            }
-            return inetAddress;
+            return InetAddress.getByName(address);
         } catch (UnknownHostException e) {
             throw new IllegalArgumentException(e);
-        }
-    }
-
-    public boolean healthCheck(InetAddress host) {
-        try {
-            return host.isReachable(5000);
-        } catch (Exception ignored) {
-            return false;
         }
     }
 

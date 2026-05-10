@@ -9,7 +9,6 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-import java.net.InetAddress;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -63,12 +62,7 @@ class GatewayTest {
     }
 
     private Host createTestHost() {
-        return new Host(WebProtocol.HTTP, "localhost", 8080) {
-            @Override
-            public boolean healthCheck(InetAddress host) {
-                return true;
-            }
-        };
+        return new Host(WebProtocol.HTTP, "localhost", 8080);
     }
 
     @Test
