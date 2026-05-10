@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <title>문서 v0.0.2 · mmmq</title>
+    <meta content="mmmq v0.0.2 문서. producer · broker · consumer 세 모듈의 기능, 설정, 사용 예제를 모았습니다." name="description"/>
+    <link crossorigin href="https://cdn.jsdelivr.net" rel="preconnect"/>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+          rel="stylesheet"/>
+    <link href="../../styles.css" rel="stylesheet"/>
+    <link href="../../docs.css" rel="stylesheet"/>
+    <script defer src="../../scripts.js"></script>
+</head>
+<body>
+<div class="site-shell">
+
+    <!-- Top Nav -->
+    <div class="site-nav-wrap">
+        <nav class="nav">
+            <a class="nav__brand" href="../../index.html">
+          <span class="nav__brand-mark">
+            <svg aria-hidden="true" viewBox="0 0 32 32">
+              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3" y="6"/>
+              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6" y="13.5"/>
+              <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+            </svg>
+          </span>
+                <span>mmmq</span>
+            </a>
+            <ul class="nav__menu">
+                <li><a href="../../index.html">홈</a></li>
+                <li><a href="../../about.html">소개</a></li>
+                <li><a href="../../quickstart.html">시작하기</a></li>
+                <li><a class="is-active" href="index.html">문서</a></li>
+                <li><a href="../../release.html">릴리즈</a></li>
+                <li><a href="https://github.com/moko-meringue/mmmq">GitHub</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- 3-column docs grid -->
+    <div class="docs-grid">
+
+        <!-- Side nav -->
+        <aside class="docs-sidenav">
+            <div class="docs-sidenav__title">v0.0.2</div>
+            <div class="sidenav">
+                <div class="sidenav__group">
+                    <div class="sidenav__head sidenav__head--active">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <circle cx="8" cy="10" fill="#6DB33F" r="2"/>
+                            <circle cx="8" cy="16" fill="#6DB33F" r="2"/>
+                            <circle cx="8" cy="22" fill="#6DB33F" r="2"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="26" y1="10" y2="10"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="26" y1="16" y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="22" y1="22" y2="22"/>
+                        </svg>
+                        <span class="sidenav__head-name">개요</span>
+                    </div>
+                </div>
+
+                <div class="sidenav__group">
+                    <a class="sidenav__head" href="core.html">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <rect fill="#6DB33F" height="11" rx="2" width="11" x="4" y="4"/>
+                            <rect fill="#EAF5DD" height="11" rx="2" stroke="#6DB33F" stroke-width="1.5" width="11"
+                                  x="17" y="4"/>
+                            <rect fill="#EAF5DD" height="11" rx="2" stroke="#6DB33F" stroke-width="1.5" width="11"
+                                  x="4" y="17"/>
+                            <rect fill="#6DB33F" height="11" rx="2" width="11" x="17" y="17"/>
+                        </svg>
+                        <span class="sidenav__head-name">core</span>
+                    </a>
+                </div>
+
+                <div class="sidenav__group">
+                    <a class="sidenav__head" href="producer.html">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <rect fill="#6DB33F" height="12" rx="3" width="12" x="3" y="10"/>
+                            <path d="M16 16 L28 16" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-width="2"/>
+                            <path d="M23 11 L29 16 L23 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-linejoin="round" stroke-width="2"/>
+                        </svg>
+                        <span class="sidenav__head-name">producer</span>
+                    </a>
+                </div>
+
+                <div class="sidenav__group">
+                    <a class="sidenav__head" href="broker.html">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="8"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="16"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="24"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                  y2="8"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                  y2="24"/>
+                            <circle cx="4" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="4" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="4" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="16" cy="16" fill="#6DB33F" r="4.5"/>
+                            <circle cx="28" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="28" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            <circle cx="28" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                        </svg>
+                        <span class="sidenav__head-name">broker</span>
+                    </a>
+                </div>
+
+                <div class="sidenav__group">
+                    <a class="sidenav__head" href="consumer.html">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <path d="M3 16 L15 16" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-width="2"/>
+                            <path d="M10 11 L16 16 L10 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                  stroke-linejoin="round" stroke-width="2"/>
+                            <rect fill="#6DB33F" height="12" rx="3" width="12" x="17" y="10"/>
+                        </svg>
+                        <span class="sidenav__head-name">consumer</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Content -->
+        <main class="docs-content">
+            <section id="top">
+                <span class="t-eyebrow">DOCUMENTATION</span>
+                <div class="docs-hero__titlebar">
+                    <h1 class="t-h1">mmmq 문서</h1>
+                    <details class="version-dropdown">
+                        <summary aria-haspopup="listbox" class="version-dropdown__trigger">
+                            <span>v0.0.2</span>
+                            <span class="version-dropdown__badge">latest</span>
+                            <svg aria-hidden="true" class="version-dropdown__chev" viewBox="0 0 12 12">
+                                <path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor"
+                                      stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
+                            </svg>
+                        </summary>
+                        <ul class="version-dropdown__menu version-dropdown__menu--right" role="listbox">
+                            <li><a class="is-active" href="index.html">v0.0.2 <span
+                                    class="version-dropdown__badge">latest</span></a></li>
+                            <li><a href="../0.0.1/index.html">v0.0.1</a></li>
+                        </ul>
+                    </details>
+                </div>
+                <p class="landing-hero__sub">
+                    producer · broker · consumer 세 모듈의 기능, 설정, 사용 예제, API 레퍼런스를 한 곳에 모았습니다.
+                    왼쪽 사이드바 또는 아래 카드에서 시작할 모듈을 골라 주세요.
+                </p>
+            </section>
+
+            <section id="modules">
+                <h2>모듈</h2>
+                <p>mmmq는 세 개의 모듈로 구성되어 있습니다. 각 모듈은 독립적으로 의존성에 추가하여 사용할 수 있습니다.</p>
+
+                <div class="modules-grid-3">
+                    <a class="mod-card" href="producer.html">
+                        <div class="mod-card__icon">
+                            <svg aria-hidden="true" viewBox="0 0 32 32">
+                                <rect fill="#6DB33F" height="12" rx="3" width="12" x="3" y="10"/>
+                                <path d="M16 16 L28 16" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                      stroke-width="2"/>
+                                <path d="M23 11 L29 16 L23 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                      stroke-linejoin="round" stroke-width="2"/>
+                            </svg>
+                        </div>
+                        <div class="mod-card__name">producer</div>
+                        <div class="mod-card__desc">
+                            메시지를 보내는 클라이언트입니다. 빌더로 재시도 정책을 설정하고, ProduceException으로 실패를 알립니다.
+                        </div>
+                        <div class="mod-card__more">producer 문서 →</div>
+                    </a>
+
+                    <a class="mod-card" href="broker.html">
+                        <div class="mod-card__icon">
+                            <svg aria-hidden="true" viewBox="0 0 32 32">
+                                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="8"
+                                      y2="16"/>
+                                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="16"
+                                      y2="16"/>
+                                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="24"
+                                      y2="16"/>
+                                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                      y2="8"/>
+                                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                      y2="16"/>
+                                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
+                                      y2="24"/>
+                                <circle cx="4" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                                <circle cx="4" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                                <circle cx="4" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                                <circle cx="16" cy="16" fill="#6DB33F" r="4.5"/>
+                                <circle cx="28" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                                <circle cx="28" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                                <circle cx="28" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
+                            </svg>
+                        </div>
+                        <div class="mod-card__name">broker</div>
+                        <div class="mod-card__desc">
+                            메시지를 디스크에 저장하고 Dispatcher로 라우팅합니다. TopicQueue, 세그먼트, 체크포인트, DLQ가 포함됩니다.
+                        </div>
+                        <div class="mod-card__more">broker 문서 →</div>
+                    </a>
+
+                    <a class="mod-card" href="consumer.html">
+                        <div class="mod-card__icon">
+                            <svg aria-hidden="true" viewBox="0 0 32 32">
+                                <path d="M3 16 L15 16" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                      stroke-width="2"/>
+                                <path d="M10 11 L16 16 L10 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
+                                      stroke-linejoin="round" stroke-width="2"/>
+                                <rect fill="#6DB33F" height="12" rx="3" width="12" x="17" y="10"/>
+                            </svg>
+                        </div>
+                        <div class="mod-card__name">consumer</div>
+                        <div class="mod-card__desc">
+                            @MMMQListener와 MMMQListener&lt;T&gt; 두 가지 방식으로 핸들러를 등록합니다. 패턴 매칭과 ACK/NACK는 자동입니다.
+                        </div>
+                        <div class="mod-card__more">consumer 문서 →</div>
+                    </a>
+                </div>
+            </section>
+        </main>
+
+        <!-- On this page -->
+        <aside class="docs-toc">
+            <div class="docs-toc__head">문서</div>
+            <ol>
+                <li><a href="#top">개요</a></li>
+                <li><a href="#modules">모듈</a></li>
+            </ol>
+        </aside>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="landing-footer-wrap">
+        <footer class="footer">
+            <div class="footer__top">
+                <div class="footer__brand">
+                    <span class="nav__brand-mark">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                  x="3" y="6"/>
+                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                  x="6" y="13.5"/>
+                            <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                        </svg>
+                    </span>
+                    <span>mmmq</span>
+                </div>
+                <ul class="footer__nav">
+                    <li><a href="../../index.html">홈</a></li>
+                    <li><a href="../../about.html">소개</a></li>
+                    <li><a href="../../quickstart.html">시작하기</a></li>
+                    <li><a href="index.html">문서</a></li>
+                    <li><a href="../../release.html">릴리즈</a></li>
+                    <li><a href="https://github.com/moko-meringue/mmmq">GitHub</a></li>
+                </ul>
+            </div>
+            <div class="footer__legal">
+                <span>2026 Moko-Meringue</span>
+            </div>
+        </footer>
+    </div>
+
+</div>
+
+</body>
+</html>

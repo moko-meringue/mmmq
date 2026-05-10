@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <title>소개 · mmmq</title>
+    <meta content="mmmq라는 이름의 뜻, 어떤 계기로 시작했고 무엇을 목표로 누가 어떻게 만들고 있는지." name="description"/>
+    <link crossorigin href="https://cdn.jsdelivr.net" rel="preconnect"/>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
+          rel="stylesheet"/>
+    <link href="styles.css" rel="stylesheet"/>
+    <link href="docs.css" rel="stylesheet"/>
+    <script defer src="scripts.js"></script>
+</head>
+<body>
+<div class="site-shell">
+
+    <!-- Top Nav -->
+    <div class="site-nav-wrap">
+        <nav class="nav">
+            <a class="nav__brand" href="index.html">
+          <span class="nav__brand-mark">
+            <svg aria-hidden="true" viewBox="0 0 32 32">
+              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3" y="6"/>
+              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6" y="13.5"/>
+              <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+            </svg>
+          </span>
+                <span>mmmq</span>
+            </a>
+            <ul class="nav__menu">
+                <li><a href="index.html">홈</a></li>
+                <li><a class="is-active" href="about.html">소개</a></li>
+                <li><a href="quickstart.html">시작하기</a></li>
+                <li><a href="docs/0.0.2/index.html">문서</a></li>
+                <li><a href="release.html">릴리즈</a></li>
+                <li><a href="https://github.com/moko-meringue/mmmq">GitHub</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <div class="about-grid">
+        <div class="about-content">
+
+            <!-- Hero -->
+            <section class="landing-hero landing-hero--single" id="top">
+                <div>
+                    <span class="t-eyebrow">ABOUT MMMQ</span>
+                    <h1 class="t-h1">mmmq 소개</h1>
+                    <p class="landing-hero__sub">
+                        mmmq가 시작된 계기, 목표, 메인테이너를 소개합니다.
+                    </p>
+                </div>
+            </section>
+
+            <!-- The Name -->
+            <section class="landing-section landing-section--no-border" id="name">
+                <div class="landing-section__head">
+                    <span class="t-eyebrow">NAME</span>
+                    <h2 class="t-h2">MMMQ?</h2>
+                    <p class="t-body-lg">mmmq는 두 메인테이너의 닉네임과 메시지 큐의 약자인 MQ를 합친 표현입니다.</p>
+                </div>
+
+                <div class="name-callout">
+                    <div class="name-callout__formula">
+                        mmmq = <em>M</em>oko &amp; <em>M</em>eringue's <em>M</em>essage <em>Q</em>ueue
+                    </div>
+                    <div class="name-callout__caption">모코(Moko)와 머랭(Meringue)의 메시지 큐(MQ)</div>
+                </div>
+            </section>
+
+            <!-- Story -->
+            <section class="landing-section" id="story">
+                <div class="landing-section__head">
+                    <span class="t-eyebrow">STORY</span>
+                    <h2 class="t-h2">어떻게 시작됐나</h2>
+                    <p class="t-body-lg">mmmq는 우아한테크코스 7기 백엔드 크루 두 명이 모여 시작한 프로젝트입니다.</p>
+                </div>
+
+                <div>
+                    <p class="t-body">
+                        저희는 이기종 시스템 간 메시지 교환을 위한 메시지 브로커가 어떻게 동작하는지 궁금했습니다. <br>
+                        메시지 API, 장애 시 복구, 영속화 구조.. 답을 외우는 대신 직접 구현하며 학습하기로 했습니다.
+                    </p>
+                    <p class="t-body">
+                        한 달 만에 producer가 broker로 메시지를 보내고, consumer가 받는 구조를 완성했습니다. <br>
+                        그때부터 "mmmq가 무엇이 될 수 있을까"를 진지하게 생각하기 시작했습니다. <br>
+                        "프로덕션 환경에서 사용할 수 있는 메시징 시스템"이라는 더 큰 목표가 생겼고, 지금은 그 방향으로 한 걸음씩 나아가고 있습니다.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Goals -->
+            <section class="landing-section" id="goals">
+                <div class="landing-section__head">
+                    <span class="t-eyebrow">GOALS</span>
+                    <h2 class="t-h2">목표</h2>
+                    <p class="t-body-lg">
+                        mmmq는 안전하고 높은 처리량을 가진 메시징 시스템을 목표로 합니다.
+                    </p>
+                </div>
+
+                <div class="feature-grid">
+                    <article class="feature-card feature-card--text-only">
+                        <div class="feature-card__title">영속성<span class="feature-card__title-en">Persistence</span>
+                        </div>
+                        <hr class="feature-card__divider"/>
+                        <div class="feature-card__desc">한 번 생성된 메시지는 안전하게 기록되어 사라지지 않아야 합니다.</div>
+                    </article>
+
+                    <article class="feature-card feature-card--text-only">
+                        <div class="feature-card__title">내구성<span class="feature-card__title-en">Durability</span></div>
+                        <hr class="feature-card__divider"/>
+                        <div class="feature-card__desc">예기치 못한 장애나 재시작 상황에도 메시지가 살아남아야 합니다.</div>
+                    </article>
+
+                    <article class="feature-card feature-card--text-only">
+                        <div class="feature-card__title">높은 처리량<span
+                                class="feature-card__title-en">High Throughput</span></div>
+                        <hr class="feature-card__divider"/>
+                        <div class="feature-card__desc">동시에 많은 메시지를 빠르게 처리할 수 있어야 합니다.</div>
+                    </article>
+                </div>
+            </section>
+
+            <!-- Maintainers -->
+            <section class="landing-section" id="maintainers">
+                <div class="landing-section__head">
+                    <span class="t-eyebrow">MAINTAINERS</span>
+                    <h2 class="t-h2">메인테이너</h2>
+                </div>
+
+                <div class="maintainer-grid">
+                    <article class="maintainer-card">
+                        <div class="maintainer-card__head">
+                            <div class="maintainer-card__name">모코 (송선권)</div>
+                            <div class="maintainer-card__role">백엔드 개발자</div>
+                        </div>
+                        <img alt="모코 프로필 사진" class="maintainer-card__photo"
+                             src="https://avatars.githubusercontent.com/u/21010656?v=4"/>
+                        <div class="maintainer-card__detail">
+                            <p class="maintainer-card__bio">
+                                추측 대신 근거로 이야기합니다. <br>
+                                함께 성장하는 개발을 추구합니다.
+                            </p>
+                            <div class="maintainer-card__links">
+                                <a class="lk lk--with-arrow" href="#">GitHub</a>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="maintainer-card">
+                        <div class="maintainer-card__head">
+                            <div class="maintainer-card__name">머랭 (김대현)</div>
+                            <div class="maintainer-card__role">백엔드, 공통 플랫폼 개발자</div>
+                        </div>
+                        <img alt="머랭 프로필 사진" class="maintainer-card__photo"
+                             src="https://avatars.githubusercontent.com/u/113977176?v=4"/>
+                        <div class="maintainer-card__detail">
+                            <p class="maintainer-card__bio">
+                                기술의 내부 동작 원리를 탐구합니다. <br>
+                                개발자를 위한 제품을 만드는 일을 좋아합니다.
+                            </p>
+                            <div class="maintainer-card__links">
+                                <a class="lk lk--with-arrow" href="#">GitHub</a>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </section>
+        </div>
+
+        <aside class="docs-toc about-toc">
+            <div class="docs-toc__head">소개</div>
+            <ol>
+                <li><a href="#top">mmmq 소개</a></li>
+                <li><a href="#name">MMMQ?</a></li>
+                <li><a href="#story">어떻게 시작됐나</a></li>
+                <li><a href="#goals">목표</a></li>
+                <li><a href="#maintainers">메인테이너</a></li>
+            </ol>
+        </aside>
+    </div>
+
+    <!-- Footer -->
+    <div class="landing-footer-wrap">
+        <footer class="footer">
+            <div class="footer__top">
+                <div class="footer__brand">
+                    <span class="nav__brand-mark">
+                        <svg aria-hidden="true" viewBox="0 0 32 32">
+                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                  x="3" y="6"/>
+                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
+                                  x="6" y="13.5"/>
+                            <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                        </svg>
+                    </span>
+                    <span>mmmq</span>
+                </div>
+                <ul class="footer__nav">
+                    <li><a href="index.html">홈</a></li>
+                    <li><a href="about.html">소개</a></li>
+                    <li><a href="quickstart.html">시작하기</a></li>
+                    <li><a href="docs/0.0.2/index.html">문서</a></li>
+                    <li><a href="release.html">릴리즈</a></li>
+                    <li><a href="https://github.com/moko-meringue/mmmq">GitHub</a></li>
+                </ul>
+            </div>
+            <div class="footer__legal">
+                <span>2026 Moko-Meringue</span>
+            </div>
+        </footer>
+    </div>
+
+</div>
+
+</body>
+</html>
