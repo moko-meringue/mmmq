@@ -10,8 +10,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import org.mmmq.broker.dispatcher.sender.Sender;
-import org.mmmq.broker.dlq.DeadLetter;
-import org.mmmq.broker.dlq.DeadLetterQueue;
 import org.mmmq.broker.topicqueue.Offset;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.broker.topicqueue.TopicQueueInitializedEvent;
@@ -38,23 +36,17 @@ public class Dispatcher {
     final String name;
     final Host host;
     final List<TopicPattern> patterns;
-    final List<DeadLetterQueue> deadLetterQueues;
     final ConcurrentHashMap<TopicQueue, Offset> subscriptions = new ConcurrentHashMap<>();
     final WorkerPool workerPool = new WorkerPool();
     Sender sender;
 
     public Dispatcher(String name, Host host, List<TopicPattern> patterns) {
-        this(name, host, patterns, List.of());
-    }
-
-    public Dispatcher(String name, Host host, List<TopicPattern> patterns, List<DeadLetterQueue> deadLetterQueues) {
         if (!NAME_PATTERN.matcher(name).matches()) {
             throw new IllegalArgumentException("Dispatcher name must match [A-Za-z0-9._-]+, but was: " + name);
         }
         this.name = name;
         this.host = host;
         this.patterns = patterns;
-        this.deadLetterQueues = deadLetterQueues;
         this.sender = Sender.from(host);
     }
 
@@ -124,8 +116,7 @@ public class Dispatcher {
             }
             try {
                 if (!sender.send(message, MAX_NACK_RETRY_COUNT)) {
-                    log.warn("NACK exhausted. Sending to DLQ: {}", message);
-                    deadLetterQueues.forEach(dlq -> dlq.add(new DeadLetter(message)));
+                    log.warn("NACK exhausted. Dropping message: {}", message);
                 }
                 return;
             } catch (RuntimeException exception) {
