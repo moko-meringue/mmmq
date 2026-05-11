@@ -22,7 +22,7 @@ public class Consumer {
         this.frontHandler = frontHandler;
     }
 
-    @PostMapping("/messages")
+    @PostMapping("/mmmq/messages")
     public ResponseEntity<ConsumerAcknowledgement> receiveMessage(@RequestBody Message message) {
         ConsumerAcknowledgement acknowledgement = new ConsumerAcknowledgement(Acknowledgement.ACK);
         try {

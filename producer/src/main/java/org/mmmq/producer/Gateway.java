@@ -33,7 +33,7 @@ class Gateway {
 
     public BrokerAcknowledgement send(Message message) {
         return restClient.post()
-                .uri("/messages")
+                .uri("/mmmq/messages")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(message)
                 .retrieve()
