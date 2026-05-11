@@ -33,7 +33,7 @@ Producer.produce(message)
                     → FrontHandler: BlockingQueue(1000) + ThreadPoolExecutor(2~5)
                       → HandlerExecution(@MMMQListener 또는 MMMQListener<T>)
                 → 전송 완료 시: TopicQueue.commit(name, offset)으로 체크포인트 fsync
-                → NACK 소진 시: 모든 DeadLetterQueue에 전달
+                → NACK 소진 시: 경고 로깅 후 메시지 드랍
                 → 통신 실패 시: 지수 백오프(1s→60s) 무한 재시도
 ```
 
@@ -64,7 +64,7 @@ ApplicationReadyEvent
 core/       # 공유 타입: Message, Topic, TopicPattern, Acknowledgement
 producer/   # Producer 빈 + Gateway (RestClient → POST /messages → Broker)
 consumer/   # Consumer REST 엔드포인트 + FrontHandler + HandlerExecution
-broker/     # Broker REST 엔드포인트 + FrontDispatcher + Dispatcher + 영속화 저장소 + DeadLetterQueue
+broker/     # Broker REST 엔드포인트 + FrontDispatcher + Dispatcher + 영속화 저장소
 ```
 
 **모듈 의존 관계:** `producer → core`, `consumer → core`, `broker → core`
@@ -123,7 +123,7 @@ Producer producer = Producer.builder(brokerHost)
 
 ## broker
 
-브로커의 핵심 역할을 수행합니다. 메시지를 수신하고 적절한 Consumer에게 전달하며, 실패 메시지는 Dead Letter Queue로 처리합니다.
+브로커의 핵심 역할을 수행합니다. 메시지를 수신하고 적절한 Consumer에게 전달합니다.
 
 ### REST 엔드포인트
 
@@ -285,21 +285,8 @@ Dispatcher 이름은 체크포인트 파일명의 일부로 사용되므로 `[A-
 
 | 계층 | 조건 | 전략 |
 |------|------|------|
-| NACK 재시도 | Consumer가 NACK 응답 | 최대 3회 재전송. 소진 시 모든 `DeadLetterQueue`에 전달 |
+| NACK 재시도 | Consumer가 NACK 응답 | 최대 3회 재전송. 소진 시 경고 로깅 후 메시지 드랍 |
 | 통신 실패 재시도 | 네트워크 오류 등 | 지수 백오프 (초기 1초, 최대 60초, 배수 2) 무한 재시도. `InterruptedException`은 즉시 전파하여 graceful shutdown 보장 |
-
----
-
-### DeadLetterQueue
-
-NACK 재시도를 모두 소진한 메시지를 `DeadLetter`로 포장하여 저장하고 핸들링합니다. 여러 개의 `DeadLetterQueue` 빈을 등록하면 모두 동시에 메시지를 수신합니다.
-
-| 클래스 | 설명 |
-|--------|------|
-| `CounterDeadLetterQueue` | DeadLetter가 지정 개수에 도달하면 핸들러 실행 |
-| `TimerDeadLetterQueue` | 지정 주기마다 핸들러 실행 |
-| `DeadLetterFileWriter` | DeadLetter를 JSON으로 직렬화하여 파일 저장 |
-| `DeadLetterHandler` | 커스텀 핸들러 구현을 위한 인터페이스 |
 
 ---
 
@@ -501,52 +488,6 @@ public class DispatcherConfig {
         );
     }
 
-    // DLQ를 사용하는 경우 생성자에 전달
-    @Bean
-    public Dispatcher orderDispatcherWithDlq(List<DeadLetterQueue> deadLetterQueues) {
-        return new Dispatcher(
-                "order-dispatcher",
-                new Host(WebProtocol.HTTP, "ip", 8080),
-                List.of(new TopicPattern("order.*")),
-                deadLetterQueues
-        );
-    }
-}
-```
-
-#### DeadLetterQueue 등록 (선택)
-
-여러 개를 등록하면 전송 실패 메시지가 모든 큐에 전달됩니다.
-
-```java
-@Configuration
-public class DeadLetterConfig {
-
-    @Bean
-    public DeadLetterHandler deadLetterFileWriter() {
-        return new DeadLetterFileWriter(
-                Path.of("/home/ubuntu/broker/dead-letters"),
-                "dead-letter-writer"
-        );
-    }
-
-    @Bean
-    public DeadLetterQueue counterDlq(DeadLetterHandler handler) {
-        return new CounterDeadLetterQueue(
-                "counter-dlq",
-                handler,
-                50           // 50개 누적 시 핸들링
-        );
-    }
-
-    @Bean
-    public DeadLetterQueue timerDlq(DeadLetterHandler handler) {
-        return new TimerDeadLetterQueue(
-                "timer-dlq",
-                handler,
-                10_000       // 10초 주기로 핸들링
-        );
-    }
 }
 ```
 
