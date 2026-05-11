@@ -30,5 +30,6 @@ public class Producer {
         } catch (Exception e) {
             throw new ProduceException("Failed to produce message", e);
         }
+        throw new ProduceException("Failed to produce message after " + (maxRetryCount + 1) + " attempts");
     }
 }
