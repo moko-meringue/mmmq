@@ -161,7 +161,7 @@
 
             <section id="requirements">
                 <h2>요구사항</h2>
-                <p>mmmq를 사용하려면 다음 환경이 필요합니다.</p>
+                <p>producer를 사용하려면 다음 환경이 필요합니다.</p>
                 <table class="tbl">
                     <thead>
                     <tr>
@@ -222,14 +222,16 @@
                 </div>
             </section>
 
-            <section id="instantiation">
-                <h2>Producer 생성</h2>
+            <section id="producer">
+                <h2>Producer</h2>
+
+                <h3 id="instantiation">생성</h3>
                 <p>
                     <code>Producer</code> Bean을 등록합니다. <br>
                     옵션은 생성자에서 지정합니다.
                 </p>
 
-                <h3>Spring Bean 등록</h3>
+                <p><strong>Spring Bean 등록</strong></p>
                 <div class="code-block">
                     <div class="code-block__head">
                         <span class="code-block__lang">ProducerConfig.Java</span>
@@ -247,7 +249,7 @@
 }</pre>
                 </div>
 
-                <h3>생성자 매개변수</h3>
+                <p><strong>생성자 매개변수</strong></p>
                 <table class="tbl">
                     <thead>
                     <tr>
@@ -272,12 +274,10 @@
                     </tr>
                     </tbody>
                 </table>
-            </section>
 
-            <section id="publishing">
-                <h2>메시지 발행</h2>
+                <h3 id="publishing">메시지 발행</h3>
                 <p>
-                    <code>Producer</code>의 <code>produce(Message)</code> 메서드를 통해 broker로 메시지를 전달합니다.
+                    <code>Producer</code>의 <code>produce(Message)</code> 메서드를 통해 broker로 메시지를 발행합니다.
                 </p>
 
                 <p>
@@ -319,16 +319,16 @@
 }</pre>
                 </div>
 
-                <h3>발행 과정</h3>
+                <p><strong>발행 과정</strong></p>
                 <p><code>produce(Message)</code>는 <strong>동기</strong>로 동작하며 다음 순서로 처리됩니다.</p>
                 <ol>
-                    <li><code>Message</code>를 요청 바디에 담아 broker의 <code>/messages</code> 엔드포인트로 POST 요청을 전송합니다.</li>
+                    <li><code>Message</code>를 요청 바디에 담아 broker의 <code>/mmmq/messages</code> 엔드포인트로 POST 요청을 전송합니다.</li>
                     <li>응답이 <code>ACK</code>이면 메시지 발행이 완료된 것으로, 종료합니다.</li>
                     <li>응답이 <code>NACK</code>이면 재전송합니다 (자세한 내용은 <a class="lk" href="#retry">NACK 재시도</a> 참고).</li>
                     <li>네트워크 예외가 발생하면 <code>ProduceException</code>이 발생합니다.</li>
                 </ol>
 
-                <h3>전송 포맷</h3>
+                <p><strong>전송 포맷</strong></p>
                 <p>broker로 보내는 요청과 받는 응답은 모두 JSON입니다.</p>
 
                 <div class="code-block">
@@ -351,21 +351,19 @@
                     </div>
                     <pre>{ <span class="tk-str">"acknowledgement"</span>: <span class="tk-str">"ACK"</span> }</pre>
                 </div>
-            </section>
 
-            <section id="retry">
-                <h2>NACK 재시도</h2>
+                <h3 id="retry">재시도</h3>
                 <p>
                     broker가 <code>NACK</code>을 반환하면 <code>produce(Message)</code>는 메시지를 재전송합니다.
                 </p>
 
-                <h3>NACK이 발생하는 경우</h3>
+                <p><strong>NACK이 발생하는 경우</strong></p>
                 <p>
                     <code>NACK</code>은 broker가 메시지를 정상적으로 처리하지 못했을 때 돌려주는 응답입니다. <br>
                     broker가 메시지를 영속화하는 과정에서 오류가 발생했을 때 <code>NACK</code>이 반환됩니다.
                 </p>
 
-                <h3>재시도 메커니즘</h3>
+                <p><strong>재시도 메커니즘</strong></p>
                 <ol>
                     <li><code>NACK</code> 응답을 받으면 동일한 <code>Message</code>를 즉시 재전송합니다.</li>
                     <li><code>maxRetryCount</code>(기본 <code>3</code>)까지 반복합니다. 초기 시도까지 합치면 최대 <code>1 +
@@ -376,7 +374,7 @@
                     <li>마지막 시도까지 <code>NACK</code>이 이어지면 <code>ProduceException</code>이 발생합니다.</li>
                 </ol>
 
-                <h3>재시도 횟수 변경</h3>
+                <p><strong>재시도 횟수 변경</strong></p>
                 <p>
                     기본 재시도 횟수(<code>maxRetryCount</code>)는 <code>3</code>으로, <code>Producer</code> 생성자 인자를 통해 값을 설정할 수
                     있습니다.
@@ -400,9 +398,7 @@
                 <li><a href="#overview">개요</a></li>
                 <li><a href="#requirements">요구사항</a></li>
                 <li><a href="#installation">설치</a></li>
-                <li><a href="#instantiation">Producer 만들기</a></li>
-                <li><a href="#publishing">메시지 발행</a></li>
-                <li><a href="#retry">NACK 재시도</a></li>
+                <li><a href="#producer">Producer</a></li>
             </ol>
         </aside>
 
