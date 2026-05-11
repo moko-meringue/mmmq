@@ -59,7 +59,7 @@
                 <div class="landing-section__head">
                     <span class="t-eyebrow">STEP 1 · BROKER</span>
                     <h2 class="t-h2">Broker 애플리케이션</h2>
-                    <p>메시지를 받아 디스크에 영속하고 consumer에게 전달하는 중앙 서버입니다. <br>
+                    <p>메시지를 받아 디스크에 영속화하고 consumer에게 전송하는 중앙 서버입니다. <br>
                         broker 모듈을 추가한 Spring Boot 애플리케이션을 준비하고, <code>MMMQConfiguration</code>에 Dispatcher 빈을 등록합니다.
                     </p>
                 </div>
@@ -168,7 +168,8 @@
                     <h2 class="t-h2">Producer 애플리케이션</h2>
                     <p>broker로 메시지를 보내는 클라이언트입니다. <br>
                         producer 모듈을 추가한 Spring Boot 애플리케이션을 준비하고, Producer 빈을 등록합니다. <br>
-                        <code>HelloController</code>가 <code>POST /messages</code>로 받은 요청 본문을 <code>hello.mmmq</code>
+                        <code>HelloController</code>가 <code>POST /mmmq/messages</code>로 받은 요청 본문을
+                        <code>hello.mmmq</code>
                         토픽으로 발행합니다.</p>
                 </div>
 
@@ -227,7 +228,7 @@
         <span class="tk-key">this</span>.producer = producer;
     }
 
-    <span class="tk-key">@PostMapping</span>(<span class="tk-str">"/messages"</span>)
+    <span class="tk-key">@PostMapping</span>(<span class="tk-str">"/mmmq/messages"</span>)
     <span class="tk-key">public void</span> <span class="tk-fn">sendHello</span>(<span
                                     class="tk-key">@RequestBody</span> Object content) {
         Message message = <span class="tk-key">new</span> Message(
@@ -246,7 +247,7 @@
                 <div class="landing-section__head">
                     <span class="t-eyebrow">STEP 4 · RUN</span>
                     <h2 class="t-h2">실행</h2>
-                    <p>모든 애플리케이션을 실행한 다음, producer 애플리케이션의 <code>/messages</code> 엔드포인트로 POST 요청을 보냅니다. <br>
+                    <p>모든 애플리케이션을 실행한 다음, producer 애플리케이션의 <code>/mmmq/messages</code> 엔드포인트로 POST 요청을 보냅니다. <br>
                         요청 본문이 메시지로 발행되고, 구독 중인 consumer가 그 메시지를 받아 콘솔에 출력합니다.
                     </p>
                 </div>
@@ -257,7 +258,7 @@
                             <span class="code-block__lang">메시지 발행 요청</span>
                             <button class="code-block__copy">복사</button>
                         </div>
-                        <pre>$ curl -X POST http://localhost:8081/messages \
+                        <pre>$ curl -X POST http://localhost:8081/mmmq/messages \
        -H <span class="tk-str">"Content-Type: application/json"</span> \
        -d <span class="tk-str">'"Hello, mmmq!"'</span></pre>
                     </div>

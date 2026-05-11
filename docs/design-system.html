@@ -163,7 +163,7 @@
                 <div class="swatch__meta">
                     <div class="swatch__name">semantic/danger</div>
                     <div class="swatch__hex">#DC2626</div>
-                    <div class="swatch__use">에러 · DLQ</div>
+                    <div class="swatch__use">에러 · NACK</div>
                 </div>
             </div>
 
@@ -236,7 +236,7 @@
         <div class="type-row">
             <div class="type-row__token">body-lg</div>
             <div class="type-row__sample t-body-lg">
-                mmmq는 카프카·RabbitMQ를 대체하는 게 아니라 메시지 브로커의 동작 원리를 처음부터 직접 쌓아 올리는 학습용 라이브러리입니다.
+                mmmq는 카프카·RabbitMQ를 대체하는 게 아니라 메시지 broker의 동작 원리를 처음부터 직접 쌓아 올리는 학습용 라이브러리입니다.
             </div>
             <div class="type-row__meta">18 / 30 / 400</div>
         </div>
@@ -250,7 +250,7 @@
         <div class="type-row">
             <div class="type-row__token">body-sm</div>
             <div class="type-row__sample t-body-sm">
-                설정 키는 mmmq.broker.* 네임스페이스를 사용합니다. 기본값은 <code class="t-code">./data</code> 디렉토리.
+                설정 키는 mmmq.broker.* 네임스페이스를 사용합니다. 기본값은 <code class="t-code">./data</code> 디렉터리.
             </div>
             <div class="type-row__meta">14 / 22 / 400</div>
         </div>
@@ -477,7 +477,7 @@
                     <span class="bdg bdg--brand">brand</span>
                     <span class="bdg bdg--success">ACK</span>
                     <span class="bdg bdg--warn">RETRY</span>
-                    <span class="bdg bdg--danger">DLQ</span>
+                    <span class="bdg bdg--danger">NACK</span>
                 </div>
                 <div class="demo-row">
                     <div class="demo-row__label">md</div>
@@ -515,7 +515,7 @@
                 <a class="card" href="#">
                     <div class="t-eyebrow">BLOG · 2026-05</div>
                     <div class="card__title">v0.0.1 릴리스 노트</div>
-                    <div class="card__desc">첫 공개 버전. 영속화 · DLQ · 패턴 구독을 포함한 기본 기능 셋이 정리되었습니다.</div>
+                    <div class="card__desc">첫 공개 버전. 영속화 · 패턴 구독 · 재시도를 포함한 기본 기능 셋이 정리되었습니다.</div>
                     <div class="card__meta">읽는 데 4분</div>
                 </a>
             </div>
@@ -639,7 +639,7 @@
                             <span style="color:var(--brand-primary)">교육용 메시지 큐.</span>
                         </h1>
                         <p class="hero__sub">
-                            mmmq는 카프카·RabbitMQ를 대체하는 게 아니라, 메시지 브로커의 동작 원리를
+                            mmmq는 카프카·RabbitMQ를 대체하는 게 아니라, 메시지 broker의 동작 원리를
                             바닥부터 쌓아 올리는 라이브러리입니다.
                         </p>
                         <div class="hero__ctas">
@@ -786,7 +786,7 @@ producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Mess
                         </svg>
                     </div>
                     <div class="mod-card__name">broker</div>
-                    <div class="mod-card__desc">디스크 영속화 + Dispatcher 라우팅 + DLQ. 토픽별 단일 라이터 보장.</div>
+                    <div class="mod-card__desc">디스크 영속화 + Dispatcher 라우팅 + 체크포인트. 토픽별 단일 라이터 보장.</div>
                     <div class="mod-card__more">자세히 →</div>
                 </a>
             </div>
@@ -808,7 +808,7 @@ producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Mess
                         <div class="arch__node-sub">produce()</div>
                     </div>
                     <div class="arch__arrow">
-                        <span>POST /messages</span>
+                        <span>POST /mmmq/messages</span>
                         <span class="line">→</span>
                     </div>
                     <div class="arch__node arch__node--brand">
@@ -849,7 +849,7 @@ producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Mess
                         <a class="sidenav__item" href="#">토픽과 패턴</a>
                         <a class="sidenav__item" href="#">오프셋 · 체크포인트</a>
                         <a class="sidenav__item" href="#">세그먼트와 영속화</a>
-                        <a class="sidenav__item" href="#">DLQ</a>
+                        <a class="sidenav__item" href="#">체크포인트</a>
                     </div>
                     <div class="sidenav__group">
                         <div class="sidenav__head">레퍼런스</div>
@@ -914,7 +914,7 @@ producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Mess
                     <div>
                         <div class="callout__label">참고</div>
                         <div class="callout__body">
-                            커밋 포인트는 인덱스 파일의 fsync가 끝난 시점입니다. 데이터 파일만 fsync해서는 충분하지 않습니다.
+                            메시지 노출 경계는 인덱스 파일의 fsync가 끝난 시점입니다. 데이터 파일만 fsync해서는 충분하지 않습니다.
                         </div>
                     </div>
                 </div>
@@ -932,7 +932,7 @@ producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Mess
                     <div>
                         <div class="callout__label">팁</div>
                         <div class="callout__body">
-                            여러 DLQ 빈을 등록하면 모두에게 같은 dead letter가 브로드캐스트됩니다.
+                            오프셋 인덱스에 fsync까지 끝난 메시지만 Dispatcher에게 노출됩니다.
                         </div>
                     </div>
                 </div>
@@ -963,7 +963,7 @@ producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Mess
                         <td><code>mmmq.broker.storage.root-dir</code></td>
                         <td>String</td>
                         <td><code>./data</code></td>
-                        <td>토픽별 데이터·인덱스·체크포인트가 저장되는 루트 디렉토리.</td>
+                        <td>토픽별 데이터·인덱스·체크포인트가 저장되는 루트 디렉터리.</td>
                     </tr>
                     <tr>
                         <td><code>mmmq.broker.segment.max-bytes</code></td>
@@ -976,12 +976,6 @@ producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Mess
                         <td>int</td>
                         <td><code>3</code></td>
                         <td>NACK 응답에 대한 재시도 횟수.</td>
-                    </tr>
-                    <tr>
-                        <td><code>dispatcher.deadLetterQueues</code></td>
-                        <td>List&lt;DLQ&gt;</td>
-                        <td>—</td>
-                        <td>NACK 재시도 모두 실패 시 메시지가 전달될 DLQ 목록.</td>
                     </tr>
                     </tbody>
                 </table>
@@ -1088,7 +1082,7 @@ producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Mess
                     <article class="pillar-card">
                         <div class="pillar-card__num">01 · RELIABILITY</div>
                         <h3 class="pillar-card__title">신뢰성</h3>
-                        <p class="pillar-card__desc">메시지가 손실되지 않고, 잘못된 소비자에게 전달되지 않습니다.</p>
+                        <p class="pillar-card__desc">메시지가 손실되지 않고, 잘못된 consumer에게 전송되지 않습니다.</p>
                     </article>
                     <article class="pillar-card">
                         <div class="pillar-card__num">02 · DURABILITY</div>
