@@ -33,7 +33,7 @@ Requirements: Java 17+, Spring Boot 3.2.0+, Spring Web starter.
 
 ```
 core/       # Shared types: Message, Topic, Pattern, Acknowledgement
-producer/   # Producer bean + Gateway (RestClient → POST /messages to Broker)
+producer/   # Producer bean + Gateway (RestClient → POST /mmmq/messages to Broker)
 consumer/   # Consumer REST endpoint + FrontHandler + HandlerExecution
 broker/     # Broker REST endpoint + FrontDispatcher + Dispatcher + DeadLetterQueue
 ```
@@ -44,7 +44,7 @@ broker/     # Broker REST endpoint + FrontDispatcher + Dispatcher + DeadLetterQu
 
 ```
 Producer.produce(message)
-  → HTTP POST /messages → Broker
+  → HTTP POST /mmmq/messages → Broker
   → FrontDispatcher.dispatch(message)
     → Filters Dispatchers by Pattern.matches(topic)  [Ant-style wildcard, e.g. order.*]
     → TopicQueueRegistry.get(topic) → TopicQueue (SegmentChain, segmentFile capacity 1000)
@@ -52,7 +52,7 @@ Producer.produce(message)
     → Dispatcher (per Consumer): subscribes to TopicQueue, single Subscription worker thread
       → Drains TopicQueue from per-Subscription Offset
       → Sender.send(message, maxNackRetry=3)  [NACK → retry up to 3x]
-        → HTTP POST /messages → Consumer
+        → HTTP POST /mmmq/messages → Consumer
           → FrontHandler: ArrayBlockingQueue(1000) + single worker thread
             → ThreadPoolExecutor(2~5) for handler execution
               → HandlerExecutions.getExecutions(message)  [filters by pattern.matches(topic)]
@@ -154,5 +154,5 @@ public Dispatcher orderDispatcher() {
 - Constants: `UPPER_SNAKE_CASE` for `static final` fields.
 
 ### API Endpoints
-- MMMQ exposes `POST /messages` as its primary endpoint.
+- MMMQ exposes `POST /mmmq/messages` as its primary endpoint.
 - If new endpoints are added: lowercase, kebab-case for multi-word paths.

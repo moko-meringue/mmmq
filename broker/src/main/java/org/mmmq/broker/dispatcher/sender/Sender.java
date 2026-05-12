@@ -39,7 +39,7 @@ public class Sender {
 
     ConsumerAcknowledgement post(Message message) {
         return restClient.post()
-                .uri("/messages")
+                .uri("/mmmq/messages")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(message)
                 .retrieve()

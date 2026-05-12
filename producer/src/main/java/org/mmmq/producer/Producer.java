@@ -31,13 +31,7 @@ public class Producer implements AutoCloseable {
     private volatile boolean running = true;
 
     public Producer(Host host) {
-        this(
-                host,
-                DEFAULT_MAX_RETRY_COUNT,
-                DEFAULT_ASYNC_QUEUE_CAPACITY,
-                DEFAULT_BATCH_SIZE,
-                DEFAULT_FLUSH_INTERVAL
-        );
+        this(host, DEFAULT_MAX_RETRY_COUNT);
     }
 
     public Producer(Host host, int maxRetryCount) {
@@ -80,6 +74,7 @@ public class Producer implements AutoCloseable {
         } catch (Exception e) {
             throw new ProduceException("Failed to produce message", e);
         }
+        throw new ProduceException("Failed to produce message after " + (maxRetryCount + 1) + " attempts");
     }
 
     public void produceAsync(Message message) {

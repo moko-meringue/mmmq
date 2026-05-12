@@ -9,7 +9,6 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-import java.net.InetAddress;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -63,12 +62,7 @@ class GatewayTest {
     }
 
     private Host createTestHost() {
-        return new Host(WebProtocol.HTTP, "localhost", 8080) {
-            @Override
-            public boolean healthCheck(InetAddress host) {
-                return true;
-            }
-        };
+        return new Host(WebProtocol.HTTP, "localhost", 8080);
     }
 
     @Test
@@ -87,7 +81,7 @@ class GatewayTest {
         Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
         BrokerAcknowledgement expectedResponse = new BrokerAcknowledgement(Acknowledgement.ACK);
 
-        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
+        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/mmmq/messages"))
             .andExpect(method(HttpMethod.POST))
             .andRespond(withSuccess(
                 objectMapper.writeValueAsString(expectedResponse),
@@ -108,7 +102,7 @@ class GatewayTest {
         Message message = new Message(new Topic("order.new"), new OrderContent(1, "laptop"));
         BrokerAcknowledgement expectedResponse = new BrokerAcknowledgement(Acknowledgement.ACK);
 
-        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
+        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/mmmq/messages"))
             .andExpect(method(HttpMethod.POST))
             .andExpect(
                 content().json("{\"topic\":{\"name\":\"order.new\"},\"content\":{\"id\":1,\"name\":\"laptop\"}}"))
@@ -129,7 +123,7 @@ class GatewayTest {
         Gateway gateway = new Gateway(host);
         Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
 
-        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
+        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/mmmq/messages"))
             .andExpect(method(HttpMethod.POST))
             .andRespond(withBadRequest().body("Bad request"));
 
@@ -147,7 +141,7 @@ class GatewayTest {
         Gateway gateway = new Gateway(host);
         Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
 
-        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
+        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/mmmq/messages"))
             .andExpect(method(HttpMethod.POST))
             .andRespond(withServerError());
 
