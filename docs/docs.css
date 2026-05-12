@@ -48,9 +48,9 @@
 /* Hero variant for landing — slightly different from DS hero */
 .landing-hero {
     display: grid;
-    grid-template-columns: 1fr 480px;
-    gap: var(--s-9);
-    align-items: center;
+    grid-template-columns: 4fr 6fr;
+    gap: var(--s-7);
+    align-items: stretch;
     padding: var(--s-8) 0 var(--s-7);
 }
 
@@ -59,12 +59,15 @@
     letter-spacing: -0.025em;
 }
 
-.landing-hero__sub {
+.landing-hero__sub,
+.docs-content > p.lede,
+.docs-content section p.landing-hero__sub,
+.docs-content section p.lede {
     font-size: 20px;
     line-height: 32px;
     color: var(--ink-muted);
     margin-bottom: var(--s-6);
-    max-width: 520px;
+    max-width: var(--w-prose);
 }
 
 /* Single-column variant — about/quickstart/release/docs landing 등 visual이 없는 페이지용 */
@@ -77,16 +80,12 @@
     margin: var(--s-3) 0 var(--s-4);
 }
 
-.landing-hero--single .landing-hero__sub {
-    max-width: 720px;
-}
-
 /* =========================================================
    Home — Pillars (4-card "왜 mmmq인가" 섹션)
    ========================================================= */
 .pillar-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(var(--w-card-min-sm), 1fr));
     gap: var(--s-4);
 }
 
@@ -248,16 +247,407 @@
     background: var(--brand-primary-soft);
     border: 1px solid var(--brand-primary);
     border-radius: var(--r-lg);
-    height: 360px;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--s-7);
+    align-items: stretch;
+    justify-content: stretch;
+    padding: var(--s-5);
 }
 
 .landing-hero__visual svg {
-    width: 320px;
-    height: auto;
+    width: 100%;
+    height: 100%;
+}
+
+/* =========================================================
+   Home hero — 인터랙티브 메시지 흐름 다이어그램
+   ========================================================= */
+.flow-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-5);
+    width: 100%;
+}
+
+.flow-diagram__track {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+}
+
+.flow-diagram__node {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    padding: 6px 14px 6px 6px;
+    background: var(--surface-page);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-pill);
+    color: var(--ink-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.flow-diagram__node:hover {
+    border-color: var(--brand-primary);
+    color: var(--ink-strong);
+}
+
+.flow-diagram__node.is-active {
+    background: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: #fff;
+}
+
+.flow-diagram__node-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--brand-primary-soft);
+    color: var(--brand-primary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    transition: background 160ms ease, color 160ms ease;
+}
+
+.flow-diagram__node.is-active .flow-diagram__node-mark {
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+}
+
+.flow-diagram__link {
+    position: relative;
+    flex: 1;
+    height: 2px;
+    background: var(--border-default);
+    border-radius: 1px;
+    transition: background 240ms ease;
+}
+
+.flow-diagram__link.is-active {
+    background: var(--brand-primary);
+}
+
+.flow-diagram__dot {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 8px;
+    height: 2px;
+    margin-top: -1px;
+    border-radius: 1px;
+    background: var(--brand-primary);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.flow-diagram__link.is-streaming .flow-diagram__dot {
+    animation: flow-dot 1.5s linear infinite;
+}
+
+.flow-diagram__link.is-streaming .flow-diagram__dot:nth-child(2)  { animation-delay: 0.15s; }
+.flow-diagram__link.is-streaming .flow-diagram__dot:nth-child(3)  { animation-delay: 0.3s; }
+.flow-diagram__link.is-streaming .flow-diagram__dot:nth-child(4)  { animation-delay: 0.45s; }
+.flow-diagram__link.is-streaming .flow-diagram__dot:nth-child(5)  { animation-delay: 0.6s; }
+.flow-diagram__link.is-streaming .flow-diagram__dot:nth-child(6)  { animation-delay: 0.75s; }
+.flow-diagram__link.is-streaming .flow-diagram__dot:nth-child(7)  { animation-delay: 0.9s; }
+.flow-diagram__link.is-streaming .flow-diagram__dot:nth-child(8)  { animation-delay: 1.05s; }
+.flow-diagram__link.is-streaming .flow-diagram__dot:nth-child(9)  { animation-delay: 1.2s; }
+.flow-diagram__link.is-streaming .flow-diagram__dot:nth-child(10) { animation-delay: 1.35s; }
+
+.flow-diagram__message {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 24px;
+    height: 18px;
+    margin-top: -9px;
+    color: var(--brand-primary);
+    filter: drop-shadow(0 2px 4px rgba(13, 19, 23, 0.18));
+    opacity: 0;
+    pointer-events: none;
+}
+
+.flow-diagram__message svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.flow-diagram__link.is-streaming .flow-diagram__message {
+    animation: flow-message 3s linear infinite;
+}
+
+@keyframes flow-message {
+    0%   { left: 0;    opacity: 0; }
+    10%  { opacity: 1; }
+    85%  { opacity: 1; }
+    100% { left: 100%; opacity: 0; }
+}
+
+@keyframes flow-dot {
+    0%   { left: 0;    opacity: 0; }
+    15%  { opacity: 1; }
+    85%  { opacity: 1; }
+    100% { left: 100%; opacity: 0; }
+}
+
+.flow-diagram__stage {
+    position: relative;
+    flex: 1;
+    min-height: 220px;
+}
+
+.flow-diagram__panel {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    padding: var(--s-5);
+    background: var(--surface-page);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.flow-diagram__panel.is-active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.flow-diagram__panel-head {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.flow-diagram__panel-step {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--brand-primary);
+    letter-spacing: 0.06em;
+}
+
+.flow-diagram__panel-title {
+    font-size: 22px;
+    line-height: 30px;
+    font-weight: 700;
+    color: var(--ink-strong);
+    letter-spacing: -0.01em;
+    margin: 0;
+}
+
+.flow-diagram__panel-desc {
+    font-size: 15px;
+    line-height: 24px;
+    color: var(--ink-strong);
+    margin: 0;
+}
+
+.flow-diagram__panel > .code-block {
+    margin-top: auto;
+}
+
+.flow-diagram__controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-4);
+}
+
+.flow-diagram__btn {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-page);
+    border: 1px solid var(--border-default);
+    border-radius: 50%;
+    color: var(--ink-strong);
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.flow-diagram__btn:hover:not(:disabled) {
+    border-color: var(--brand-primary);
+    color: var(--brand-primary);
+}
+
+.flow-diagram__btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.flow-diagram__btn--primary {
+    background: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: #fff;
+}
+
+.flow-diagram__btn--primary:hover:not(:disabled) {
+    color: #fff;
+    border-color: var(--brand-primary);
+    filter: brightness(0.94);
+}
+
+.flow-diagram__btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.flow-diagram__progress {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-muted);
+    letter-spacing: 0.04em;
+    min-width: 64px;
+    text-align: center;
+}
+
+.flow-diagram__progress-current {
+    color: var(--ink-strong);
+}
+
+.flow-diagram__progress-sep {
+    margin: 0 4px;
+    opacity: 0.5;
+}
+
+/* =========================================================
+   Home hero — 가로 스와이프 코드 캐러셀 (producer/broker/consumer)
+   ========================================================= */
+.hero-carousel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+    min-width: 0;
+    height: 100%;
+}
+
+.hero-carousel__track {
+    display: flex;
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    gap: var(--s-4);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    min-height: 0;
+}
+
+.hero-carousel__track::-webkit-scrollbar {
+    display: none;
+}
+
+.hero-carousel__track:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 4px;
+    border-radius: var(--r-md);
+}
+
+.hero-carousel__slide {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+    background: var(--surface-page);
+    border: 1px solid var(--border-default);
+    border-radius: var(--r-md);
+    padding: var(--s-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+    min-width: 0;
+}
+
+.hero-carousel__head {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hero-carousel__step {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--brand-primary);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.hero-carousel__name {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink-strong);
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.hero-carousel__desc {
+    color: var(--ink-muted);
+    font-size: 14px;
+    line-height: 22px;
+    margin: 4px 0 0;
+}
+
+.hero-carousel__slide .code-block {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    margin: 0;
+}
+
+.hero-carousel__slide .code-block pre {
+    overflow: auto;
+    max-height: 100%;
+}
+
+.hero-carousel__dots {
+    display: flex;
+    gap: var(--s-2);
+    justify-content: center;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.hero-carousel__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--brand-primary);
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: background-color 120ms, transform 120ms;
+}
+
+.hero-carousel__dot:hover {
+    background: var(--brand-primary-soft);
+}
+
+.hero-carousel__dot.is-active {
+    background: var(--brand-primary);
+    transform: scale(1.15);
+}
+
+.hero-carousel__dot.is-active:hover {
+    background: var(--brand-primary);
 }
 
 .brand-accent {
@@ -328,7 +718,8 @@
 
 .feature-card--text-only .feature-card__desc {
     color: var(--ink-strong);
-    opacity: 0.78;
+    font-size: 16px;
+    line-height: 26px;
 }
 
 .feature-card__divider {
@@ -339,11 +730,34 @@
     width: 100%;
 }
 
+/* Module card variant — text-only 룩에 아이콘 노출, 클릭 가능 */
+.feature-card--module {
+    background: var(--brand-primary-soft);
+    border-color: transparent;
+    text-decoration: none;
+    color: inherit;
+}
+
+.feature-card--module .feature-card__title {
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink-strong);
+    margin: 0;
+}
+
+.feature-card--module .feature-card__desc {
+    color: var(--ink-strong);
+    font-size: 16px;
+    line-height: 26px;
+}
+
 /* About / Quickstart 페이지: 우측 sticky TOC 그리드 */
 .about-grid,
 .quickstart-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 200px;
+    grid-template-columns: minmax(0, 1fr) var(--w-rail-right);
     gap: var(--s-7);
     align-items: start;
     padding-top: var(--s-7);
@@ -388,11 +802,6 @@
     margin-left: auto;
 }
 
-/* docs landing 본문 안의 hero sub-text는 720px max-width를 따른다 */
-.docs-content .landing-hero__sub {
-    max-width: 720px;
-}
-
 /* .about-toc / .quickstart-toc 의 sticky·폭 등 시각 스타일은
    .docs-toc 공통 컴포넌트(styles.css)가 동일하게 처리한다.
    HTML에서 `class="docs-toc about-toc"` 처럼 함께 붙여 쓰면 된다. */
@@ -407,13 +816,13 @@
 /* Maintainer profiles */
 .maintainer-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(var(--w-card-min-maintainer), 1fr));
     gap: var(--s-5);
 }
 
 .maintainer-card {
     display: grid;
-    grid-template-columns: 140px 1fr;
+    grid-template-columns: var(--w-photo) 1fr;
     column-gap: var(--s-5);
     row-gap: var(--s-4);
     padding: var(--s-5);
@@ -427,8 +836,8 @@
 }
 
 .maintainer-card__photo {
-    width: 140px;
-    height: 140px;
+    width: var(--w-photo);
+    height: var(--w-photo);
     object-fit: cover;
     border-radius: var(--r-sm);
     background: var(--brand-primary-soft);
@@ -473,7 +882,7 @@
 /* Why mmmq — 4 feature 카드 */
 .feature-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(var(--w-card-min-feature), 1fr));
     gap: var(--s-4);
 }
 
@@ -516,14 +925,14 @@
 /* 3-card 모듈 그리드 */
 .modules-grid-3 {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(var(--w-card-min), 1fr));
     gap: var(--s-5);
 }
 
 /* Quickstart steps */
 .steps-grid-3 {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(var(--w-card-min-sm), 1fr));
     gap: var(--s-4);
 }
 
@@ -542,7 +951,7 @@
    ========================================================= */
 .docs-grid {
     display: grid;
-    grid-template-columns: 240px 1fr 200px;
+    grid-template-columns: var(--w-rail-left) 1fr var(--w-rail-right);
     gap: var(--s-7);
     align-items: start;
     padding: var(--s-7) 0 var(--s-10);
@@ -630,15 +1039,6 @@
     font-weight: 700;
     letter-spacing: -0.02em;
     margin-bottom: var(--s-4);
-}
-
-.docs-content > p.lede {
-    font-size: 18px;
-    line-height: 30px;
-    color: var(--ink-muted);
-    margin-bottom: var(--s-7);
-    padding-bottom: var(--s-3);
-    border-bottom: 1px solid var(--border-default);
 }
 
 .docs-content section {
@@ -809,7 +1209,10 @@
         padding: var(--s-6) 0 var(--s-5);
     }
 
-    .landing-hero__sub {
+    .landing-hero__sub,
+    .docs-content > p.lede,
+    .docs-content section p.landing-hero__sub,
+    .docs-content section p.lede {
         font-size: 17px;
         line-height: 26px;
     }
@@ -854,11 +1257,6 @@
 
     .docs-content section h3 {
         font-size: 19px;
-        line-height: 26px;
-    }
-
-    .docs-content > p.lede {
-        font-size: 16px;
         line-height: 26px;
     }
 

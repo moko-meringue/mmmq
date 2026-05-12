@@ -83,6 +83,21 @@
 
     /* ----- shadows ----- */
     --sh-hover: 0 1px 0 rgba(0, 0, 0, 0.04);
+
+    /* ----- layout size tokens (fluid; 한 곳에서 폭/높이 스케일 변경) -----
+       각 값은 clamp(min, vw비율, max) 형태로 뷰포트에 따라 유연하게 스케일된다.
+       1440px 뷰포트에서 원래 픽셀값에 근접하도록 비율을 튜닝했다. */
+    --w-prose: min(720px, 100%);                       /* 본문 단락 최대 폭 */
+    --w-prose-narrow: min(520px, 100%);                /* 좁은 단락 최대 폭 */
+    --w-rail-left: clamp(200px, 17vw, 260px);          /* 문서 좌측 사이드 내비 */
+    --w-rail-right: clamp(160px, 14vw, 220px);         /* 문서/소개/시작하기 우측 TOC */
+    --w-hero-svg: clamp(240px, 22vw, 360px);           /* hero 우측 SVG 내부 폭 */
+    --w-card-min: clamp(240px, 20vw, 320px);           /* 일반 카드 최소 폭 */
+    --w-card-min-lg: clamp(280px, 23vw, 380px);        /* 큰 카드 최소 폭 */
+    --w-card-min-sm: clamp(180px, 15vw, 240px);        /* 작은 카드 최소 폭 */
+    --w-card-min-feature: clamp(160px, 14vw, 220px);   /* feature-grid 카드 최소 폭 */
+    --w-card-min-maintainer: clamp(320px, 25vw, 400px);/* 메인테이너 카드 최소 폭 */
+    --w-photo: clamp(120px, 10vw, 160px);              /* 메인테이너 사진 */
 }
 
 /* =========================================================
@@ -745,16 +760,15 @@ code {
 }
 
 .nav__brand-mark {
-    width: 40px;
-    height: 40px;
+    height: 32px;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
 }
 
-.nav__brand-mark svg {
-    width: 100%;
+.nav__brand-mark svg,
+.nav__brand-mark img {
     height: 100%;
+    width: auto;
     display: block;
 }
 

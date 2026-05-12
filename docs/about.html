@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1" name="viewport"/>
-    <title>소개 · mmmq</title>
-    <meta content="mmmq라는 이름의 뜻, 어떤 계기로 시작했고 무엇을 목표로 누가 어떻게 만들고 있는지." name="description"/>
+    <title>소개 | mmmq</title>
     <link crossorigin href="https://cdn.jsdelivr.net" rel="preconnect"/>
     <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
           rel="stylesheet"/>
@@ -20,13 +19,17 @@
         <nav class="nav">
             <a class="nav__brand" href="index.html">
           <span class="nav__brand-mark">
-            <svg aria-hidden="true" viewBox="0 0 32 32">
-              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3" y="6"/>
-              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6" y="13.5"/>
-              <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
-            </svg>
+            <svg aria-hidden="true" viewBox="0 0 463 123" xmlns="http://www.w3.org/2000/svg"><rect fill="#6DB33F"
+                                                                                                   height="8"
+                                                                                                   width="319"/><rect
+                    fill="#6DB33F" height="123" width="319"/><rect fill="#6DB33F" height="123" width="7.52802"
+                                                                   x="311.472"/><path
+                    d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z"
+                    fill="#FFFFFF"/><path
+                    d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z"
+                    fill="#0B1416"/><path d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z"
+                                          fill="#6DB33F"/></svg>
           </span>
-                <span>mmmq</span>
             </a>
             <ul class="nav__menu">
                 <li><a href="index.html">홈</a></li>
@@ -45,7 +48,6 @@
             <!-- Hero -->
             <section class="landing-hero landing-hero--single" id="top">
                 <div>
-                    <span class="t-eyebrow">ABOUT MMMQ</span>
                     <h1 class="t-h1">mmmq 소개</h1>
                     <p class="landing-hero__sub">
                         mmmq가 시작된 계기, 목표, 메인테이너를 소개합니다.
@@ -74,15 +76,16 @@
                 <div class="landing-section__head">
                     <span class="t-eyebrow">STORY</span>
                     <h2 class="t-h2">어떻게 시작됐나</h2>
-                    <p class="t-body-lg">mmmq는 우아한테크코스 7기 백엔드 크루 두 명이 모여 시작한 프로젝트입니다.</p>
-                </div>
+                    <p class="t-body-lg">
+                        mmmq는 우아한테크코스 7기 백엔드 크루 두 명이 모여 시작한 프로젝트입니다.
+                    </p>
 
-                <div>
-                    <p class="t-body">
+                    <p class="t-body-lg">
                         저희는 이기종 시스템 간 메시지 교환을 위한 메시지 broker가 어떻게 동작하는지 궁금했습니다. <br>
                         메시지 API, 장애 시 복구, 영속화 구조. 답을 외우는 대신 직접 구현하며 학습하기로 했습니다.
                     </p>
-                    <p class="t-body">
+
+                    <p class="t-body-lg">
                         한 달 만에 producer가 broker로 메시지를 보내고, consumer가 받는 구조를 완성했습니다. <br>
                         그때부터 "mmmq가 무엇이 될 수 있을까"를 진지하게 생각하기 시작했습니다. <br>
                         "프로덕션 환경에서 사용할 수 있는 메시징 시스템"이라는 더 큰 목표가 생겼고, 지금은 그 방향으로 한 걸음씩 나아가고 있습니다.
@@ -96,29 +99,40 @@
                     <span class="t-eyebrow">GOALS</span>
                     <h2 class="t-h2">목표</h2>
                     <p class="t-body-lg">
-                        mmmq는 안전하고 높은 처리량을 가진 메시징 시스템을 목표로 합니다.
+                        mmmq는 그동안 내구성, 사용하기 쉬운 API, 독립 소비 모델 구축 등 여러 과제를 해결해 왔습니다. <br>
+                        앞으로는 다음 세 가지 영역에 집중해 <strong>프로덕션 환경에서 사용할 수 있는 메시징 시스템</strong>으로 나아갈 예정입니다.
                     </p>
                 </div>
 
                 <div class="feature-grid">
                     <article class="feature-card feature-card--text-only">
-                        <div class="feature-card__title">영속성<span class="feature-card__title-en">Persistence</span>
+                        <div class="feature-card__title">처리량 <span class="feature-card__title-en">Throughput</span>
                         </div>
                         <hr class="feature-card__divider"/>
-                        <div class="feature-card__desc">한 번 생성된 메시지는 안전하게 기록되어 사라지지 않아야 합니다.</div>
+                        <div class="feature-card__desc">
+                            많은 양의 메시지를 안정적으로 처리하는 것을 목표로 합니다. <br>
+                            비동기 처리, 효율적인 디스크 I/O, 토픽별 격리된 처리 경로로 처리량을 확보합니다.
+                        </div>
                     </article>
 
                     <article class="feature-card feature-card--text-only">
-                        <div class="feature-card__title">내구성<span class="feature-card__title-en">Durability</span></div>
+                        <div class="feature-card__title">확장성 <span class="feature-card__title-en">Scalability</span>
+                        </div>
                         <hr class="feature-card__divider"/>
-                        <div class="feature-card__desc">예기치 못한 장애나 재시작 상황에도 메시지가 살아남아야 합니다.</div>
+                        <div class="feature-card__desc">
+                            토픽 수, consumer 수, 메시지 양이 늘어나도 일정한 성능을 유지해야 합니다. <br>
+                            구조적인 확장 지점을 마련해 늘어나는 부하에 대응합니다.
+                        </div>
                     </article>
 
                     <article class="feature-card feature-card--text-only">
-                        <div class="feature-card__title">높은 처리량<span
-                                class="feature-card__title-en">High Throughput</span></div>
+                        <div class="feature-card__title">운영 가시성 <span
+                                class="feature-card__title-en">Observability</span></div>
                         <hr class="feature-card__divider"/>
-                        <div class="feature-card__desc">동시에 많은 메시지를 빠르게 처리할 수 있어야 합니다.</div>
+                        <div class="feature-card__desc">
+                            운영자가 시스템 내부 상태를 명확하게 파악할 수 있어야 합니다. <br>
+                            토픽별 적재량, consumer offset, 처리 지연 같은 핵심 지표를 노출합니다.
+                        </div>
                     </article>
                 </div>
             </section>
@@ -188,15 +202,15 @@
             <div class="footer__top">
                 <div class="footer__brand">
                     <span class="nav__brand-mark">
-                        <svg aria-hidden="true" viewBox="0 0 32 32">
-                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
-                                  x="3" y="6"/>
-                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
-                                  x="6" y="13.5"/>
-                            <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
-                        </svg>
+                        <svg aria-hidden="true" viewBox="0 0 463 123" xmlns="http://www.w3.org/2000/svg"><rect
+                                fill="#6DB33F" height="8" width="319"/><rect fill="#6DB33F" height="123" width="319"/><rect
+                                fill="#6DB33F" height="123" width="7.52802" x="311.472"/><path
+                                d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z"
+                                fill="#FFFFFF"/><path
+                                d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z"
+                                fill="#0B1416"/><path d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z"
+                                                      fill="#6DB33F"/></svg>
                     </span>
-                    <span>mmmq</span>
                 </div>
                 <ul class="footer__nav">
                     <li><a href="index.html">홈</a></li>
