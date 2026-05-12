@@ -54,6 +54,9 @@ class MethodExecution extends HandlerExecution {
     }
 
     private Object getParameter(Message message) {
+        if (message.content() == null) {
+            return null;
+        }
         try {
             return objectMapper.convertValue(message.content(), parameterType);
         } catch (IllegalArgumentException e) {
