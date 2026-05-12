@@ -1,5 +1,7 @@
 package org.mmmq.consumer;
 
+import org.mmmq.consumer.config.ConsumerMode;
+import org.mmmq.consumer.config.ConsumerProperties;
 import org.mmmq.consumer.handler.FrontHandler;
 import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.acknowledgement.ConsumerAcknowledgement;
@@ -17,16 +19,22 @@ public class Consumer {
     private static final Logger log = LoggerFactory.getLogger(Consumer.class);
 
     final FrontHandler frontHandler;
+    final ConsumerProperties consumerProperties;
 
-    public Consumer(FrontHandler frontHandler) {
+    public Consumer(FrontHandler frontHandler, ConsumerProperties consumerProperties) {
         this.frontHandler = frontHandler;
+        this.consumerProperties = consumerProperties;
     }
 
     @PostMapping("/mmmq/messages")
     public ResponseEntity<ConsumerAcknowledgement> receiveMessage(@RequestBody Message message) {
         ConsumerAcknowledgement acknowledgement = new ConsumerAcknowledgement(Acknowledgement.ACK);
         try {
-            frontHandler.handle(message);
+            if (consumerProperties.getMode() == ConsumerMode.SYNC) {
+                frontHandler.handleSync(message);
+            } else {
+                frontHandler.handleAsync(message);
+            }
         } catch (Exception e) {
             log.warn("Failed to receive message: {}", message, e);
             acknowledgement = new ConsumerAcknowledgement(Acknowledgement.NACK);
