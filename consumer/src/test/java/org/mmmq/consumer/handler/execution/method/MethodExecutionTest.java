@@ -31,11 +31,27 @@ class MethodExecutionTest {
         assertThat(target.calledCount).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("content가 null이면 핸들러에 null을 전달한다")
+    void executeWithNullContent() throws NoSuchMethodException {
+        TopicPattern pattern = new TopicPattern("topic");
+        Target target = new Target();
+        Method targetMethod = Target.class.getMethod("method", Dto.class);
+        MethodExecution methodExecution = new MethodExecution(pattern, target, targetMethod, objectMapper);
+
+        methodExecution.execute(new Message(new Topic("topic"), null));
+
+        assertThat(target.calledCount).isEqualTo(1);
+        assertThat(target.receivedDto).isNull();
+    }
+
     static class Target {
         int calledCount = 0;
+        Dto receivedDto;
 
         public void method(Dto dto) {
             calledCount++;
+            receivedDto = dto;
         }
     }
 
