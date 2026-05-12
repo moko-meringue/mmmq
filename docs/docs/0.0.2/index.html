@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1" name="viewport"/>
-    <title>문서 v0.0.2 · mmmq</title>
-    <meta content="mmmq v0.0.2 문서. producer · broker · consumer 세 모듈의 기능, 설정, 사용 예제를 모았습니다." name="description"/>
+    <title>문서 v0.0.2 | mmmq</title>
     <link crossorigin href="https://cdn.jsdelivr.net" rel="preconnect"/>
     <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
           rel="stylesheet"/>
@@ -20,13 +19,17 @@
         <nav class="nav">
             <a class="nav__brand" href="../../index.html">
           <span class="nav__brand-mark">
-            <svg aria-hidden="true" viewBox="0 0 32 32">
-              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3" y="6"/>
-              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6" y="13.5"/>
-              <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
-            </svg>
+            <svg aria-hidden="true" viewBox="0 0 463 123" xmlns="http://www.w3.org/2000/svg"><rect fill="#6DB33F"
+                                                                                                   height="8"
+                                                                                                   width="319"/><rect
+                    fill="#6DB33F" height="123" width="319"/><rect fill="#6DB33F" height="123" width="7.52802"
+                                                                   x="311.472"/><path
+                    d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z"
+                    fill="#FFFFFF"/><path
+                    d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z"
+                    fill="#0B1416"/><path d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z"
+                                          fill="#6DB33F"/></svg>
           </span>
-                <span>mmmq</span>
             </a>
             <ul class="nav__menu">
                 <li><a href="../../index.html">홈</a></li>
@@ -52,9 +55,12 @@
                             <circle cx="8" cy="10" fill="#6DB33F" r="2"/>
                             <circle cx="8" cy="16" fill="#6DB33F" r="2"/>
                             <circle cx="8" cy="22" fill="#6DB33F" r="2"/>
-                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="26" y1="10" y2="10"/>
-                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="26" y1="16" y2="16"/>
-                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="22" y1="22" y2="22"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="26" y1="10"
+                                  y2="10"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="26" y1="16"
+                                  y2="16"/>
+                            <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="13" x2="22" y1="22"
+                                  y2="22"/>
                         </svg>
                         <span class="sidenav__head-name">개요</span>
                     </div>
@@ -132,9 +138,8 @@
         <!-- Content -->
         <main class="docs-content">
             <section id="top">
-                <span class="t-eyebrow">DOCUMENTATION</span>
                 <div class="docs-hero__titlebar">
-                    <h1 class="t-h1">mmmq 문서</h1>
+                    <h1 class="t-h1">문서</h1>
                     <details class="version-dropdown">
                         <summary aria-haspopup="listbox" class="version-dropdown__trigger">
                             <span>v0.0.2</span>
@@ -159,11 +164,30 @@
 
             <section id="modules">
                 <h2>모듈</h2>
-                <p>mmmq는 세 개의 모듈로 구성되어 있습니다. 각 모듈은 독립적으로 의존성에 추가하여 사용할 수 있습니다.</p>
+                <p>각 모듈은 Spring Boot 애플리케이션에 의존성으로 추가하는 라이브러리입니다. core는 공통 타입을 제공하며, producer · broker · consumer는 각각의
+                    애플리케이션에 따로 추가해 사용합니다.</p>
 
-                <div class="modules-grid-3">
-                    <a class="mod-card" href="producer.html">
-                        <div class="mod-card__icon">
+                <div class="feature-grid">
+                    <a class="feature-card feature-card--module" href="core.html">
+                        <div class="feature-card__icon">
+                            <svg aria-hidden="true" viewBox="0 0 32 32">
+                                <rect fill="#6DB33F" height="11" rx="2" width="11" x="4" y="4"/>
+                                <rect fill="#EAF5DD" height="11" rx="2" stroke="#6DB33F" stroke-width="1.5" width="11"
+                                      x="17" y="4"/>
+                                <rect fill="#EAF5DD" height="11" rx="2" stroke="#6DB33F" stroke-width="1.5" width="11"
+                                      x="4" y="17"/>
+                                <rect fill="#6DB33F" height="11" rx="2" width="11" x="17" y="17"/>
+                            </svg>
+                        </div>
+                        <div class="feature-card__title">core</div>
+                        <hr class="feature-card__divider"/>
+                        <div class="feature-card__desc">
+                            모든 모듈이 공유하는 핵심 타입을 정의합니다. 메시지, 토픽, 응답 등 도메인 원시 타입을 모아둡니다.
+                        </div>
+                    </a>
+
+                    <a class="feature-card feature-card--module" href="producer.html">
+                        <div class="feature-card__icon">
                             <svg aria-hidden="true" viewBox="0 0 32 32">
                                 <rect fill="#6DB33F" height="12" rx="3" width="12" x="3" y="10"/>
                                 <path d="M16 16 L28 16" fill="none" stroke="#6DB33F" stroke-linecap="round"
@@ -172,15 +196,15 @@
                                       stroke-linejoin="round" stroke-width="2"/>
                             </svg>
                         </div>
-                        <div class="mod-card__name">producer</div>
-                        <div class="mod-card__desc">
-                            메시지를 보내는 클라이언트입니다. 빌더로 재시도 정책을 설정하고, ProduceException으로 실패를 알립니다.
+                        <div class="feature-card__title">producer</div>
+                        <hr class="feature-card__divider"/>
+                        <div class="feature-card__desc">
+                            메시지를 broker로 보내는 모듈입니다. 동기로 동작하며, 전달에 실패하면 자동으로 재시도합니다.
                         </div>
-                        <div class="mod-card__more">producer 문서 →</div>
                     </a>
 
-                    <a class="mod-card" href="broker.html">
-                        <div class="mod-card__icon">
+                    <a class="feature-card feature-card--module" href="broker.html">
+                        <div class="feature-card__icon">
                             <svg aria-hidden="true" viewBox="0 0 32 32">
                                 <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="8"
                                       y2="16"/>
@@ -203,15 +227,15 @@
                                 <circle cx="28" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
                             </svg>
                         </div>
-                        <div class="mod-card__name">broker</div>
-                        <div class="mod-card__desc">
-                            메시지를 디스크에 저장하고 Dispatcher로 라우팅합니다. TopicQueue, 세그먼트, 체크포인트를 포함합니다.
+                        <div class="feature-card__title">broker</div>
+                        <hr class="feature-card__divider"/>
+                        <div class="feature-card__desc">
+                            메시지를 디스크에 보관하고 consumer에게 전달하는 모듈입니다. 토픽 패턴에 따라 분배합니다.
                         </div>
-                        <div class="mod-card__more">broker 문서 →</div>
                     </a>
 
-                    <a class="mod-card" href="consumer.html">
-                        <div class="mod-card__icon">
+                    <a class="feature-card feature-card--module" href="consumer.html">
+                        <div class="feature-card__icon">
                             <svg aria-hidden="true" viewBox="0 0 32 32">
                                 <path d="M3 16 L15 16" fill="none" stroke="#6DB33F" stroke-linecap="round"
                                       stroke-width="2"/>
@@ -220,11 +244,11 @@
                                 <rect fill="#6DB33F" height="12" rx="3" width="12" x="17" y="10"/>
                             </svg>
                         </div>
-                        <div class="mod-card__name">consumer</div>
-                        <div class="mod-card__desc">
-                            @MMMQListener와 MMMQListener&lt;T&gt; 두 가지 방식으로 핸들러를 등록합니다. 패턴 매칭과 ACK/NACK는 자동입니다.
+                        <div class="feature-card__title">consumer</div>
+                        <hr class="feature-card__divider"/>
+                        <div class="feature-card__desc">
+                            broker가 보낸 메시지를 토픽 패턴이 맞는 핸들러로 라우팅하는 모듈입니다.
                         </div>
-                        <div class="mod-card__more">consumer 문서 →</div>
                     </a>
                 </div>
             </section>
@@ -247,15 +271,15 @@
             <div class="footer__top">
                 <div class="footer__brand">
                     <span class="nav__brand-mark">
-                        <svg aria-hidden="true" viewBox="0 0 32 32">
-                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
-                                  x="3" y="6"/>
-                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
-                                  x="6" y="13.5"/>
-                            <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
-                        </svg>
+                        <svg aria-hidden="true" viewBox="0 0 463 123" xmlns="http://www.w3.org/2000/svg"><rect
+                                fill="#6DB33F" height="8" width="319"/><rect fill="#6DB33F" height="123" width="319"/><rect
+                                fill="#6DB33F" height="123" width="7.52802" x="311.472"/><path
+                                d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z"
+                                fill="#FFFFFF"/><path
+                                d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z"
+                                fill="#0B1416"/><path d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z"
+                                                      fill="#6DB33F"/></svg>
                     </span>
-                    <span>mmmq</span>
                 </div>
                 <ul class="footer__nav">
                     <li><a href="../../index.html">홈</a></li>
