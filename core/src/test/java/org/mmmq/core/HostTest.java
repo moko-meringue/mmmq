@@ -1,30 +1,24 @@
 package org.mmmq.core;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.net.InetAddress;
-
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 class HostTest {
 
     @Test
-    @DisplayName("Host 생성 시 호스트 연결 검증을 진행한다.")
-    void convertAddressWhenCreateTest() {
-        assertThatCode(() -> new Host(WebProtocol.HTTP, "localhost", 8080) {
-            @Override
-            public boolean healthCheck(InetAddress host) {
-                return true;
-            }
-        }).doesNotThrowAnyException();
+    @DisplayName("유효한 호스트 이름으로 Host를 생성할 수 있다.")
+    void createWithValidHost() {
+        assertThatCode(() -> new Host(WebProtocol.HTTP, "localhost", 8080))
+                .doesNotThrowAnyException();
+    }
 
-        assertThatThrownBy(() -> new Host(WebProtocol.HTTP, "localhost", 8080) {
-            @Override
-            public boolean healthCheck(InetAddress host) {
-                return false;
-            }
-        }).isInstanceOf(IllegalArgumentException.class);
+    @Test
+    @DisplayName("알 수 없는 호스트 이름이면 IllegalArgumentException을 던진다.")
+    void createWithUnknownHost() {
+        assertThatThrownBy(() -> new Host(WebProtocol.HTTP, "invalid..host..name", 8080))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

@@ -14,7 +14,7 @@
 | 코드 식별자 (클래스 · 매개변수 · 필드 · 어노테이션) | 영문 + `<code>` | `Producer`, `maxRetryCount`, `@Bean` |
 | 메서드 (괄호 + 매개변수까지) | 영문 + `<code>` | `produce(Message)`, `getCause()` |
 | 코드 상수 · enum 값 | 영문 + `<code>` (항상 적용) | `ACK`, `NACK`, `HTTP` |
-| 엔드포인트 · 경로 · 파일명 | 영문 + `<code>` | `/messages`, `POST /messages`, `build.gradle` |
+| 엔드포인트 · 경로 · 파일명 | 영문 + `<code>` | `/mmmq/messages`, `POST /mmmq/messages`, `build.gradle` |
 | 라이브러리 · 외부 API 클래스 | 영문 + `<code>` (항상 적용) | `RestClient` |
 | 개념어 (일반 명사) | 한글 | 메시지, 토픽, 응답, 모듈, 발행, 요청, 본문 |
 | 외래어로 정착된 일반 명사 | 영문 그대로 (`<code>` 없이) | broker, Spring, Jackson, JSON |

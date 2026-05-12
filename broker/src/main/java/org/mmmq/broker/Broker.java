@@ -18,7 +18,7 @@ public class Broker {
         this.frontDispatcher = frontDispatcher;
     }
 
-    @PostMapping("/messages")
+    @PostMapping("/mmmq/messages")
     public ResponseEntity<BrokerAcknowledgement> postMessage(@RequestBody Message message) {
         Acknowledgement acknowledgement = frontDispatcher.dispatch(message);
         return ResponseEntity.ok(new BrokerAcknowledgement(acknowledgement));

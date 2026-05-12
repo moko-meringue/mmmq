@@ -56,7 +56,7 @@ class BrokerTest {
                 .body(objectMapper.writeValueAsString(message))
                 .contentType("application/json")
                 .when().log().all()
-                .post("/messages")
+                .post("/mmmq/messages")
                 .then().log().all()
                 .statusCode(200);
     }

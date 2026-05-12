@@ -20,13 +20,7 @@ public class Producer {
     final double backoffMultiplier;
 
     public Producer(Host host) {
-        this(
-                host,
-                DEFAULT_MAX_RETRY_COUNT,
-                DEFAULT_INITIAL_BACKOFF,
-                DEFAULT_MAX_BACKOFF,
-                DEFAULT_BACKOFF_MULTIPLIER
-        );
+        this(host, DEFAULT_MAX_RETRY_COUNT);
     }
 
     public Producer(Host host, int maxRetryCount) {
@@ -65,6 +59,8 @@ public class Producer {
     public void produce(Message message) {
         try {
             sendWithRetry(message);
+        } catch (ProduceException e) {
+            throw e;
         } catch (Exception e) {
             throw new ProduceException("Failed to produce message", e);
         }
@@ -89,6 +85,8 @@ public class Producer {
                 backoff = nextBackoff(backoff);
             }
         }
+
+        throw new ProduceException("Failed to produce message after " + (maxRetryCount + 1) + " attempts");
     }
 
     private void sleep(Duration backoff) {

@@ -118,7 +118,7 @@ class ProducerTest {
     }
 
     @Test
-    @DisplayName("최대 재시도 횟수까지 NAK이면 재시도를 중단한다")
+    @DisplayName("최대 재시도 횟수까지 NAK이면 ProduceException을 던진다")
     void produceExceedMaxRetry() {
         Host host = mock(Host.class);
         Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
@@ -137,7 +137,10 @@ class ProducerTest {
                     .initialBackoff(Duration.ofMillis(1))
                     .maxBackoff(Duration.ofMillis(1))
                     .build();
-            producer.produce(message);
+
+            assertThatThrownBy(() -> producer.produce(message))
+                    .isInstanceOf(ProduceException.class)
+                    .hasMessageContaining(String.valueOf(maxRetryCount + 1));
 
             Gateway gateway = mockedGateway.constructed().get(0);
             verify(gateway, times(maxRetryCount + 1)).send(message);

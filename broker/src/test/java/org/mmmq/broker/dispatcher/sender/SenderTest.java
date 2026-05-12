@@ -61,7 +61,7 @@ class SenderTest {
     void sendSuccessReturnTrueTest() throws JsonProcessingException {
         Sender sender = new Sender(restClient);
 
-        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
+        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/mmmq/messages"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(
                         objectMapper.writeValueAsString(new ConsumerAcknowledgement(Acknowledgement.ACK)),
@@ -79,7 +79,7 @@ class SenderTest {
     void sendNackReturnFalseAfterRetriesTest() throws JsonProcessingException {
         Sender sender = new Sender(restClient);
 
-        server.expect(ExpectedCount.twice(), requestTo(host.toUri() + "/messages"))
+        server.expect(ExpectedCount.twice(), requestTo(host.toUri() + "/mmmq/messages"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(
                         objectMapper.writeValueAsString(new ConsumerAcknowledgement(Acknowledgement.NACK)),
@@ -97,13 +97,13 @@ class SenderTest {
     void retryOnNackTest() throws JsonProcessingException {
         Sender sender = new Sender(restClient);
 
-        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
+        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/mmmq/messages"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(
                         objectMapper.writeValueAsString(new ConsumerAcknowledgement(Acknowledgement.NACK)),
                         MediaType.APPLICATION_JSON
                 ));
-        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
+        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/mmmq/messages"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(
                         objectMapper.writeValueAsString(new ConsumerAcknowledgement(Acknowledgement.ACK)),
@@ -121,7 +121,7 @@ class SenderTest {
     void throwExceptionOnCommunicationFailureTest() {
         Sender sender = new Sender(restClient);
 
-        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/messages"))
+        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/mmmq/messages"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
 
