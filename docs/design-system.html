@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1" name="viewport"/>
-    <title>MMMQ 디자인 시스템 v0.1</title>
-    <meta content="mmmq 공식 문서 사이트의 디자인 토큰과 컴포넌트 라이브러리." name="description"/>
+    <title>디자인 시스템 | mmmq</title>
     <link crossorigin href="https://cdn.jsdelivr.net" rel="preconnect"/>
     <link
             href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
@@ -210,7 +209,7 @@
 
         <div class="type-row">
             <div class="type-row__token">display</div>
-            <div class="type-row__sample t-display">메시지 큐를 처음부터.</div>
+            <div class="type-row__sample t-display">메시지 브로커를 처음부터.</div>
             <div class="type-row__meta">72 / 84 / 700</div>
         </div>
         <div class="type-row">
@@ -528,23 +527,24 @@
                     <span class="ds-component__num">5.5</span>
                     <h3 class="t-h3">Top Nav</h3>
                 </div>
-                <p class="ds-component__desc">로고는 좌측, 메뉴는 우측 끝. 메뉴 항목은 텍스트 주변 padding까지 확장된 hit 영역을 가지며, hover 시 brand-primary-soft 배경이 표시됩니다.</p>
+                <p class="ds-component__desc">로고는 좌측, 메뉴는 우측 끝. 메뉴 항목은 텍스트 주변 padding까지 확장된 hit 영역을 가지며, hover 시
+                    brand-primary-soft 배경이 표시됩니다.</p>
             </header>
             <div class="ds-component__demo ds-component__demo--column">
                 <nav class="nav">
                     <div class="nav__brand">
-                        <span class="nav__brand-mark"><svg aria-hidden="true" viewBox="0 0 32 32"><rect fill="#EAF5DD"
-                                                                                                        height="5"
-                                                                                                        rx="2.5"
-                                                                                                        stroke="#6DB33F"
-                                                                                                        stroke-width="1.5"
-                                                                                                        width="20"
-                                                                                                        x="3"
-                                                                                                        y="6"/><rect
-                                fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6"
-                                y="13.5"/><rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9"
-                                                y="21"/></svg></span>
-                        <span>mmmq</span>
+                        <span class="nav__brand-mark"><svg aria-hidden="true" viewBox="0 0 463 123"
+                                                           xmlns="http://www.w3.org/2000/svg"><rect fill="#6DB33F"
+                                                                                                    height="8"
+                                                                                                    width="319"/><rect
+                                fill="#6DB33F" height="123" width="319"/><rect fill="#6DB33F" height="123"
+                                                                               width="7.52802"
+                                                                               x="311.472"/><path
+                                d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z"
+                                fill="#FFFFFF"/><path
+                                d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z"
+                                fill="#0B1416"/><path d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z"
+                                                      fill="#6DB33F"/></svg></span>
                     </div>
                     <ul class="nav__menu">
                         <li><a class="is-active" href="#">홈</a></li>
@@ -557,18 +557,18 @@
                 </nav>
                 <nav class="nav nav--scrolled">
                     <div class="nav__brand">
-                        <span class="nav__brand-mark"><svg aria-hidden="true" viewBox="0 0 32 32"><rect fill="#EAF5DD"
-                                                                                                        height="5"
-                                                                                                        rx="2.5"
-                                                                                                        stroke="#6DB33F"
-                                                                                                        stroke-width="1.5"
-                                                                                                        width="20"
-                                                                                                        x="3"
-                                                                                                        y="6"/><rect
-                                fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6"
-                                y="13.5"/><rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9"
-                                                y="21"/></svg></span>
-                        <span>mmmq</span>
+                        <span class="nav__brand-mark"><svg aria-hidden="true" viewBox="0 0 463 123"
+                                                           xmlns="http://www.w3.org/2000/svg"><rect fill="#6DB33F"
+                                                                                                    height="8"
+                                                                                                    width="319"/><rect
+                                fill="#6DB33F" height="123" width="319"/><rect fill="#6DB33F" height="123"
+                                                                               width="7.52802"
+                                                                               x="311.472"/><path
+                                d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z"
+                                fill="#FFFFFF"/><path
+                                d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z"
+                                fill="#0B1416"/><path d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z"
+                                                      fill="#6DB33F"/></svg></span>
                     </div>
                     <ul class="nav__menu">
                         <li><a href="#">홈</a></li>
@@ -596,13 +596,19 @@
                     <div class="footer__top">
                         <div class="footer__brand">
                             <span class="nav__brand-mark">
-                                <svg aria-hidden="true" viewBox="0 0 32 32">
-                                    <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3" y="6"/>
-                                    <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6" y="13.5"/>
-                                    <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
-                                </svg>
+                                <svg aria-hidden="true" viewBox="0 0 463 123" xmlns="http://www.w3.org/2000/svg"><rect
+                                        fill="#6DB33F" height="8" width="319"/><rect fill="#6DB33F" height="123"
+                                                                                     width="319"/><rect fill="#6DB33F"
+                                                                                                        height="123"
+                                                                                                        width="7.52802"
+                                                                                                        x="311.472"/><path
+                                        d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z"
+                                        fill="#FFFFFF"/><path
+                                        d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z"
+                                        fill="#0B1416"/><path
+                                        d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z"
+                                        fill="#6DB33F"/></svg>
                             </span>
-                            <span>mmmq</span>
                         </div>
                         <ul class="footer__nav">
                             <li><a href="index.html">홈</a></li>
@@ -636,7 +642,7 @@
                             내구성 있는.<br/>
                             관찰 가능한.<br/>
                             이벤트 기반의.<br/>
-                            <span style="color:var(--brand-primary)">교육용 메시지 큐.</span>
+                            <span style="color:var(--brand-primary)">교육용 메시지 브로커.</span>
                         </h1>
                         <p class="hero__sub">
                             mmmq는 카프카·RabbitMQ를 대체하는 게 아니라, 메시지 broker의 동작 원리를
@@ -999,10 +1005,10 @@ producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Mess
                 <div class="demo-row">
                     <div class="demo-row__label">latest</div>
                     <details class="version-dropdown">
-                        <summary class="version-dropdown__trigger" aria-haspopup="listbox">
+                        <summary aria-haspopup="listbox" class="version-dropdown__trigger">
                             <span>v0.0.2</span>
                             <span class="version-dropdown__badge">latest</span>
-                            <svg class="version-dropdown__chev" aria-hidden="true" viewBox="0 0 12 12">
+                            <svg aria-hidden="true" class="version-dropdown__chev" viewBox="0 0 12 12">
                                 <path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor"
                                       stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
                             </svg>
@@ -1017,11 +1023,12 @@ producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Mess
                 <div class="demo-row">
                     <div class="demo-row__label">older</div>
                     <details class="version-dropdown">
-                        <summary class="version-dropdown__trigger" aria-haspopup="listbox">
+                        <summary aria-haspopup="listbox" class="version-dropdown__trigger">
                             <span>v0.0.1</span>
-                            <span aria-hidden="true" class="version-dropdown__badge version-dropdown__badge--placeholder"
-                                 >latest</span>
-                            <svg class="version-dropdown__chev" aria-hidden="true" viewBox="0 0 12 12">
+                            <span aria-hidden="true"
+                                  class="version-dropdown__badge version-dropdown__badge--placeholder"
+                            >latest</span>
+                            <svg aria-hidden="true" class="version-dropdown__chev" viewBox="0 0 12 12">
                                 <path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor"
                                       stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
                             </svg>
@@ -1172,76 +1179,75 @@ producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Mess
         <!-- ===== Master mark ===== -->
         <div class="logo-master">
             <div class="logo-master__main">
-                <svg aria-hidden="true" height="180" viewBox="0 0 32 32" width="180">
-                    <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3"
-                          y="6"/>
-                    <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6"
-                          y="13.5"/>
-                    <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                <svg aria-hidden="true" style="height: 96px; width: auto;" viewBox="0 0 463 123"
+                     xmlns="http://www.w3.org/2000/svg">
+                    <rect fill="#6DB33F" height="8" width="319"/>
+                    <rect fill="#6DB33F" height="123" width="319"/>
+                    <rect fill="#6DB33F" height="123" width="7.52802" x="311.472"/>
+                    <path d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z"
+                          fill="#FFFFFF"/>
+                    <path d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z"
+                          fill="#0B1416"/>
+                    <path d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z" fill="#6DB33F"/>
                 </svg>
             </div>
             <div class="logo-master__meta">
                 <span class="t-eyebrow" style="color: var(--ink-subtle); margin-bottom: 8px;">MASTER</span>
                 <div class="logo-master__title t-h3">mmmq</div>
                 <p class="logo-master__desc">
-                    세 메시지가 큐에 쌓이며 우측으로 흘러가는 형태. 가장 아래(현재 처리 중)는 솔리드,
-                    위 둘은 아웃라인. "MMM = 3개" 펀과 메시지 큐 본질을 동시에 전달.
+                    "MMM"이 박스(큐) 안에 담긴 세 메시지, "Q"는 박스 밖으로 나가는 한 건.
+                    우측 화살표는 흘러나가는 출력. 이름(MMMQ)과 시스템 구조가 한 그림에 박혀 있다.
                 </p>
 
                 <div class="logo-master__sizes">
                     <div class="logo-size">
-                        <div class="logo-size__box">
-                            <svg aria-hidden="true" height="64" viewBox="0 0 32 32" width="64">
-                                <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
-                                      x="3"
-                                      y="6"/>
-                                <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
-                                      x="6"
-                                      y="13.5"/>
-                                <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                        <div class="logo-size__box" style="width: auto; min-width: 84px; padding: 0 8px;">
+                            <svg aria-hidden="true" style="height: 40px; width: auto; display: block;"
+                                 viewBox="0 0 463 123" xmlns="http://www.w3.org/2000/svg">
+                                <rect fill="#6DB33F" height="8" width="319"/>
+                                <rect fill="#6DB33F" height="123" width="319"/>
+                                <rect fill="#6DB33F" height="123" width="7.52802" x="311.472"/>
+                                <path d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z"
+                                      fill="#FFFFFF"/>
+                                <path d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z"
+                                      fill="#0B1416"/>
+                                <path d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z" fill="#6DB33F"/>
                             </svg>
                         </div>
-                        <span>64 px</span>
+                        <span>40 px</span>
                     </div>
                     <div class="logo-size">
-                        <div class="logo-size__box">
-                            <svg aria-hidden="true" height="32" viewBox="0 0 32 32" width="32">
-                                <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
-                                      x="3"
-                                      y="6"/>
-                                <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
-                                      x="6"
-                                      y="13.5"/>
-                                <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                        <div class="logo-size__box" style="width: auto; min-width: 84px; padding: 0 8px;">
+                            <svg aria-hidden="true" style="height: 24px; width: auto; display: block;"
+                                 viewBox="0 0 463 123" xmlns="http://www.w3.org/2000/svg">
+                                <rect fill="#6DB33F" height="8" width="319"/>
+                                <rect fill="#6DB33F" height="123" width="319"/>
+                                <rect fill="#6DB33F" height="123" width="7.52802" x="311.472"/>
+                                <path d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z"
+                                      fill="#FFFFFF"/>
+                                <path d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z"
+                                      fill="#0B1416"/>
+                                <path d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z" fill="#6DB33F"/>
                             </svg>
                         </div>
-                        <span>32 px</span>
+                        <span>24 px</span>
                     </div>
                     <div class="logo-size">
-                        <div class="logo-size__box">
-                            <svg aria-hidden="true" height="16" viewBox="0 0 32 32" width="16">
-                                <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
-                                      x="3"
-                                      y="6"/>
-                                <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
-                                      x="6"
-                                      y="13.5"/>
-                                <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
+                        <div class="logo-size__box" style="width: auto; min-width: 84px; padding: 0 8px;">
+                            <svg aria-hidden="true" style="height: 12px; width: auto; display: block;"
+                                 viewBox="0 0 463 123" xmlns="http://www.w3.org/2000/svg">
+                                <rect fill="#6DB33F" height="8" width="319"/>
+                                <rect fill="#6DB33F" height="123" width="319"/>
+                                <rect fill="#6DB33F" height="123" width="7.52802" x="311.472"/>
+                                <path d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z"
+                                      fill="#FFFFFF"/>
+                                <path d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z"
+                                      fill="#0B1416"/>
+                                <path d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z" fill="#6DB33F"/>
                             </svg>
                         </div>
-                        <span>16 px</span>
+                        <span>12 px</span>
                     </div>
-                </div>
-
-                <div class="logo-master__lockup">
-                    <svg aria-hidden="true" height="40" viewBox="0 0 32 32" width="40">
-                        <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3"
-                              y="6"/>
-                        <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6"
-                              y="13.5"/>
-                        <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
-                    </svg>
-                    <span class="logo-master__wordmark">mmmq</span>
                 </div>
             </div>
         </div>
