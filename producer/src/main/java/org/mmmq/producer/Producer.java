@@ -71,10 +71,11 @@ public class Producer implements AutoCloseable {
     public void produce(Message message) {
         try {
             sendWithRetry(message);
+        } catch (ProduceException e) {
+            throw e;
         } catch (Exception e) {
             throw new ProduceException("Failed to produce message", e);
         }
-        throw new ProduceException("Failed to produce message after " + (maxRetryCount + 1) + " attempts");
     }
 
     public void produceAsync(Message message) {
@@ -145,6 +146,7 @@ public class Producer implements AutoCloseable {
                 return;
             }
         }
+        throw new ProduceException("Failed to produce message after " + (maxRetryCount + 1) + " attempts");
     }
 
     private void notifyWorker() {
