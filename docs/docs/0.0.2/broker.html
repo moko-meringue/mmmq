@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1" name="viewport"/>
-    <title>broker · mmmq 문서 v0.0.2</title>
-    <meta content="mmmq v0.0.2 broker 모듈. TopicQueue, 메시지 영속화 구조, 체크포인트, Dispatcher 등 broker의 동작 방식."
-          name="description"/>
+    <title>broker | mmmq</title>
     <link crossorigin href="https://cdn.jsdelivr.net" rel="preconnect"/>
     <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
           rel="stylesheet"/>
@@ -21,13 +19,8 @@
         <nav class="nav">
             <a class="nav__brand" href="../../index.html">
           <span class="nav__brand-mark">
-            <svg aria-hidden="true" viewBox="0 0 32 32">
-              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3" y="6"/>
-              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6" y="13.5"/>
-              <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
-            </svg>
+            <svg aria-hidden="true" viewBox="0 0 463 123" xmlns="http://www.w3.org/2000/svg"><rect width="319" height="8" fill="#6DB33F"/><rect width="319" height="123" fill="#6DB33F"/><rect x="311.472" width="7.52802" height="123" fill="#6DB33F"/><path d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z" fill="#FFFFFF"/><path d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z" fill="#0B1416"/><path d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z" fill="#6DB33F"/></svg>
           </span>
-                <span>mmmq</span>
             </a>
             <ul class="nav__menu">
                 <li><a href="../../index.html">홈</a></li>
@@ -159,7 +152,6 @@
                     </svg>
                 </div>
                 <div>
-                    <div class="module-hero__name">broker</div>
                     <h1 class="module-hero__title">Broker</h1>
                 </div>
             </div>
@@ -374,7 +366,8 @@
                 <h3 id="dispatcher-create">생성</h3>
                 <p>
                     <code>Dispatcher</code>는 Spring Bean으로 등록해 생성합니다. <br>
-                    하나의 <code>Dispatcher</code>는 이름, 메시지를 전송할 consumer 주소, 구독할 <code>TopicPattern</code> 목록을 생성자 인자로 받습니다.
+                    하나의 <code>Dispatcher</code>는 이름, 메시지를 전송할 consumer 주소, 구독할 <code>TopicPattern</code> 목록을 생성자 인자로
+                    받습니다.
                 </p>
 
                 <p><strong>Spring Bean 등록</strong></p>
@@ -610,7 +603,7 @@
                 </ul>
 
                 <p>
-                    <code>.mmm</code> 파일 끝에 메시지 entry가 append된 직후 fsync가 호출됩니다.
+                    세그먼트 끝에 메시지 entry가 append된 직후 fsync가 호출됩니다.
                 </p>
 
                 <h3 id="segment-chain">세그먼트 체인</h3>
@@ -701,7 +694,7 @@ byte    0          8         16         24</pre>
                 </p>
 
                 <p>
-                    메시지 entry가 <code>.mmm</code>에 저장된 후, broker는 해당 entry의 byte 주소를 <code>.idx</code>에 append하고 fsync를
+                    메시지 entry가 세그먼트에 저장된 후, broker는 해당 entry의 byte 주소를 <code>.idx</code>에 append하고 fsync를
                     호출합니다. <br>
                     fsync가 끝난 뒤에야 메시지가 <code>Dispatcher</code>에게 노출되며, producer에게 <code>ACK</code>를 반환할 수 있습니다.
                 </p>
@@ -861,8 +854,8 @@ byte    0          8         16         24</pre>
                 </p>
 
                 <p>
-                    broker는 활성 <code>.mmm</code> 파일 끝에 entry를 append하고, fsync를 호출합니다.<br>
-                    메시지가 세그먼트에 저장되었지만 아직 오프셋 인덱스에 등록되지 않았으므로, <code>Dispatcher</code>는 해당 메시지를 조회할 수 없습니다.
+                    broker는 활성 세그먼트 파일 끝에 entry를 append하고, fsync를 호출합니다.<br>
+                    메시지가 세그먼트에 저장되었지만 아직 오프셋 인덱스에 작성되지 않았으므로, <code>Dispatcher</code>는 해당 메시지를 조회할 수 없습니다.
                 </p>
 
                 <p>
@@ -911,7 +904,7 @@ byte    0          8         16         24</pre>
                     <li>
                         <strong>인덱스 조회</strong>: 세그먼트 B의 <code>.idx</code> 파일에서 상대 오프셋 <code>6</code>에 해당하는 슬롯을 읽습니다.
                         <br>
-                        인덱스 슬롯은 8 byte이므로 위치는 <code>6 × 8 = 48</code> byte이고, 이 위치에서 <code>.mmm</code> 안의 entry 시작 byte
+                        인덱스 슬롯은 8 byte이므로 위치는 <code>6 × 8 = 48</code> byte이고, 이 위치에서 세그먼트 안의 entry 시작 byte
                         주소(<code>412</code>)를 얻습니다.
                     </li>
                     <li>
@@ -1025,15 +1018,8 @@ byte    0          8         16         24</pre>
             <div class="footer__top">
                 <div class="footer__brand">
                     <span class="nav__brand-mark">
-                        <svg aria-hidden="true" viewBox="0 0 32 32">
-                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
-                                  x="3" y="6"/>
-                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20"
-                                  x="6" y="13.5"/>
-                            <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
-                        </svg>
+                        <svg aria-hidden="true" viewBox="0 0 463 123" xmlns="http://www.w3.org/2000/svg"><rect width="319" height="8" fill="#6DB33F"/><rect width="319" height="123" fill="#6DB33F"/><rect x="311.472" width="7.52802" height="123" fill="#6DB33F"/><path d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z" fill="#FFFFFF"/><path d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z" fill="#0B1416"/><path d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z" fill="#6DB33F"/></svg>
                     </span>
-                    <span>mmmq</span>
                 </div>
                 <ul class="footer__nav">
                     <li><a href="../../index.html">홈</a></li>
