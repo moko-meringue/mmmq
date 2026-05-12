@@ -1160,6 +1160,198 @@ producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Mess
             </div>
         </article>
 
+        <!-- 20. Feature Card -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.20</span>
+                    <h3 class="t-h3">Feature Card</h3>
+                </div>
+                <p class="ds-component__desc">
+                    랜딩과 about, 문서 랜딩에서 두루 쓰는 카드. 텍스트 전용 변형(<code>--text-only</code>)과
+                    아이콘이 있는 모듈 안내용 변형(<code>--module</code>)을 제공합니다. 모든 변형은
+                    <code>.feature-grid</code> 안에서 auto-fit 그리드로 배치됩니다.
+                </p>
+            </header>
+            <div class="ds-component__demo ds-component__demo--column">
+                <div class="feature-grid">
+                    <article class="feature-card feature-card--text-only">
+                        <div class="feature-card__title">전달 보장 <span class="feature-card__title-en">at-least-once</span></div>
+                        <hr class="feature-card__divider"/>
+                        <div class="feature-card__desc">
+                            발행된 메시지는 consumer에게 최소 한 번 전달됩니다. <br>
+                            같은 메시지가 두 번 이상 전달될 수 있으므로 멱등하게 구현합니다.
+                        </div>
+                    </article>
+                    <article class="feature-card feature-card--text-only">
+                        <div class="feature-card__title">패턴 라우팅 <span class="feature-card__title-en">Pattern Routing</span></div>
+                        <hr class="feature-card__divider"/>
+                        <div class="feature-card__desc">
+                            <code>order.*</code> 같은 토픽 패턴으로 메시지를 분배합니다. <br>
+                            매칭되는 모든 consumer에 fan-out 됩니다.
+                        </div>
+                    </article>
+                </div>
+
+                <div class="feature-grid">
+                    <a class="feature-card feature-card--module" href="#">
+                        <div class="feature-card__icon">
+                            <svg aria-hidden="true" viewBox="0 0 32 32">
+                                <rect fill="#6DB33F" height="11" rx="2" width="11" x="4" y="4"/>
+                                <rect fill="#EAF5DD" height="11" rx="2" stroke="#6DB33F" stroke-width="1.5" width="11" x="17" y="4"/>
+                                <rect fill="#EAF5DD" height="11" rx="2" stroke="#6DB33F" stroke-width="1.5" width="11" x="4" y="17"/>
+                                <rect fill="#6DB33F" height="11" rx="2" width="11" x="17" y="17"/>
+                            </svg>
+                        </div>
+                        <div class="feature-card__title">core</div>
+                        <hr class="feature-card__divider"/>
+                        <div class="feature-card__desc">
+                            모든 모듈이 공유하는 핵심 타입을 정의합니다.
+                        </div>
+                    </a>
+                    <a class="feature-card feature-card--module" href="#">
+                        <div class="feature-card__icon">
+                            <svg aria-hidden="true" viewBox="0 0 32 32">
+                                <rect fill="#6DB33F" height="12" rx="3" width="12" x="3" y="10"/>
+                            </svg>
+                        </div>
+                        <div class="feature-card__title">producer</div>
+                        <hr class="feature-card__divider"/>
+                        <div class="feature-card__desc">
+                            broker로 메시지를 발행하는 클라이언트 모듈입니다.
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </article>
+
+        <!-- 21. Landing Hero -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.21</span>
+                    <h3 class="t-h3">Landing Hero</h3>
+                </div>
+                <p class="ds-component__desc">
+                    랜딩과 보조 페이지에서 쓰는 hero. 홈은 좌측 텍스트 + 우측 비주얼 박스의 2열 그리드(<code>.landing-hero</code>)이고,
+                    about · quickstart · release 등은 1열 변형(<code>.landing-hero--single</code>)입니다.
+                </p>
+            </header>
+            <div class="ds-component__demo ds-component__demo--column">
+                <section class="landing-hero">
+                    <div>
+                        <h1 class="t-display">
+                            Spring Boot 기반, <br>
+                            내구성 있는, <br>
+                            메시지 브로커 <span class="brand-accent">mmmq</span>
+                        </h1>
+                        <p class="landing-hero__sub">
+                            좌측 카피와 함께 우측 visual에 다이어그램·일러스트를 놓는 표준 레이아웃입니다.
+                        </p>
+                        <div class="landing-hero__ctas">
+                            <a class="btn btn--primary btn--lg">시작하기</a>
+                            <a class="btn btn--secondary btn--lg">문서 →</a>
+                        </div>
+                    </div>
+                    <div class="landing-hero__visual" style="min-height: 240px; align-items: center; justify-content: center;">
+                        visual 영역
+                    </div>
+                </section>
+
+                <section class="landing-hero landing-hero--single">
+                    <div>
+                        <h1 class="t-h1">소개</h1>
+                        <p class="landing-hero__sub">
+                            1열 hero는 본문이 사이드 TOC와 같은 행에 들어가는 페이지에서 사용합니다.
+                        </p>
+                    </div>
+                </section>
+            </div>
+        </article>
+
+        <!-- 22. Flow Diagram -->
+        <article class="ds-component">
+            <header class="ds-component__head">
+                <div class="ds-component__name">
+                    <span class="ds-component__num">5.22</span>
+                    <h3 class="t-h3">Flow Diagram</h3>
+                </div>
+                <p class="ds-component__desc">
+                    홈 hero 우측에 들어가는 인터랙티브 메시지 흐름 다이어그램. 노드 클릭 또는 이전·다음 버튼으로 단계가 전환되고,
+                    활성 노드의 다음 link 위에서 도트 10개와 봉투가 무한 스트리밍으로 흐릅니다. 양 끝에서는 wrap-around로 순환합니다.
+                </p>
+            </header>
+            <div class="ds-component__demo" style="display:block; background: var(--brand-primary-soft); border: 1px solid var(--brand-primary); border-radius: var(--r-lg); padding: var(--s-5);">
+                <div class="flow-diagram" data-flow-diagram>
+                    <div class="flow-diagram__track">
+                        <button class="flow-diagram__node is-active" type="button" data-step="0">
+                            <span class="flow-diagram__node-mark">P</span>
+                            <span class="flow-diagram__node-label">Producer</span>
+                        </button>
+                        <span class="flow-diagram__link" data-link="0"><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__message" aria-hidden="true"><svg viewBox="0 0 24 18" xmlns="http://www.w3.org/2000/svg"><rect fill="#FFFFFF" height="16.5" rx="2" stroke="currentColor" stroke-width="1" width="22.5" x="0.75" y="0.75"/><path d="M1.5 2.5 L12 10 L22.5 2.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/></svg></span></span>
+                        <button class="flow-diagram__node" type="button" data-step="1">
+                            <span class="flow-diagram__node-mark">B</span>
+                            <span class="flow-diagram__node-label">Broker</span>
+                        </button>
+                        <span class="flow-diagram__link" data-link="1"><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span class="flow-diagram__message" aria-hidden="true"><svg viewBox="0 0 24 18" xmlns="http://www.w3.org/2000/svg"><rect fill="#FFFFFF" height="16.5" rx="2" stroke="currentColor" stroke-width="1" width="22.5" x="0.75" y="0.75"/><path d="M1.5 2.5 L12 10 L22.5 2.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/></svg></span></span>
+                        <button class="flow-diagram__node" type="button" data-step="2">
+                            <span class="flow-diagram__node-mark">C</span>
+                            <span class="flow-diagram__node-label">Consumer</span>
+                        </button>
+                    </div>
+
+                    <div class="flow-diagram__stage">
+                        <article class="flow-diagram__panel is-active" data-panel="0">
+                            <div class="flow-diagram__panel-head">
+                                <span class="flow-diagram__panel-step">STEP 01</span>
+                                <h3 class="flow-diagram__panel-title">메시지 발행</h3>
+                            </div>
+                            <p class="flow-diagram__panel-desc">
+                                producer가 토픽 이름과 함께 메시지를 broker로 보냅니다.
+                                broker의 응답을 받으면 발행이 완료됩니다.
+                            </p>
+                        </article>
+                        <article class="flow-diagram__panel" data-panel="1">
+                            <div class="flow-diagram__panel-head">
+                                <span class="flow-diagram__panel-step">STEP 02</span>
+                                <h3 class="flow-diagram__panel-title">보관과 라우팅</h3>
+                            </div>
+                            <p class="flow-diagram__panel-desc">
+                                broker는 메시지를 디스크에 기록한 뒤 매칭되는 consumer로 전달합니다.
+                            </p>
+                        </article>
+                        <article class="flow-diagram__panel" data-panel="2">
+                            <div class="flow-diagram__panel-head">
+                                <span class="flow-diagram__panel-step">STEP 03</span>
+                                <h3 class="flow-diagram__panel-title">수신과 처리</h3>
+                            </div>
+                            <p class="flow-diagram__panel-desc">
+                                consumer는 매칭된 메시지를 핸들러로 받아 처리합니다.
+                            </p>
+                        </article>
+                    </div>
+
+                    <div class="flow-diagram__controls">
+                        <button class="flow-diagram__btn" type="button" data-action="prev" aria-label="이전 단계">
+                            <svg viewBox="0 0 16 16" aria-hidden="true">
+                                <path d="M10 3 L4 8 L10 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <span class="flow-diagram__progress" aria-live="polite">
+                            <span class="flow-diagram__progress-current">01</span>
+                            <span class="flow-diagram__progress-sep">/</span>
+                            <span class="flow-diagram__progress-total">03</span>
+                        </span>
+                        <button class="flow-diagram__btn flow-diagram__btn--primary" type="button" data-action="next" aria-label="다음 단계">
+                            <svg viewBox="0 0 16 16" aria-hidden="true">
+                                <path d="M6 3 L12 8 L6 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </article>
+
     </section>
 
     <!-- ==================================================
