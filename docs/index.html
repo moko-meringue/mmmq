@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1" name="viewport"/>
-    <title>mmmq · 신뢰성·내구성·처리량을 갖춘 메시지 broker</title>
-    <meta content="mmmq는 디스크에 안전하게 영속되고, 토픽당 단일 라이터로 순서가 지켜지며, 잠금 없는 읽기로 처리량까지 챙긴 메시지 broker입니다." name="description"/>
+    <title>mmmq</title>
     <link crossorigin href="https://cdn.jsdelivr.net" rel="preconnect"/>
     <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
           rel="stylesheet"/>
@@ -22,13 +21,17 @@
         <nav class="nav">
             <a class="nav__brand" href="index.html">
           <span class="nav__brand-mark">
-            <svg aria-hidden="true" viewBox="0 0 32 32">
-              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3" y="6"/>
-              <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6" y="13.5"/>
-              <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
-            </svg>
+            <svg aria-hidden="true" viewBox="0 0 463 123" xmlns="http://www.w3.org/2000/svg"><rect fill="#6DB33F"
+                                                                                                   height="8"
+                                                                                                   width="319"/><rect
+                    fill="#6DB33F" height="123" width="319"/><rect fill="#6DB33F" height="123" width="7.52802"
+                                                                   x="311.472"/><path
+                    d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z"
+                    fill="#FFFFFF"/><path
+                    d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z"
+                    fill="#0B1416"/><path d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z"
+                                          fill="#6DB33F"/></svg>
           </span>
-                <span>mmmq</span>
             </a>
             <ul class="nav__menu">
                 <li><a class="is-active" href="index.html">홈</a></li>
@@ -47,237 +50,253 @@
     <section class="landing-hero">
         <div>
             <h1 class="t-display">
-                신뢰할 수 있는<br/>
-                <span class="brand-accent">메시지 broker</span>를 만듭니다.
+                Spring Boot 기반, <br>
+                내구성 있는, <br>
+                메시지 브로커 <br>
+                <span class="brand-accent">mmmq</span>
             </h1>
             <p class="landing-hero__sub">
-                디스크에 안전하게 기록되고, 토픽당 단일 라이터로 순서가 지켜지며,
-                잠금 없는 읽기로 처리량까지 챙긴 메시지 broker입니다.
+                Spring Boot 환경에서 간편하게 구축할 수 있습니다. <br>
+                디스크 쓰기를 통해 메시지의 내구성을 보장합니다. <br>
+                토픽 패턴 기반의 pub-sub 구조로, fan-out 방식으로 메시지를 분배합니다.
             </p>
             <div class="landing-hero__ctas">
                 <a class="btn btn--primary btn--lg" href="quickstart.html">시작하기</a>
-                <a class="btn btn--secondary btn--lg" href="docs/0.0.2/index.html">문서 보기 →</a>
+                <a class="btn btn--secondary btn--lg" href="docs/0.0.2/index.html">문서 →</a>
             </div>
         </div>
+
         <div class="landing-hero__visual">
-            <svg aria-hidden="true" viewBox="0 0 200 160">
-                <circle cx="22" cy="36" fill="#FFFFFF" r="12" stroke="#6DB33F" stroke-width="1.5"/>
-                <circle cx="22" cy="80" fill="#FFFFFF" r="12" stroke="#6DB33F" stroke-width="1.5"/>
-                <circle cx="22" cy="124" fill="#FFFFFF" r="12" stroke="#6DB33F" stroke-width="1.5"/>
-                <text fill="#6DB33F" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700"
-                      text-anchor="middle" x="22" y="40">P
-                </text>
-                <text fill="#6DB33F" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700"
-                      text-anchor="middle" x="22" y="84">P
-                </text>
-                <text fill="#6DB33F" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700"
-                      text-anchor="middle" x="22" y="128">P
-                </text>
-                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="34" x2="88" y1="36" y2="80"/>
-                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="34" x2="88" y1="80" y2="80"/>
-                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="34" x2="88" y1="124" y2="80"/>
-                <circle cx="100" cy="80" fill="#6DB33F" r="22"/>
-                <text fill="#FFFFFF" font-family="Pretendard, sans-serif" font-size="11" font-weight="700"
-                      text-anchor="middle" x="100" y="84">broker
-                </text>
-                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="112" x2="166" y1="80" y2="36"/>
-                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="112" x2="166" y1="80" y2="80"/>
-                <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="112" x2="166" y1="80" y2="124"/>
-                <circle cx="178" cy="36" fill="#FFFFFF" r="12" stroke="#6DB33F" stroke-width="1.5"/>
-                <circle cx="178" cy="80" fill="#FFFFFF" r="12" stroke="#6DB33F" stroke-width="1.5"/>
-                <circle cx="178" cy="124" fill="#FFFFFF" r="12" stroke="#6DB33F" stroke-width="1.5"/>
-                <text fill="#6DB33F" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700"
-                      text-anchor="middle" x="178" y="40">C
-                </text>
-                <text fill="#6DB33F" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700"
-                      text-anchor="middle" x="178" y="84">C
-                </text>
-                <text fill="#6DB33F" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700"
-                      text-anchor="middle" x="178" y="128">C
-                </text>
-            </svg>
-        </div>
-    </section>
-
-    <!-- ==================================================
-         Pillars — Why mmmq
-         ================================================== -->
-    <section class="landing-section" id="pillars">
-        <div class="landing-section__head">
-            <span class="t-eyebrow">PILLARS</span>
-            <h2 class="t-h2">왜 mmmq인가</h2>
-            <p>신뢰할 수 있는 메시징을 위한 네 가지 기준을 두고 만들어 갑니다.</p>
-        </div>
-
-        <div class="pillar-grid">
-            <article class="pillar-card">
-                <div class="pillar-card__num">01 · RELIABILITY</div>
-                <h3 class="pillar-card__title">신뢰성</h3>
-                <p class="pillar-card__desc">메시지가 손실되지 않고, 잘못된 consumer에게 전송되지 않습니다.</p>
-            </article>
-
-            <article class="pillar-card">
-                <div class="pillar-card__num">02 · DURABILITY</div>
-                <h3 class="pillar-card__title">내구성</h3>
-                <p class="pillar-card__desc">예기치 못한 장애와 재시작 후에도 메시지는 살아남습니다.</p>
-            </article>
-
-            <article class="pillar-card">
-                <div class="pillar-card__num">03 · PERSISTENCE</div>
-                <h3 class="pillar-card__title">영속화</h3>
-                <p class="pillar-card__desc">디스크에 안전하게 기록되어 사라지지 않습니다.</p>
-            </article>
-
-            <article class="pillar-card">
-                <div class="pillar-card__num">04 · THROUGHPUT</div>
-                <h3 class="pillar-card__title">높은 처리량</h3>
-                <p class="pillar-card__desc">안정성을 잃지 않으면서 빠르게 흐릅니다.</p>
-            </article>
-        </div>
-    </section>
-
-    <!-- ==================================================
-         At a glance — code preview + steps
-         ================================================== -->
-    <section class="landing-section" id="preview">
-        <div class="landing-section__head">
-            <span class="t-eyebrow">AT A GLANCE</span>
-            <h2 class="t-h2">간단하게 시작합니다</h2>
-            <p>의존성을 추가하고 빈을 등록한 뒤, 한 번의 메서드 호출로 메시지를 발행합니다.</p>
-        </div>
-
-        <div class="preview-grid">
-            <div class="code-block">
-                <div class="code-block__head">
-                    <span class="code-block__lang">Java</span>
-                    <button class="code-block__copy">복사</button>
+            <div class="flow-diagram" data-flow-diagram>
+                <div class="flow-diagram__track">
+                    <button class="flow-diagram__node is-active" data-step="0" type="button">
+                        <span class="flow-diagram__node-mark">P</span>
+                        <span class="flow-diagram__node-label">Producer</span>
+                    </button>
+                    <span class="flow-diagram__link" data-link="0"><span class="flow-diagram__dot"></span><span
+                            class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span
+                            class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span
+                            class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span
+                            class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span
+                            class="flow-diagram__dot"></span><span aria-hidden="true" class="flow-diagram__message"><svg
+                            viewBox="0 0 24 18" xmlns="http://www.w3.org/2000/svg"><rect fill="#FFFFFF" height="16.5"
+                                                                                         rx="2"
+                                                                                         stroke="currentColor"
+                                                                                         stroke-width="1"
+                                                                                         width="22.5"
+                                                                                         x="0.75"
+                                                                                         y="0.75"/><path
+                            d="M1.5 2.5 L12 10 L22.5 2.5" fill="none" stroke="currentColor" stroke-linecap="round"
+                            stroke-linejoin="round" stroke-width="1"/></svg></span></span>
+                    <button class="flow-diagram__node" data-step="1" type="button">
+                        <span class="flow-diagram__node-mark">B</span>
+                        <span class="flow-diagram__node-label">Broker</span>
+                    </button>
+                    <span class="flow-diagram__link" data-link="1"><span class="flow-diagram__dot"></span><span
+                            class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span
+                            class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span
+                            class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span
+                            class="flow-diagram__dot"></span><span class="flow-diagram__dot"></span><span
+                            class="flow-diagram__dot"></span><span aria-hidden="true" class="flow-diagram__message"><svg
+                            viewBox="0 0 24 18" xmlns="http://www.w3.org/2000/svg"><rect fill="#FFFFFF" height="16.5"
+                                                                                         rx="2"
+                                                                                         stroke="currentColor"
+                                                                                         stroke-width="1"
+                                                                                         width="22.5"
+                                                                                         x="0.75"
+                                                                                         y="0.75"/><path
+                            d="M1.5 2.5 L12 10 L22.5 2.5" fill="none" stroke="currentColor" stroke-linecap="round"
+                            stroke-linejoin="round" stroke-width="1"/></svg></span></span>
+                    <button class="flow-diagram__node" data-step="2" type="button">
+                        <span class="flow-diagram__node-mark">C</span>
+                        <span class="flow-diagram__node-label">Consumer</span>
+                    </button>
                 </div>
-                <pre><span class="tk-key">@Service</span>
-<span class="tk-key">public class</span> <span class="tk-fn">OrderEventPublisher</span> {
 
-    <span class="tk-key">private final</span> Producer producer;
+                <div class="flow-diagram__stage">
+                    <article class="flow-diagram__panel is-active" data-panel="0">
+                        <div class="flow-diagram__panel-head">
+                            <span class="flow-diagram__panel-step">STEP 01</span>
+                            <h3 class="flow-diagram__panel-title">메시지 발행</h3>
+                        </div>
+                        <p class="flow-diagram__panel-desc">
+                            producer는 토픽 이름과 함께 메시지를 broker로 보냅니다.
+                            broker의 응답을 받으면 발행이 완료되며, consumer의 처리를 기다리지 않습니다.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block__head">
+                                <span class="code-block__lang">Producer</span>
+                                <button class="code-block__copy" type="button">복사</button>
+                            </div>
+                            <pre>Message message = <span class="tk-key">new</span> Message(
+    <span class="tk-key">new</span> Topic(<span class="tk-str">"order.created"</span>),
+    order
+);
+producer.<span class="tk-fn">produce</span>(message);</pre>
+                        </div>
+                    </article>
 
-    <span class="tk-key">public</span> <span class="tk-fn">OrderEventPublisher</span>(Producer producer) {
-        <span class="tk-key">this</span>.producer = producer;
-    }
+                    <article class="flow-diagram__panel" data-panel="1">
+                        <div class="flow-diagram__panel-head">
+                            <span class="flow-diagram__panel-step">STEP 02</span>
+                            <h3 class="flow-diagram__panel-title">보관과 라우팅</h3>
+                        </div>
+                        <p class="flow-diagram__panel-desc">
+                            broker는 수신한 메시지를 디스크에 기록한 뒤 producer에게 응답합니다.
+                            이후 토픽 패턴이 매칭되는 모든 consumer로 메시지를 전달합니다.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block__head">
+                                <span class="code-block__lang">Broker</span>
+                                <button class="code-block__copy" type="button">복사</button>
+                            </div>
+                            <pre><span class="tk-key">new</span> Dispatcher(
+    <span class="tk-str">"order-dispatcher"</span>,
+    consumerHost,
+    List.<span class="tk-fn">of</span>(<span class="tk-key">new</span> Pattern(<span class="tk-str">"order.*"</span>))
+);</pre>
+                        </div>
+                    </article>
 
-    <span class="tk-key">public void</span> <span class="tk-fn">publish</span>(<span class="tk-key">long</span> orderId) {
-        producer.<span class="tk-fn">produce</span>(<span class="tk-key">new</span> Message(
-            <span class="tk-key">new</span> Topic(<span class="tk-str">"order.created"</span>),
-            Map.<span class="tk-fn">of</span>(<span class="tk-str">"id"</span>, orderId)
-        ));
-    }
+                    <article class="flow-diagram__panel" data-panel="2">
+                        <div class="flow-diagram__panel-head">
+                            <span class="flow-diagram__panel-step">STEP 03</span>
+                            <h3 class="flow-diagram__panel-title">수신과 처리</h3>
+                        </div>
+                        <p class="flow-diagram__panel-desc">
+                            consumer는 구독하는 패턴에 매칭된 메시지를 핸들러로 받아 처리합니다.
+                            처리 속도는 consumer의 상황에 맞춰 진행됩니다.
+                        </p>
+                        <div class="code-block">
+                            <div class="code-block__head">
+                                <span class="code-block__lang">Consumer</span>
+                                <button class="code-block__copy" type="button">복사</button>
+                            </div>
+                            <pre><span class="tk-key">@MMMQListener</span>(<span class="tk-str">"order.*"</span>)
+<span class="tk-key">public void</span> <span class="tk-fn">handle</span>(Order order) {
+    <span class="tk-com">// 처리 로직</span>
 }</pre>
-            </div>
+                        </div>
+                    </article>
+                </div>
 
-            <ol class="preview-steps">
-                <li>
-                    <span class="preview-steps__num">1</span>
-                    <div class="preview-steps__body">
-                        JitPack 저장소와 <code>producer</code> 의존성을 추가합니다.
-                    </div>
-                </li>
-                <li>
-                    <span class="preview-steps__num">2</span>
-                    <div class="preview-steps__body">
-                        <code>@Configuration</code>에서 <code>Producer</code> 빈을 등록합니다.
-                    </div>
-                </li>
-                <li>
-                    <span class="preview-steps__num">3</span>
-                    <div class="preview-steps__body">
-                        주입받은 <code>Producer</code>의 <code>produce(Message)</code>를 호출하면 끝입니다.
-                    </div>
-                </li>
-                <li>
-                    <span class="preview-steps__num">4</span>
-                    <div class="preview-steps__body">
-                        실패 시에는 <code>ProduceException</code>이 던져집니다.
-                    </div>
-                </li>
-            </ol>
+                <div class="flow-diagram__controls">
+                    <button aria-label="이전 단계" class="flow-diagram__btn" data-action="prev" type="button">
+                        <svg aria-hidden="true" viewBox="0 0 16 16">
+                            <path d="M10 3 L4 8 L10 13" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-linejoin="round" stroke-width="1.6"/>
+                        </svg>
+                    </button>
+                    <span aria-live="polite" class="flow-diagram__progress">
+                        <span class="flow-diagram__progress-current">01</span>
+                        <span class="flow-diagram__progress-sep">/</span>
+                        <span class="flow-diagram__progress-total">03</span>
+                    </span>
+                    <button aria-label="다음 단계" class="flow-diagram__btn flow-diagram__btn--primary" data-action="next"
+                            type="button">
+                        <svg aria-hidden="true" viewBox="0 0 16 16">
+                            <path d="M6 3 L12 8 L6 13" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-linejoin="round" stroke-width="1.6"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
         </div>
     </section>
 
     <!-- ==================================================
-         Modules — 3 modules at a glance
+         Why mmmq
          ================================================== -->
-    <section class="landing-section" id="modules">
+    <section class="landing-section" id="why-mmmq">
         <div class="landing-section__head">
-            <span class="t-eyebrow">MODULES</span>
-            <h2 class="t-h2">세 모듈로 구성됩니다</h2>
-            <p>각 모듈은 독립적으로 의존성에 추가해 사용합니다.</p>
+            <span class="t-eyebrow">WHY MMMQ</span>
+            <h2 class="t-h2">왜 mmmq인가?</h2>
+            <p>Spring Boot 환경에 메시지 브로커를 도입할 때 mmmq가 제공하는 이점입니다.</p>
         </div>
 
-        <div class="modules-grid-3">
-            <a class="mod-card" href="docs/0.0.2/producer.html">
-                <div class="mod-card__icon">
-                    <svg aria-hidden="true" viewBox="0 0 32 32">
-                        <rect fill="#6DB33F" height="12" rx="3" width="12" x="3" y="10"/>
-                        <path d="M16 16 L28 16" fill="none" stroke="#6DB33F" stroke-linecap="round" stroke-width="2"/>
-                        <path d="M23 11 L29 16 L23 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
-                              stroke-linejoin="round" stroke-width="2"/>
-                    </svg>
+        <div class="feature-grid">
+            <article class="feature-card feature-card--text-only">
+                <div class="feature-card__title">외부 인프라 없이 빠른 시작 <span class="feature-card__title-en">Zero Infrastructure</span>
                 </div>
-                <div class="mod-card__name">producer</div>
-                <div class="mod-card__desc">broker로 메시지를 보내는 클라이언트. 빌더로 재시도 정책을 설정하고, 실패 시 ProduceException을 던집니다.</div>
-                <div class="mod-card__more">producer 문서 →</div>
-            </a>
+                <hr class="feature-card__divider"/>
+                <div class="feature-card__desc">
+                    메시지 브로커를 위한 별도 서버를 구축하거나 운영할 필요가 없습니다. <br>
+                    producer, broker, consumer를 각자의 Spring Boot 애플리케이션에서 바로 사용할 수 있습니다.
+                </div>
+            </article>
 
-            <a class="mod-card" href="docs/0.0.2/broker.html">
-                <div class="mod-card__icon">
-                    <svg aria-hidden="true" viewBox="0 0 32 32">
-                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="8" y2="16"/>
-                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="16"
-                              y2="16"/>
-                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="4" x2="16" y1="24"
-                              y2="16"/>
-                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16" y2="8"/>
-                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
-                              y2="16"/>
-                        <line stroke="#6DB33F" stroke-linecap="round" stroke-width="1.5" x1="16" x2="28" y1="16"
-                              y2="24"/>
-                        <circle cx="4" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
-                        <circle cx="4" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
-                        <circle cx="4" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
-                        <circle cx="16" cy="16" fill="#6DB33F" r="4.5"/>
-                        <circle cx="28" cy="8" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
-                        <circle cx="28" cy="16" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
-                        <circle cx="28" cy="24" fill="#EAF5DD" r="2.5" stroke="#6DB33F" stroke-width="1.5"/>
-                    </svg>
+            <article class="feature-card feature-card--text-only">
+                <div class="feature-card__title">사용하기 쉬운 API <span class="feature-card__title-en">Easy to Use</span>
                 </div>
-                <div class="mod-card__name">broker</div>
-                <div class="mod-card__desc">메시지를 디스크에 저장하고 Dispatcher로 라우팅합니다. TopicQueue, 세그먼트, 체크포인트를 포함합니다.</div>
-                <div class="mod-card__more">broker 문서 →</div>
-            </a>
+                <hr class="feature-card__divider"/>
+                <div class="feature-card__desc">
+                    <code>@MMMQListener</code> 어노테이션만 사용하면 메시지를 처리할 수 있습니다. <br>
+                    토픽 패턴에 매칭되는 메시지가 인자 타입에 맞춰 핸들러로 전달됩니다.
+                </div>
+            </article>
 
-            <a class="mod-card" href="docs/0.0.2/consumer.html">
-                <div class="mod-card__icon">
-                    <svg aria-hidden="true" viewBox="0 0 32 32">
-                        <path d="M3 16 L15 16" fill="none" stroke="#6DB33F" stroke-linecap="round" stroke-width="2"/>
-                        <path d="M10 11 L16 16 L10 21" fill="none" stroke="#6DB33F" stroke-linecap="round"
-                              stroke-linejoin="round" stroke-width="2"/>
-                        <rect fill="#6DB33F" height="12" rx="3" width="12" x="17" y="10"/>
-                    </svg>
+            <article class="feature-card feature-card--text-only">
+                <div class="feature-card__title">높은 내구성 <span class="feature-card__title-en">Durability</span></div>
+                <hr class="feature-card__divider"/>
+                <div class="feature-card__desc">
+                    broker는 수신한 메시지를 디스크에 기록한 후 producer에게 응답합니다. <br>
+                    응답이 완료된 메시지는 예기치 못한 장애나 재시작 상황에서도 유실되지 않습니다.
                 </div>
-                <div class="mod-card__name">consumer</div>
-                <div class="mod-card__desc">@MMMQListener와 MMMQListener&lt;T&gt; 두 가지 방식으로 핸들러를 등록합니다. 패턴 매칭과 ACK/NACK는 자동입니다.</div>
-                <div class="mod-card__more">consumer 문서 →</div>
-            </a>
+            </article>
         </div>
     </section>
 
     <!-- ==================================================
-         Closing CTA
+         What it is — Identity & Philosophy
          ================================================== -->
-    <section class="landing-section" id="get-started">
-        <div class="cta-band">
-            <h2 class="cta-band__title">5분이면 띄울 수 있습니다.</h2>
-            <p class="cta-band__sub">가장 짧은 가이드를 따라가면, 첫 메시지가 broker를 거쳐 consumer까지 흐르는 모습을 직접 확인할 수 있습니다.</p>
-            <div class="cta-band__actions">
-                <a class="btn btn--primary btn--lg" href="quickstart.html">시작하기</a>
-                <a class="btn btn--secondary btn--lg" href="about.html">mmmq에 대해 →</a>
-            </div>
+    <section class="landing-section" id="what-it-is">
+        <div class="landing-section__head">
+            <span class="t-eyebrow">CORE BEHAVIOR</span>
+            <h2 class="t-h2">특징</h2>
+            <p>
+                mmmq의 동작을 정의하는 네 가지 특성입니다.
+            </p>
+        </div>
+
+        <div class="feature-grid">
+            <article class="feature-card feature-card--text-only">
+                <div class="feature-card__title">발행과 구독 <span class="feature-card__title-en">Pub-Sub</span></div>
+                <hr class="feature-card__divider"/>
+                <div class="feature-card__desc">
+                    producer가 발행한 메시지는 토픽을 구독하는 모든 consumer에게 전달됩니다. <br>
+                    broker가 직접 consumer에게 메시지를 전송하는 push 모델로 동작합니다.
+                </div>
+            </article>
+
+            <article class="feature-card feature-card--text-only">
+                <div class="feature-card__title">최소 한 번 전달 <span class="feature-card__title-en">at-least-once</span>
+                </div>
+                <hr class="feature-card__divider"/>
+                <div class="feature-card__desc">
+                    발행된 메시지는 consumer에게 최소 한 번 전달됩니다. <br>
+                    같은 메시지가 두 번 이상 전달될 수 있으므로, 소비 로직은 멱등하게 구현해야 합니다.
+                </div>
+            </article>
+
+            <article class="feature-card feature-card--text-only">
+                <div class="feature-card__title">메시지 영속화 <span class="feature-card__title-en">Persistence</span></div>
+                <hr class="feature-card__divider"/>
+                <div class="feature-card__desc">
+                    발행된 메시지는 broker에 보존되어, 재시작 후에도 다시 소비할 수 있습니다. <br>
+                    새로 추가된 consumer도 토픽을 리플레이할 수 있습니다.
+                </div>
+            </article>
+
+            <article class="feature-card feature-card--text-only">
+                <div class="feature-card__title">패턴 기반 라우팅 <span
+                        class="feature-card__title-en">Pattern-Based Routing</span>
+                </div>
+                <hr class="feature-card__divider"/>
+                <div class="feature-card__desc">
+                    <code>order.*</code>, <code>alert.**</code> 같은 토픽 패턴으로 메시지를 분배합니다. <br>
+                    메시지는 토픽을 기준으로 fan-out 방식으로 분배되며, 매칭되는 모든 consumer가 동일한 메시지를 수신합니다.
+                </div>
+            </article>
         </div>
     </section>
 
@@ -289,13 +308,15 @@
             <div class="footer__top">
                 <div class="footer__brand">
                     <span class="nav__brand-mark">
-                        <svg aria-hidden="true" viewBox="0 0 32 32">
-                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="3" y="6"/>
-                            <rect fill="#EAF5DD" height="5" rx="2.5" stroke="#6DB33F" stroke-width="1.5" width="20" x="6" y="13.5"/>
-                            <rect fill="#6DB33F" height="5" rx="2.5" width="20" x="9" y="21"/>
-                        </svg>
+                        <svg aria-hidden="true" viewBox="0 0 463 123" xmlns="http://www.w3.org/2000/svg"><rect
+                                fill="#6DB33F" height="8" width="319"/><rect fill="#6DB33F" height="123" width="319"/><rect
+                                fill="#6DB33F" height="123" width="7.52802" x="311.472"/><path
+                                d="M11.7188 28.125H29.1562L48 74.1562H48.75L67.5938 28.125H85.0312V96H71.3438V51.5625H70.7812L53.0625 95.7188H43.6875L25.9688 51.375H25.4062V96H11.7188V28.125ZM118.594 28.125H136.031L154.875 74.1562H155.625L174.469 28.125H191.906V96H178.219V51.5625H177.656L159.938 95.7188H150.562L132.844 51.375H132.281V96H118.594V28.125ZM225.469 28.125H242.906L261.75 74.1562H262.5L281.344 28.125H298.781V96H285.094V51.5625H284.531L266.812 95.7188H257.438L239.719 51.375H239.156V96H225.469V28.125Z"
+                                fill="#FFFFFF"/><path
+                                d="M357.844 72.4688H369.938L375.094 79.125C378.328 75.3281 380.156 69.6094 380.156 62.0625C380.156 47.5312 373.312 39.6562 362.812 39.6562C352.312 39.6562 345.375 47.5312 345.375 62.0625C345.375 76.5938 352.312 84.4688 362.812 84.4688C364.172 84.4688 365.484 84.3281 366.75 84.0938L357.844 72.4688ZM394.5 62.0625C394.5 74.1562 390.375 83.4844 383.719 89.3438L393.375 101.625H380.156L374.719 94.7812C371.062 96.2344 367.031 96.9375 362.812 96.9375C344.719 96.9375 331.031 84.0938 331.031 62.0625C331.031 39.9375 344.719 27.1875 362.812 27.1875C380.719 27.1875 394.5 39.9375 394.5 62.0625Z"
+                                fill="#0B1416"/><path d="M407 72.023V50.977H435.283V34L463 61.5L435.283 89V72.023H407Z"
+                                                      fill="#6DB33F"/></svg>
                     </span>
-                    <span>mmmq</span>
                 </div>
                 <ul class="footer__nav">
                     <li><a href="index.html">홈</a></li>
