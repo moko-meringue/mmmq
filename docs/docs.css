@@ -48,10 +48,18 @@
 /* Hero variant for landing — slightly different from DS hero */
 .landing-hero {
     display: grid;
-    grid-template-columns: 4fr 6fr;
+    /* 4fr/6fr은 사실 minmax(auto, 4fr)/minmax(auto, 6fr)으로 풀려
+       자식의 자연 폭(특히 flow-diagram > code-block의 긴 코드 한 줄)이 컬럼을 viewport 밖으로 밀어냄.
+       minmax(0, ...)로 명시해 자식이 컬럼을 못 늘리도록 막음. */
+    grid-template-columns: minmax(0, 4fr) minmax(0, 6fr);
     gap: var(--s-7);
     align-items: stretch;
     padding: var(--s-8) 0 var(--s-7);
+}
+
+/* 모든 직계 자식에 min-width: 0을 전파해 nested flex/grid·긴 pre 등이 컬럼을 침범하지 못하게 함 */
+.landing-hero > * {
+    min-width: 0;
 }
 
 .landing-hero h1 {
@@ -266,6 +274,9 @@
     flex-direction: column;
     gap: var(--s-5);
     width: 100%;
+    /* nested flex/grid 컨테이너 체인은 모두 min-width: 0이 필요.
+       빠지면 panel 내부 code-block pre의 자연 폭이 부모를 viewport 밖으로 밀어냄. */
+    min-width: 0;
 }
 
 .flow-diagram__track {
@@ -399,14 +410,15 @@
 }
 
 .flow-diagram__stage {
-    position: relative;
+    display: grid;
+    grid-template-areas: "stack";
     flex: 1;
     min-height: 220px;
+    min-width: 0;
 }
 
 .flow-diagram__panel {
-    position: absolute;
-    inset: 0;
+    grid-area: stack;
     display: flex;
     flex-direction: column;
     gap: var(--s-3);
@@ -418,6 +430,7 @@
     transform: translateY(8px);
     pointer-events: none;
     transition: opacity 220ms ease, transform 220ms ease;
+    min-width: 0;
 }
 
 .flow-diagram__panel.is-active {
@@ -432,7 +445,7 @@
     gap: 4px;
 }
 
-.flow-diagram__panel-step {
+.flow-diagram__panel-module {
     font-family: var(--font-mono);
     font-size: 12px;
     font-weight: 700;
@@ -1159,42 +1172,97 @@
 
 /* 태블릿 — 1024px 이하 */
 @media (max-width: 1024px) {
-    /* docs 3열 레이아웃 → 1열 stack
-       sidenav(좌) → content(중) → toc(우) 순서 유지 */
+    /* docs 3열 레이아웃 → 1열 stack.
+       grid-template-columns: 1fr은 실제로 minmax(auto, 1fr)로 동작해서
+       자식 콘텐츠의 자연 폭(예: sidenav__group 6개 가로 스크롤 내부 폭)이 컬럼을 밀어내
+       페이지 전체가 viewport를 넘어가는 버그가 있음. minmax(0, 1fr)로 명시해 자식이 부모를 못 밀게 막음.
+       추가로 grid 직계 자식에 min-width: 0을 줘 nested flex/grid·긴 pre·테이블이 폭을 잠식하지 못하게 함. */
     .docs-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: var(--s-5);
         padding: var(--s-5) 0 var(--s-7);
     }
 
-    .docs-sidenav,
-    .docs-toc {
+    .docs-grid > .docs-sidenav,
+    .docs-grid > .docs-toc,
+    .docs-grid > .docs-content {
+        min-width: 0;
+    }
+
+    /* order는 docs-grid 직접 자식에만 적용되도록 한정 — about/quickstart 1열 stack과 격리 */
+    .docs-grid > .docs-sidenav { order: 1; }
+    .docs-grid > .docs-toc     { order: 2; }
+    .docs-grid > .docs-content { order: 3; max-width: 100%; }
+
+    /* sticky 해제도 docs-grid 내부 toc에만 — about/quickstart는 1024~768px 구간 2열 유지 중이라
+       그때 sticky를 풀면 우측 컬럼만 따로 흘러내려 시각 불일치 발생. */
+    .docs-grid > .docs-sidenav,
+    .docs-grid > .docs-toc {
         position: static;
         top: auto;
         width: 100%;
     }
 
-    /* 모바일에서 sidenav는 가로 스크롤 가능한 가로 스택으로 (좌측 칼럼 폭 강제 해제) */
+    /* sidenav는 가로 스크롤 한 줄. group은 줄어들지 않고 흘러 가로 스와이프로 탐색.
+       padding 사방으로 줘 첫·마지막 group이 viewport 모서리에 붙지 않게 함.
+       sidenav__head 자체는 데스크톱 정의(padding 14px var(--s-3)) 그대로라 hover/active 시각만 데스크톱과 일치. */
     .docs-sidenav .sidenav {
         display: flex;
-        flex-wrap: wrap;
-        gap: var(--s-2);
-        padding: 0;
+        flex-wrap: nowrap;
+        gap: var(--s-1);
+        padding: var(--s-1);
+        overflow-x: auto;
+        scrollbar-width: thin;
+        -webkit-overflow-scrolling: touch;
     }
 
     .docs-sidenav .sidenav__group {
         margin-bottom: 0;
+        flex: 0 0 auto;
     }
 
-    /* 콘텐츠 max-width 해제 (1열에선 풀 너비 사용) */
-    .docs-content {
-        max-width: 100%;
+    /* group head 자체의 padding은 줄여 한 줄 가로 스크롤에 어울리게 컴팩트화.
+       단 hover/active 시각(데스크톱과 동일한 brand-primary-soft 배경)은 유지.
+       margin-bottom은 0 — styles.css 기본의 var(--s-2)가 살아 있으면
+       group 높이가 head 높이보다 8px 커져 가로 스크롤 띠가 어색하게 두꺼워짐. */
+    .docs-sidenav .sidenav__head {
+        padding: var(--s-2) var(--s-3);
+        margin-bottom: 0;
+    }
+
+    .docs-sidenav__title {
+        margin: 0 0 var(--s-2) var(--s-1);
+    }
+
+    /* 홈 hero — 1024px 이하에서 1열 stack.
+       1fr → minmax(0, 1fr)로 명시해 자식 자연 폭이 컬럼을 못 늘리도록 함.
+       (docs-grid와 같은 패턴 — 자식 콘텐츠가 viewport를 밀어내는 것을 차단) */
+    .landing-hero {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--s-6);
+        padding: var(--s-6) 0 var(--s-5);
+    }
+
+    /* 1열 stack 시 visual 박스가 너무 가로로 늘어지지 않도록 폭 제한 + 가운데 정렬 */
+    .landing-hero__visual {
+        max-width: 720px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    /* docs 페이지에서 stack된 toc는 항목이 많으면 본문이 한참 밀려나니
+       최대 높이 제한 + 내부 스크롤. about/quickstart의 toc는 768px에서 별도 처리. */
+    .docs-grid > .docs-toc {
+        max-height: 320px;
+        overflow-y: auto;
+        scrollbar-width: thin;
     }
 }
 
 /* 모바일 — 768px 이하 */
 @media (max-width: 768px) {
-    /* about/quickstart 2열 → 1열 (TOC 본문 아래로) */
+    /* about/quickstart 2열 → 1열.
+       order로 toc를 content 위로 끌어올림(페이지 진입 시 내부 목차 즉시 노출). */
     .about-grid,
     .quickstart-grid {
         grid-template-columns: 1fr;
@@ -1202,11 +1270,29 @@
         padding-top: var(--s-5);
     }
 
-    /* landing 페이지 hero (홈만 적용) → 1열 */
+    /* toc를 본문 위로. sticky 해제 + 길어지면 내부 스크롤. */
+    .about-toc,
+    .quickstart-toc {
+        order: -1;
+        position: static;
+        top: auto;
+        width: 100%;
+        max-height: 320px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+    }
+
+    .about-content,
+    .quickstart-content { order: 0; }
+
+    /* landing-hero — 이미 1024px에서 1열 stack. 모바일에선 gap/padding만 더 축소. */
     .landing-hero {
-        grid-template-columns: 1fr;
         gap: var(--s-5);
-        padding: var(--s-6) 0 var(--s-5);
+        padding: var(--s-5) 0 var(--s-4);
+    }
+
+    .landing-hero__visual {
+        max-width: 100%;
     }
 
     .landing-hero__sub,
@@ -1260,6 +1346,19 @@
         line-height: 26px;
     }
 
+    .docs-content section p {
+        line-height: 26px;
+    }
+
+    .docs-content section ul,
+    .docs-content section ol {
+        margin-left: 20px;
+    }
+
+    .docs-content section li {
+        line-height: 24px;
+    }
+
     /* maintainer 카드 사진 좀 작게 */
     .maintainer-card {
         grid-template-columns: 100px 1fr;
@@ -1267,32 +1366,83 @@
         padding: var(--s-4);
     }
 
-    /* name callout 축소 */
+    /* name callout 축소 — formula는 모노 워드마크, caption은 한글 설명문 */
     .name-callout {
         padding: var(--s-6) var(--s-4);
     }
 
     .name-callout__formula {
         font-size: 22px;
+        line-height: 32px;
     }
 
-    /* sidenav 가로 스택일 때 그룹 사이 정렬을 위해 head padding 약간 줄임 */
-    .docs-sidenav .sidenav__head {
-        padding: var(--s-2) var(--s-3);
-        background: var(--surface-soft);
-        border: 1px solid var(--border-default);
-        border-radius: var(--r-sm);
-        margin-bottom: 0;
+    .name-callout__caption {
+        font-size: 16px;
+        line-height: 24px;
     }
 
-    .docs-sidenav .sidenav__head--active {
-        border-color: var(--brand-primary);
-        background: var(--brand-primary-soft);
+    /* sidenav__head의 768px 전용 버튼화 처리는 제거.
+       가로 wrap이던 시절의 흔적인데 1024px 가로 스크롤로 바꾼 뒤로는
+       768px 진입 시점에 head에 갑자기 테두리·배경이 입혀져 버튼처럼 변하는 시각적 점프가 생김.
+       데스크톱과 동일한 head 스타일(hover/active만 배경 변화)을 모바일에서도 유지. */
+
+    /* 홈 hero — 인터랙티브 flow-diagram 모바일 처리
+       트랙(P→B→C)은 가로 유지, panel은 polish 축소 */
+    .landing-hero__visual {
+        padding: var(--s-3);
+        border-radius: var(--r-md);
+    }
+
+    .flow-diagram {
+        gap: var(--s-4);
+    }
+
+    .flow-diagram__track {
+        gap: var(--s-2);
+    }
+
+    .flow-diagram__node {
+        padding: 4px 10px 4px 4px;
+        font-size: 12px;
+    }
+
+    .flow-diagram__node-mark {
+        width: 20px;
+        height: 20px;
+        font-size: 11px;
+    }
+
+    .flow-diagram__panel {
+        padding: var(--s-4);
+    }
+
+    .flow-diagram__panel-title {
+        font-size: 18px;
+        line-height: 26px;
+    }
+
+    .flow-diagram__panel-desc {
+        font-size: 14px;
+        line-height: 22px;
+    }
+
+    .flow-diagram__panel-module {
+        font-size: 11px;
+    }
+
+    .flow-diagram__controls {
+        gap: var(--s-3);
     }
 }
 
 /* 좁은 모바일 — 480px 이하 */
 @media (max-width: 480px) {
+    /* maintainer-grid: --w-card-min-maintainer 토큰이 320px이라 매우 좁은 화면(320~360px)에서
+       카드가 컨테이너를 넘쳐 가로 스크롤이 생김. 강제로 1열. */
+    .maintainer-grid {
+        grid-template-columns: 1fr;
+    }
+
     /* maintainer 카드: 사진 위 → 텍스트 아래 stack */
     .maintainer-card {
         grid-template-columns: 1fr;
@@ -1323,5 +1473,65 @@
     /* name-callout 더 작게 */
     .name-callout__formula {
         font-size: 18px;
+        line-height: 28px;
+    }
+
+    .name-callout__caption {
+        font-size: 14px;
+        line-height: 22px;
+    }
+
+    /* 홈 hero — 좁은 모바일에선 노드 라벨 숨기고 mark만 표시.
+       "Producer/Broker/Consumer" 라벨이 link 폭을 잠식하는 걸 방지. */
+    .flow-diagram__node-label {
+        display: none;
+    }
+
+    .flow-diagram__node {
+        padding: 4px;
+    }
+
+    .flow-diagram__track {
+        gap: var(--s-2);
+    }
+
+    .flow-diagram__panel {
+        padding: var(--s-3);
+        gap: var(--s-2);
+    }
+
+    .flow-diagram__panel-title {
+        font-size: 16px;
+        line-height: 22px;
+    }
+
+    .flow-diagram__panel-desc {
+        font-size: 13px;
+        line-height: 20px;
+    }
+
+    .flow-diagram__btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    .flow-diagram__progress {
+        font-size: 12px;
+        min-width: 56px;
+    }
+
+    /* 좁은 모바일 — 섹션 padding, h1, feature-grid gap 추가 축소 */
+    .landing-section {
+        padding: var(--s-4) 0;
+    }
+
+    .docs-content > h1 {
+        font-size: 28px;
+        line-height: 36px;
+    }
+
+    .feature-grid,
+    .modules-grid-3 {
+        gap: var(--s-3);
     }
 }

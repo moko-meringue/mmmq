@@ -533,3 +533,33 @@
 
     document.querySelectorAll('[data-flow-diagram]').forEach(init);
 })();
+
+/* =========================================================
+   docs-sidenav — 가로 스크롤 모드에서 현재 페이지(active)가
+   viewport 가운데에 오도록 scrollLeft 조정.
+   페이지 이동 시 sidenav가 매번 0으로 리셋되어 사용자가 자기 위치를 잃는 문제 보정.
+   데스크톱(세로 stack)에서는 overflow가 없어 scrollLeft 변경이 무시됨 → 항상 실행 안전.
+   ========================================================= */
+(function () {
+    function focusActiveSidenavItem() {
+        document.querySelectorAll('.docs-sidenav .sidenav').forEach(function (track) {
+            const active = track.querySelector('.sidenav__head--active');
+            if (!active) return;
+
+            const target = active.closest('.sidenav__group') || active;
+            const trackRect = track.getBoundingClientRect();
+            const targetRect = target.getBoundingClientRect();
+            const delta =
+                (targetRect.left + targetRect.right) / 2 -
+                (trackRect.left + trackRect.right) / 2;
+
+            track.scrollLeft += delta;
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', focusActiveSidenavItem);
+    } else {
+        focusActiveSidenavItem();
+    }
+})();
