@@ -432,7 +432,7 @@
     gap: 4px;
 }
 
-.flow-diagram__panel-step {
+.flow-diagram__panel-module {
     font-family: var(--font-mono);
     font-size: 12px;
     font-weight: 700;
@@ -1330,7 +1330,7 @@
         line-height: 22px;
     }
 
-    .flow-diagram__panel-step {
+    .flow-diagram__panel-module {
         font-size: 11px;
     }
 
