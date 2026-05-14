@@ -1882,6 +1882,11 @@ code {
     }
 
     /* Typography 축소 */
+    .t-display {
+        font-size: 40px;
+        line-height: 48px;
+    }
+
     .t-h1 {
         font-size: 32px;
         line-height: 40px;
@@ -1925,6 +1930,11 @@ code {
 @media (max-width: 480px) {
     .site-shell {
         padding: 0 var(--s-4);
+    }
+
+    .t-display {
+        font-size: 30px;
+        line-height: 38px;
     }
 
     .t-h1 {
