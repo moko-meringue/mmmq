@@ -2,6 +2,7 @@ package org.mmmq.producer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.times;
@@ -58,9 +59,9 @@ class ProducerTest {
                 .backoffMultiplier(backoffMultiplier)
                 .build();
 
-        assertThat(producer.initialBackoff).isEqualTo(initialBackoff);
-        assertThat(producer.maxBackoff).isEqualTo(maxBackoff);
-        assertThat(producer.backoffMultiplier).isEqualTo(backoffMultiplier);
+        assertThat(producer.backoff.initialDelay()).isEqualTo(initialBackoff);
+        assertThat(producer.backoff.maxDelay()).isEqualTo(maxBackoff);
+        assertThat(producer.backoff.multiplier()).isEqualTo(backoffMultiplier);
     }
 
     @Test
@@ -202,6 +203,35 @@ class ProducerTest {
 
             Gateway gateway = mockedGateway.constructed().get(0);
             verify(gateway, times(2)).send(message);
+        }
+    }
+
+    @Test
+    @DisplayName("NACK 재시도 시에는 백오프가 적용되지 않는다")
+    void nackDoesNotTriggerBackoff() {
+        Host host = mock(Host.class);
+        Message message = new Message(new Topic("test-topic"), Map.of("key", "value"));
+        BrokerAcknowledgement nakResponse = new BrokerAcknowledgement(Acknowledgement.NACK);
+        BrokerAcknowledgement ackResponse = new BrokerAcknowledgement(Acknowledgement.ACK);
+
+        try (
+                MockedConstruction<Gateway> mockedGateway = mockConstruction(
+                        Gateway.class,
+                        (mock, context) -> when(mock.send(message))
+                                .thenReturn(nakResponse)
+                                .thenReturn(nakResponse)
+                                .thenReturn(ackResponse)
+                )
+        ) {
+            Producer producer = Producer.builder(host)
+                    .initialBackoff(Duration.ofSeconds(1))
+                    .maxBackoff(Duration.ofSeconds(1))
+                    .build();
+
+            assertTimeout(Duration.ofMillis(200), () -> producer.produce(message));
+
+            Gateway gateway = mockedGateway.constructed().get(0);
+            verify(gateway, times(3)).send(message);
         }
     }
 }

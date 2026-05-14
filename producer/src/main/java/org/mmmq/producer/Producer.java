@@ -3,6 +3,7 @@ package org.mmmq.producer;
 import java.time.Duration;
 
 import org.mmmq.core.Host;
+import org.mmmq.core.backoff.ExponentialBackoff;
 import org.mmmq.core.message.Message;
 import org.mmmq.producer.exception.ProduceException;
 
@@ -15,9 +16,7 @@ public class Producer {
 
     final Gateway gateway;
     final int maxRetryCount;
-    final Duration initialBackoff;
-    final Duration maxBackoff;
-    final double backoffMultiplier;
+    final ExponentialBackoff backoff;
 
     public Producer(Host host) {
         this(host, DEFAULT_MAX_RETRY_COUNT);
@@ -40,16 +39,9 @@ public class Producer {
             Duration maxBackoff,
             double backoffMultiplier
     ) {
-        validatePositive(initialBackoff, "initialBackoff");
-        validatePositive(maxBackoff, "maxBackoff");
-        validateBackoffRange(initialBackoff, maxBackoff);
-        validateBackoffMultiplier(backoffMultiplier);
-
         this.gateway = new Gateway(host);
         this.maxRetryCount = maxRetryCount;
-        this.initialBackoff = initialBackoff;
-        this.maxBackoff = maxBackoff;
-        this.backoffMultiplier = backoffMultiplier;
+        this.backoff = new ExponentialBackoff(initialBackoff, maxBackoff, backoffMultiplier);
     }
 
     public static Builder builder(Host host) {
@@ -61,64 +53,37 @@ public class Producer {
             sendWithRetry(message);
         } catch (ProduceException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             throw new ProduceException("Failed to produce message", e);
         }
     }
 
-    private void sendWithRetry(Message message) throws Exception {
-        Duration backoff = initialBackoff;
+    private void sendWithRetry(Message message) {
+        Duration currentDelay = backoff.initialDelay();
 
         for (int retryCount = 0; retryCount <= maxRetryCount; retryCount++) {
             try {
                 if (gateway.send(message).isAck()) {
                     return;
                 }
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
                 if (retryCount == maxRetryCount) {
                     throw e;
                 }
-            }
-
-            if (retryCount < maxRetryCount) {
-                sleep(backoff);
-                backoff = nextBackoff(backoff);
+                sleep(currentDelay);
+                currentDelay = backoff.next(currentDelay);
             }
         }
 
         throw new ProduceException("Failed to produce message after " + (maxRetryCount + 1) + " attempts");
     }
 
-    private void sleep(Duration backoff) {
+    private void sleep(Duration delay) {
         try {
-            Thread.sleep(backoff.toMillis());
+            Thread.sleep(delay.toMillis());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ProduceException("Interrupted during producer backoff", e);
-        }
-    }
-
-    private Duration nextBackoff(Duration currentBackoff) {
-        long multipliedMillis = (long) (currentBackoff.toMillis() * backoffMultiplier);
-        long nextMillis = Math.min(multipliedMillis, maxBackoff.toMillis());
-        return Duration.ofMillis(nextMillis);
-    }
-
-    private static void validatePositive(Duration value, String fieldName) {
-        if (value.isZero() || value.isNegative() || value.toMillis() <= 0) {
-            throw new IllegalArgumentException(fieldName + " must be positive");
-        }
-    }
-
-    private static void validateBackoffMultiplier(double backoffMultiplier) {
-        if (!Double.isFinite(backoffMultiplier) || backoffMultiplier < 1.0) {
-            throw new IllegalArgumentException("backoffMultiplier must be greater than or equal to 1.0");
-        }
-    }
-
-    private static void validateBackoffRange(Duration initialBackoff, Duration maxBackoff) {
-        if (initialBackoff.compareTo(maxBackoff) > 0) {
-            throw new IllegalArgumentException("initialBackoff must be less than or equal to maxBackoff");
         }
     }
 
