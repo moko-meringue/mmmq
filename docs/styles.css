@@ -492,10 +492,6 @@ code {
     align-items: stretch;
 }
 
-.ds-component__demo--row {
-    flex-direction: row;
-}
-
 .demo-row {
     display: flex;
     flex-wrap: wrap;
@@ -1417,9 +1413,20 @@ code {
     background: var(--surface-page);
     border: 1px solid var(--border-default);
     border-radius: var(--r-sm);
-    width: 84px;
+    min-width: 84px;
     height: 84px;
+    padding: 0 var(--s-2);
 }
+
+.logo-size__box img {
+    display: block;
+    width: auto;
+}
+
+/* 사이즈 modifier — 워드마크 워드마크의 실제 표시 height. inline style 대체 */
+.logo-size--40 .logo-size__box img { height: 40px; }
+.logo-size--24 .logo-size__box img { height: 24px; }
+.logo-size--12 .logo-size__box img { height: 12px; }
 
 .logo-size span {
     font-family: var(--font-mono);
@@ -1427,17 +1434,11 @@ code {
     color: var(--ink-subtle);
 }
 
-.logo-master__lockup {
-    display: flex;
-    align-items: center;
-    gap: var(--s-3);
-}
-
-.logo-master__wordmark {
-    font-weight: 800;
-    font-size: 32px;
-    letter-spacing: -0.04em;
-    color: var(--ink-strong);
+/* 마스터 마크 박스 안 워드마크의 표시 height (이전 inline style="height: 96px"의 대체) */
+.logo-master__main img {
+    display: block;
+    height: 96px;
+    width: auto;
 }
 
 .module-logos-grid {
@@ -1490,20 +1491,6 @@ code {
     gap: var(--s-4);
     align-items: center;
     flex-wrap: wrap;
-}
-
-.col {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-4);
-}
-
-.full {
-    width: 100%;
-}
-
-.muted {
-    color: var(--ink-muted);
 }
 
 .subtle {
