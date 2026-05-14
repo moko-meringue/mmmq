@@ -17,12 +17,19 @@ import org.junit.jupiter.api.Test;
 import org.mmmq.core.Host;
 import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.acknowledgement.BrokerAcknowledgement;
+import org.mmmq.core.backoff.ExponentialBackoff;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 import org.mmmq.producer.exception.ProduceException;
 import org.mockito.MockedConstruction;
 
 class ProducerTest {
+
+    private static final ExponentialBackoff FAST_BACKOFF = new ExponentialBackoff(
+            Duration.ofMillis(1),
+            Duration.ofMillis(1),
+            2.0
+    );
 
     @Test
     @DisplayName("기본 생성자는 기본 재시도 횟수를 설정한다")
@@ -46,22 +53,18 @@ class ProducerTest {
     }
 
     @Test
-    @DisplayName("Builder는 백오프 설정값을 지정할 수 있다")
-    void builderWithBackoff() {
+    @DisplayName("백오프를 지정하는 생성자는 지정된 백오프를 설정한다")
+    void constructorWithBackoff() {
         Host host = mock(Host.class);
-        Duration initialBackoff = Duration.ofMillis(10);
-        Duration maxBackoff = Duration.ofMillis(100);
-        double backoffMultiplier = 3.0;
+        ExponentialBackoff customBackoff = new ExponentialBackoff(
+                Duration.ofMillis(10),
+                Duration.ofMillis(100),
+                3.0
+        );
 
-        Producer producer = Producer.builder(host)
-                .initialBackoff(initialBackoff)
-                .maxBackoff(maxBackoff)
-                .backoffMultiplier(backoffMultiplier)
-                .build();
+        Producer producer = new Producer(host, customBackoff);
 
-        assertThat(producer.backoff.initialDelay()).isEqualTo(initialBackoff);
-        assertThat(producer.backoff.maxDelay()).isEqualTo(maxBackoff);
-        assertThat(producer.backoff.multiplier()).isEqualTo(backoffMultiplier);
+        assertThat(producer.backoff).isEqualTo(customBackoff);
     }
 
     @Test
@@ -78,10 +81,7 @@ class ProducerTest {
                 )
         ) {
 
-            Producer producer = Producer.builder(host)
-                    .initialBackoff(Duration.ofMillis(1))
-                    .maxBackoff(Duration.ofMillis(1))
-                    .build();
+            Producer producer = new Producer(host, FAST_BACKOFF);
             producer.produce(message);
 
             Gateway gateway = mockedGateway.constructed().get(0);
@@ -107,10 +107,7 @@ class ProducerTest {
                 )
         ) {
 
-            Producer producer = Producer.builder(host)
-                    .initialBackoff(Duration.ofMillis(1))
-                    .maxBackoff(Duration.ofMillis(1))
-                    .build();
+            Producer producer = new Producer(host, FAST_BACKOFF);
             producer.produce(message);
 
             Gateway gateway = mockedGateway.constructed().get(0);
@@ -133,11 +130,7 @@ class ProducerTest {
                 )
         ) {
 
-            Producer producer = Producer.builder(host)
-                    .maxRetryCount(maxRetryCount)
-                    .initialBackoff(Duration.ofMillis(1))
-                    .maxBackoff(Duration.ofMillis(1))
-                    .build();
+            Producer producer = new Producer(host, maxRetryCount, FAST_BACKOFF);
 
             assertThatThrownBy(() -> producer.produce(message))
                     .isInstanceOf(ProduceException.class)
@@ -162,11 +155,7 @@ class ProducerTest {
                 )
         ) {
             int maxRetryCount = 2;
-            Producer producer = Producer.builder(host)
-                    .maxRetryCount(maxRetryCount)
-                    .initialBackoff(Duration.ofMillis(1))
-                    .maxBackoff(Duration.ofMillis(1))
-                    .build();
+            Producer producer = new Producer(host, maxRetryCount, FAST_BACKOFF);
 
             assertThatThrownBy(() -> producer.produce(message))
                     .isInstanceOf(ProduceException.class)
@@ -194,10 +183,7 @@ class ProducerTest {
                                 .thenReturn(ackResponse)
                 )
         ) {
-            Producer producer = Producer.builder(host)
-                    .initialBackoff(Duration.ofMillis(1))
-                    .maxBackoff(Duration.ofMillis(1))
-                    .build();
+            Producer producer = new Producer(host, FAST_BACKOFF);
 
             producer.produce(message);
 
@@ -223,10 +209,12 @@ class ProducerTest {
                                 .thenReturn(ackResponse)
                 )
         ) {
-            Producer producer = Producer.builder(host)
-                    .initialBackoff(Duration.ofSeconds(1))
-                    .maxBackoff(Duration.ofSeconds(1))
-                    .build();
+            ExponentialBackoff slowBackoff = new ExponentialBackoff(
+                    Duration.ofSeconds(1),
+                    Duration.ofSeconds(1),
+                    2.0
+            );
+            Producer producer = new Producer(host, slowBackoff);
 
             assertTimeout(Duration.ofMillis(200), () -> producer.produce(message));
 

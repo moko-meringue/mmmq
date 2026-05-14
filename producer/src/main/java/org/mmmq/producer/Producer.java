@@ -10,42 +10,32 @@ import org.mmmq.producer.exception.ProduceException;
 public class Producer {
 
     static final int DEFAULT_MAX_RETRY_COUNT = 3;
-    static final Duration DEFAULT_INITIAL_BACKOFF = Duration.ofMillis(100);
-    static final Duration DEFAULT_MAX_BACKOFF = Duration.ofSeconds(3);
-    static final double DEFAULT_BACKOFF_MULTIPLIER = 2.0;
+    static final ExponentialBackoff DEFAULT_BACKOFF = new ExponentialBackoff(
+            Duration.ofMillis(100),
+            Duration.ofSeconds(3),
+            2.0
+    );
 
     final Gateway gateway;
     final int maxRetryCount;
     final ExponentialBackoff backoff;
 
     public Producer(Host host) {
-        this(host, DEFAULT_MAX_RETRY_COUNT);
+        this(host, DEFAULT_MAX_RETRY_COUNT, DEFAULT_BACKOFF);
     }
 
     public Producer(Host host, int maxRetryCount) {
-        this(
-                host,
-                maxRetryCount,
-                DEFAULT_INITIAL_BACKOFF,
-                DEFAULT_MAX_BACKOFF,
-                DEFAULT_BACKOFF_MULTIPLIER
-        );
+        this(host, maxRetryCount, DEFAULT_BACKOFF);
     }
 
-    private Producer(
-            Host host,
-            int maxRetryCount,
-            Duration initialBackoff,
-            Duration maxBackoff,
-            double backoffMultiplier
-    ) {
+    public Producer(Host host, ExponentialBackoff backoff) {
+        this(host, DEFAULT_MAX_RETRY_COUNT, backoff);
+    }
+
+    public Producer(Host host, int maxRetryCount, ExponentialBackoff backoff) {
         this.gateway = new Gateway(host);
         this.maxRetryCount = maxRetryCount;
-        this.backoff = new ExponentialBackoff(initialBackoff, maxBackoff, backoffMultiplier);
-    }
-
-    public static Builder builder(Host host) {
-        return new Builder(host);
+        this.backoff = backoff;
     }
 
     public void produce(Message message) {
@@ -84,43 +74,6 @@ public class Producer {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ProduceException("Interrupted during producer backoff", e);
-        }
-    }
-
-    public static class Builder {
-
-        private final Host host;
-        private int maxRetryCount = DEFAULT_MAX_RETRY_COUNT;
-        private Duration initialBackoff = DEFAULT_INITIAL_BACKOFF;
-        private Duration maxBackoff = DEFAULT_MAX_BACKOFF;
-        private double backoffMultiplier = DEFAULT_BACKOFF_MULTIPLIER;
-
-        private Builder(Host host) {
-            this.host = host;
-        }
-
-        public Builder maxRetryCount(int maxRetryCount) {
-            this.maxRetryCount = maxRetryCount;
-            return this;
-        }
-
-        public Builder initialBackoff(Duration initialBackoff) {
-            this.initialBackoff = initialBackoff;
-            return this;
-        }
-
-        public Builder maxBackoff(Duration maxBackoff) {
-            this.maxBackoff = maxBackoff;
-            return this;
-        }
-
-        public Builder backoffMultiplier(double backoffMultiplier) {
-            this.backoffMultiplier = backoffMultiplier;
-            return this;
-        }
-
-        public Producer build() {
-            return new Producer(host, maxRetryCount, initialBackoff, maxBackoff, backoffMultiplier);
         }
     }
 }
