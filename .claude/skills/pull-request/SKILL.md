@@ -17,6 +17,8 @@ description: PR 작성, Pull Request 생성, 또는 작업 요약을 요청할 �
 - Tone: ALWAYS use polite honorifics (존댓말). (e.g., "~했습니다", "~수정 작업을 진행했습니다").
 - The body must be written in an as-is, to-be format. The internal structure is not fixed and should be autonomously determined.
 - Readability: Strategically use Markdown elements (headers, lists, etc.) to ensure the reviewer can easily grasp the changes at a glance.
+- NEVER include any "Generated with Claude Code" footer or attribution line.
+- NEVER describe changes made to classes, files, or structures that were also created within the same branch. For example, if classes A, B, C, D were created in this branch and A, B were subsequently refactored or reorganized into subpackages, that refactoring must NOT be mentioned in the PR body — it is internal churn, not a meaningful change to the reviewer.
 
 ## 3. Execution Logic
 1. Analysis: Analyze the changes by reviewing `git diff` or commit history.
