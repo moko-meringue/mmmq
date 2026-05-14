@@ -1845,8 +1845,9 @@ code {
         font-size: 20px;
     }
 
+    /* 로고는 워드마크 SVG(viewBox 463×123)이므로 height만 두고 width: auto 유지.
+       너비를 32px로 강제하면 비율이 무너져 글자가 안 보임. */
     .nav__brand-mark {
-        width: 32px;
         height: 32px;
     }
 
@@ -1924,6 +1925,84 @@ code {
     .code-block {
         font-size: 13px;
     }
+
+    .code-block pre {
+        padding: var(--s-3);
+    }
+
+    .code-block__head {
+        padding: 6px 12px;
+    }
+
+    /* 큰 표(release 등) — 모바일에선 일반 .tbl 수준으로 축소 */
+    .tbl--lg {
+        font-size: 14px;
+        box-shadow: none;
+    }
+
+    .tbl--lg th,
+    .tbl--lg td {
+        padding: var(--s-3);
+    }
+
+    .tbl--lg th {
+        font-size: 12px;
+    }
+
+    /* Callout — 모바일에선 좌측 bar 얇게, padding 축소 */
+    .callout {
+        grid-template-columns: 3px 1fr;
+        gap: var(--s-3);
+        padding: var(--s-3) var(--s-4);
+    }
+
+    .callout__body {
+        font-size: 13px;
+        line-height: 20px;
+    }
+
+    /* design-system.html — ds-section/ds-cover padding 축소 */
+    .ds-section {
+        padding: var(--s-7) var(--s-4);
+    }
+
+    .ds-section-head {
+        margin-bottom: var(--s-5);
+    }
+
+    .ds-section-head p {
+        font-size: 15px;
+        line-height: 24px;
+    }
+
+    .ds-cover {
+        padding: var(--s-9) var(--s-4) var(--s-7);
+    }
+
+    .ds-component {
+        padding: var(--s-5) 0;
+    }
+
+    .ds-component__demo {
+        padding: var(--s-5);
+    }
+
+    /* type-row 3열(토큰/샘플/메타) → 1열 stack. 메타는 좌측 정렬로. */
+    .type-row {
+        grid-template-columns: 1fr;
+        gap: var(--s-2);
+        padding: var(--s-4) 0;
+    }
+
+    .type-row__meta {
+        text-align: left;
+    }
+
+    /* spacing-row: 토큰/막대/픽셀 그대로 유지하되 토큰·px 컬럼 좁힘 */
+    .spacing-row {
+        grid-template-columns: 64px 1fr 64px;
+        gap: var(--s-3);
+    }
 }
 
 /* 좁은 모바일 — 480px 이하 */
@@ -1961,5 +2040,51 @@ code {
     .version-dropdown__badge {
         font-size: 12px;
         padding: 2px 6px;
+    }
+
+    /* 좁은 화면에서 nav가 wrap되어도 brand는 워드마크 SVG라 폭이 ~120px.
+       wrap된 메뉴 항목들과 시각적 분리가 어색하지 않도록 nav padding/gap 보강 */
+    .nav {
+        gap: var(--s-2);
+        padding: var(--s-3);
+    }
+
+    .nav__menu {
+        gap: 2px;
+    }
+
+    /* design-system.html — 좁은 화면에서 섹션 padding 추가 축소 */
+    .ds-section {
+        padding: var(--s-5) 0;
+    }
+
+    .ds-cover {
+        padding: var(--s-7) 0 var(--s-5);
+    }
+
+    .ds-component {
+        padding: var(--s-4) 0;
+    }
+
+    .ds-component__demo {
+        padding: var(--s-4);
+    }
+
+    /* callout/tbl 추가 축소 */
+    .callout {
+        padding: var(--s-3);
+    }
+
+    .tbl {
+        font-size: 12px;
+    }
+
+    .tbl--lg th,
+    .tbl--lg td {
+        padding: var(--s-2) var(--s-3);
+    }
+
+    .tbl--lg th {
+        font-size: 11px;
     }
 }
