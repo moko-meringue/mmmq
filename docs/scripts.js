@@ -428,58 +428,6 @@
 })();
 
 /* =========================================================
-   Hero carousel · 가로 스와이프 + dot 네비게이션
-   ========================================================= */
-(function () {
-    function init(carousel) {
-        const track = carousel.querySelector('.hero-carousel__track');
-        if (!track) return;
-        const slides = Array.from(track.querySelectorAll('.hero-carousel__slide'));
-        const dots = Array.from(carousel.querySelectorAll('.hero-carousel__dot'));
-        if (slides.length === 0 || dots.length === 0) return;
-
-        // Dot 클릭 → 해당 슬라이드로 스크롤
-        dots.forEach((dot, index) => {
-            dot.addEventListener('click', () => {
-                const target = slides[index];
-                if (!target) return;
-                track.scrollTo({
-                    left: target.offsetLeft - track.offsetLeft,
-                    behavior: 'smooth'
-                });
-            });
-        });
-
-        // 스크롤 위치에 따라 active dot 갱신
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-                if (!entry.isIntersecting) return;
-                if (entry.intersectionRatio < 0.55) return;
-                const index = slides.indexOf(entry.target);
-                if (index < 0) return;
-                dots.forEach((d) => d.classList.remove('is-active'));
-                dots[index].classList.add('is-active');
-            });
-        }, { root: track, threshold: [0.55, 0.9] });
-
-        slides.forEach((slide) => observer.observe(slide));
-
-        // 좌우 화살표 키로도 이동 (트랙이 포커스되어 있을 때)
-        track.addEventListener('keydown', (event) => {
-            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-            event.preventDefault();
-            const currentIndex = dots.findIndex((d) => d.classList.contains('is-active'));
-            const delta = event.key === 'ArrowRight' ? 1 : -1;
-            const nextIndex = Math.min(Math.max(currentIndex + delta, 0), slides.length - 1);
-            dots[nextIndex]?.click();
-        });
-    }
-
-    document.querySelectorAll('.hero-carousel').forEach(init);
-})();
-
-
-/* =========================================================
    Home hero · 메시지 흐름 다이어그램 (Producer → Broker → Consumer)
    ---------------------------------------------------------
    prev/next 버튼 또는 노드 직접 클릭으로 단계 전환.

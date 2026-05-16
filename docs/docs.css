@@ -138,15 +138,8 @@
 }
 
 /* =========================================================
-   Home — At a glance (코드 + 단계 설명 2열)
+   Preview steps — design-system.html 데모용 단계 리스트
    ========================================================= */
-.preview-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-    gap: var(--s-6);
-    align-items: start;
-}
-
 .preview-steps {
     list-style: none;
     margin: 0;
@@ -226,11 +219,6 @@
 }
 
 @media (max-width: 768px) {
-    .preview-grid {
-        grid-template-columns: 1fr;
-        gap: var(--s-5);
-    }
-
     .cta-band {
         padding: var(--s-6) var(--s-5);
     }
@@ -540,129 +528,6 @@
     opacity: 0.5;
 }
 
-/* =========================================================
-   Home hero — 가로 스와이프 코드 캐러셀 (producer/broker/consumer)
-   ========================================================= */
-.hero-carousel {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-4);
-    min-width: 0;
-    height: 100%;
-}
-
-.hero-carousel__track {
-    display: flex;
-    flex: 1;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-snap-type: x mandatory;
-    scroll-behavior: smooth;
-    gap: var(--s-4);
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    min-height: 0;
-}
-
-.hero-carousel__track::-webkit-scrollbar {
-    display: none;
-}
-
-.hero-carousel__track:focus-visible {
-    outline: 2px solid var(--brand-primary);
-    outline-offset: 4px;
-    border-radius: var(--r-md);
-}
-
-.hero-carousel__slide {
-    flex: 0 0 100%;
-    scroll-snap-align: start;
-    background: var(--surface-page);
-    border: 1px solid var(--border-default);
-    border-radius: var(--r-md);
-    padding: var(--s-5);
-    display: flex;
-    flex-direction: column;
-    gap: var(--s-4);
-    min-width: 0;
-}
-
-.hero-carousel__head {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.hero-carousel__step {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--brand-primary);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-}
-
-.hero-carousel__name {
-    font-family: var(--font-mono);
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--ink-strong);
-    margin: 0;
-    letter-spacing: -0.01em;
-}
-
-.hero-carousel__desc {
-    color: var(--ink-muted);
-    font-size: 14px;
-    line-height: 22px;
-    margin: 4px 0 0;
-}
-
-.hero-carousel__slide .code-block {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    margin: 0;
-}
-
-.hero-carousel__slide .code-block pre {
-    overflow: auto;
-    max-height: 100%;
-}
-
-.hero-carousel__dots {
-    display: flex;
-    gap: var(--s-2);
-    justify-content: center;
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.hero-carousel__dot {
-    width: 8px;
-    height: 8px;
-    border-radius: var(--r-pill);
-    border: 1px solid var(--brand-primary);
-    background: transparent;
-    cursor: pointer;
-    padding: 0;
-    transition: background-color 120ms, transform 120ms;
-}
-
-.hero-carousel__dot:hover {
-    background: var(--brand-primary-soft);
-}
-
-.hero-carousel__dot.is-active {
-    background: var(--brand-primary);
-    transform: scale(1.15);
-}
-
-.hero-carousel__dot.is-active:hover {
-    background: var(--brand-primary);
-}
-
 .brand-accent {
     color: var(--brand-primary);
 }
@@ -917,7 +782,8 @@
     justify-content: center;
 }
 
-.feature-card__icon svg {
+.feature-card__icon svg,
+.feature-card__icon img {
     width: 100%;
     height: 100%;
     display: block;
@@ -933,24 +799,6 @@
     color: var(--ink-muted);
     font-size: 14px;
     line-height: 22px;
-}
-
-/* 3-card 모듈 그리드 */
-.modules-grid-3 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(var(--w-card-min), 1fr));
-    gap: var(--s-5);
-}
-
-/* Quickstart steps */
-.steps-grid-3 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(var(--w-card-min-sm), 1fr));
-    gap: var(--s-4);
-}
-
-.steps-grid-3 .step-card {
-    width: 100%;
 }
 
 /* Footer wrap on landing — flex margin-top:auto로 viewport 하단에 sticky */
@@ -1003,10 +851,12 @@
     transition: background-color 0.15s ease;
 }
 
-.docs-sidenav .sidenav__head svg {
+.docs-sidenav .sidenav__head svg,
+.docs-sidenav .sidenav__head img {
     width: 24px;
     height: 24px;
     flex-shrink: 0;
+    display: block;
 }
 
 .docs-sidenav .sidenav__head-name {
@@ -1039,11 +889,6 @@
 /* Content (중) */
 .docs-content {
     min-width: 0;
-}
-
-.docs-content__eyebrow {
-    display: block;
-    margin-bottom: var(--s-3);
 }
 
 .docs-content > h1 {
@@ -1110,14 +955,6 @@
 /* .docs-toc 스타일은 styles.css에 공통 컴포넌트로 정의됨 */
 
 /* =========================================================
-   Page section break (sticky-friendly)
-   ========================================================= */
-.docs-divider {
-    border-top: 1px solid var(--border-default);
-    margin: var(--s-7) 0;
-}
-
-/* =========================================================
    "이 모듈" hero block (각 모듈 페이지 상단)
    ========================================================= */
 .module-hero {
@@ -1138,18 +975,11 @@
     justify-content: center;
 }
 
-.module-hero__icon svg {
+.module-hero__icon svg,
+.module-hero__icon img {
     width: 56px;
     height: 56px;
-}
-
-.module-hero__name {
-    font-family: var(--font-mono);
-    font-weight: 700;
-    font-size: 14px;
-    color: var(--brand-primary-hover);
-    margin-bottom: 4px;
-    text-transform: lowercase;
+    display: block;
 }
 
 .module-hero__title {
@@ -1325,7 +1155,8 @@
         height: 56px;
     }
 
-    .module-hero__icon svg {
+    .module-hero__icon svg,
+    .module-hero__icon img {
         width: 42px;
         height: 42px;
     }
@@ -1530,8 +1361,7 @@
         line-height: 36px;
     }
 
-    .feature-grid,
-    .modules-grid-3 {
+    .feature-grid {
         gap: var(--s-3);
     }
 }
