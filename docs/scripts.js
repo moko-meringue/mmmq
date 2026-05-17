@@ -1,4 +1,35 @@
 /* =========================================================
+   공통 헬퍼 · 빠른 smooth scroll
+   ---------------------------------------------------------
+   브라우저 기본 scroll-behavior: smooth는 duration 조절이 불가능.
+   TOC 클릭 / 맨 위로 버튼에서 동일한 250ms ease-out 곡선으로 통일.
+   ========================================================= */
+const smoothScrollTo = (function () {
+    function easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
+    }
+
+    return function (targetY, duration) {
+        const startY = window.scrollY;
+        const distance = targetY - startY;
+        if (distance === 0) {
+            return;
+        }
+        const startTime = performance.now();
+        function step(now) {
+            const elapsed = now - startTime;
+            const t = Math.min(elapsed / duration, 1);
+            window.scrollTo(0, startY + distance * easeOutCubic(t));
+            if (t < 1) {
+                requestAnimationFrame(step);
+            }
+        }
+        requestAnimationFrame(step);
+    };
+})();
+
+
+/* =========================================================
    Code block · 복사 버튼
    ========================================================= */
 (function () {
@@ -300,9 +331,32 @@
             }
         }
 
+        // 현재 활성 항목의 부모 그룹만 펼치고, 나머지 모든 그룹은 자동으로 접는다.
+        // h3가 활성이면 그 부모 h2 그룹을, h2가 활성이면 자기 자신을 대상으로 한다.
+        function autoExpandActiveGroup() {
+            const targetGroupId = activeId !== null
+                ? (parentByChildId.get(activeId) || activeId)
+                : null;
+
+            toc.querySelectorAll('.docs-toc__group').forEach(group => {
+                const groupHeadLink = group.querySelector(':scope > .docs-toc__group-head > a');
+                const groupHeadId = groupHeadLink
+                    ? groupHeadLink.getAttribute('href').slice(1)
+                    : null;
+                const shouldOpen = groupHeadId === targetGroupId;
+                const isCollapsed = group.getAttribute('data-collapsed') === 'true';
+                if (shouldOpen && isCollapsed) {
+                    setCollapsed(group, false);
+                } else if (!shouldOpen && !isCollapsed) {
+                    setCollapsed(group, true);
+                }
+            });
+        }
+
         function setActive(id) {
             if (id === activeId) return;
             activeId = id;
+            autoExpandActiveGroup();
             applyActive();
         }
 
@@ -354,8 +408,20 @@
         }
 
         for (const link of linkById.values()) {
-            link.addEventListener('click', () => {
+            link.addEventListener('click', (event) => {
+                event.preventDefault();
                 const id = link.getAttribute('href').slice(1);
+                const el = elById.get(id);
+                if (!el) {
+                    return;
+                }
+
+                const desiredY = offsetTopOf(el) - SCROLL_MARGIN;
+                const maxY = document.documentElement.scrollHeight - window.innerHeight;
+                const clampedY = Math.max(0, Math.min(desiredY, maxY));
+                smoothScrollTo(clampedY, 250);
+                history.replaceState(null, '', '#' + id);
+
                 const anchor = pinForTarget(id);
                 setActive(id);
                 if (anchor !== null) {
@@ -509,5 +575,53 @@
         document.addEventListener('DOMContentLoaded', focusActiveSidenavItem);
     } else {
         focusActiveSidenavItem();
+    }
+})();
+
+
+/* =========================================================
+   맨 위로 플로팅 버튼
+   ---------------------------------------------------------
+   모든 페이지 우측 하단에 단일 버튼을 동적으로 주입.
+   현재 뷰포트 높이의 일정 비율(REVEAL_VIEWPORT_RATIO)만큼 스크롤되면 페이드인.
+   픽셀 단위 임계값과 달리 데스크탑/모바일에서 일관된 노출 시점을 보장한다.
+   ========================================================= */
+(function () {
+    const REVEAL_VIEWPORT_RATIO = 0.5;
+
+    function createButton() {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'back-to-top';
+        button.setAttribute('aria-label', '맨 위로');
+        button.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">' +
+            '<path d="M3 10l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2" ' +
+            'stroke-linecap="round" stroke-linejoin="round"/>' +
+            '</svg>';
+        button.addEventListener('click', () => {
+            smoothScrollTo(0, 250);
+        });
+        return button;
+    }
+
+    function setup() {
+        const button = createButton();
+        document.body.appendChild(button);
+
+        function update() {
+            const threshold = window.innerHeight * REVEAL_VIEWPORT_RATIO;
+            const shouldShow = window.scrollY > threshold;
+            button.classList.toggle('is-visible', shouldShow);
+        }
+
+        window.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update, { passive: true });
+        update();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setup);
+    } else {
+        setup();
     }
 })();

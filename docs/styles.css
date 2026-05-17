@@ -812,10 +812,11 @@ code {
 .footer__top {
     display: flex;
     align-items: center;
+    /* wrap 시 라인 단위 cross-axis 정렬까지 가운데로 — 모바일에서 nav 줄바꿈되어도 가운데 유지 */
+    align-content: center;
     justify-content: space-between;
     gap: var(--s-5);
     flex-wrap: wrap;
-    margin-bottom: var(--s-5);
 }
 
 .footer__brand {
@@ -824,13 +825,27 @@ code {
     gap: var(--s-2);
     font-weight: 700;
     font-size: 18px;
+    /* inline 텍스트가 없어도 디센더 영향으로 1~2px 어긋나는 현상 차단 */
+    line-height: 0;
+}
+
+.footer__brand .nav__brand-mark {
+    display: inline-flex;
+    align-items: center;
+}
+
+.footer__brand .nav__brand-mark img {
+    display: block;
 }
 
 .footer__nav {
     display: flex;
+    align-items: center;
     gap: var(--s-5);
     list-style: none;
     flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
 }
 
 .footer__nav a {
@@ -847,13 +862,59 @@ code {
 
 .footer__legal {
     border-top: 1px solid var(--border-default);
-    padding-top: var(--s-5);
+    margin-top: var(--s-3);
+    padding-top: var(--s-3);
     font-size: 13px;
     color: var(--ink-subtle);
     display: flex;
     justify-content: space-between;
     gap: var(--s-4);
     flex-wrap: wrap;
+}
+
+/* =========================================================
+   Component: Back to Top (플로팅 버튼)
+   ========================================================= */
+.back-to-top {
+    position: fixed;
+    right: var(--s-5);
+    bottom: var(--s-5);
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    background: var(--brand-primary);
+    color: var(--surface-page);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 200ms ease, transform 200ms ease, background-color 120ms;
+    z-index: 50;
+}
+
+.back-to-top.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.back-to-top:hover {
+    background: var(--brand-primary-hover);
+}
+
+.back-to-top:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+}
+
+.back-to-top svg {
+    width: 18px;
+    height: 18px;
 }
 
 /* =========================================================
@@ -1897,6 +1958,14 @@ code {
 
     .footer__nav {
         gap: var(--s-4);
+    }
+
+    /* 맨 위로 버튼 — 모바일에서 조금 작게, 가장자리에서 살짝 안쪽으로 */
+    .back-to-top {
+        right: var(--s-4);
+        bottom: var(--s-4);
+        width: 40px;
+        height: 40px;
     }
 
     /* 표는 가로 스크롤 허용 (필요 시 부모에 overflow-x:auto wrapper 권장) */
