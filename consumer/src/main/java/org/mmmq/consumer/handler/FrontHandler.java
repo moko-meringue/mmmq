@@ -39,7 +39,16 @@ public class FrontHandler {
     }
 
     public void handle(Message message) {
+        handleAsync(message);
+    }
+
+    public void handleAsync(Message message) {
         queue.add(message);
+    }
+
+    public void handleSync(Message message) {
+        handlerExecutions.getExecutions(message)
+                .forEach(handlerExecution -> handlerExecution.execute(message));
     }
 
     @PostConstruct
