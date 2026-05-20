@@ -1,6 +1,7 @@
 package org.mmmq.broker.dispatcher;
 
 import jakarta.annotation.PreDestroy;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -15,6 +16,7 @@ import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.broker.topicqueue.TopicQueueInitializedEvent;
 import org.mmmq.broker.topicqueue.storage.CorruptionException;
 import org.mmmq.core.Host;
+import org.mmmq.core.backoff.ExponentialBackoff;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 import org.mmmq.core.message.TopicPattern;
@@ -26,9 +28,11 @@ import org.springframework.context.event.EventListener;
 public class Dispatcher {
 
     private static final int MAX_NACK_RETRY_COUNT = 3;
-    private static final long INITIAL_BACKOFF_DELAY_MS = 1000;
-    private static final long MAX_BACKOFF_DELAY_MS = 60000;
-    private static final int BACKOFF_MULTIPLIER = 2;
+    private static final ExponentialBackoff DEFAULT_BACKOFF = new ExponentialBackoff(
+            Duration.ofSeconds(1),
+            Duration.ofSeconds(60),
+            2.0
+    );
 
     private static final Logger log = LoggerFactory.getLogger(Dispatcher.class);
     private static final Pattern NAME_PATTERN = Pattern.compile("[A-Za-z0-9._-]+");
@@ -36,17 +40,23 @@ public class Dispatcher {
     final String name;
     final Host host;
     final List<TopicPattern> patterns;
+    final ExponentialBackoff backoff;
     final ConcurrentHashMap<TopicQueue, Offset> subscriptions = new ConcurrentHashMap<>();
     final WorkerPool workerPool = new WorkerPool();
     Sender sender;
 
     public Dispatcher(String name, Host host, List<TopicPattern> patterns) {
+        this(name, host, patterns, DEFAULT_BACKOFF);
+    }
+
+    public Dispatcher(String name, Host host, List<TopicPattern> patterns, ExponentialBackoff backoff) {
         if (!NAME_PATTERN.matcher(name).matches()) {
             throw new IllegalArgumentException("Dispatcher name must match [A-Za-z0-9._-]+, but was: " + name);
         }
         this.name = name;
         this.host = host;
         this.patterns = patterns;
+        this.backoff = backoff;
         this.sender = Sender.from(host);
     }
 
@@ -109,7 +119,7 @@ public class Dispatcher {
     }
 
     private void deliver(Message message) throws InterruptedException {
-        long currentBackoffDelay = INITIAL_BACKOFF_DELAY_MS;
+        Duration currentDelay = backoff.initialDelay();
         while (true) {
             if (Thread.interrupted()) {
                 throw new InterruptedException();
@@ -122,11 +132,11 @@ public class Dispatcher {
             } catch (RuntimeException exception) {
                 log.warn(
                         "Communication failure. Backing off {}ms. Error: {}",
-                        currentBackoffDelay,
+                        currentDelay.toMillis(),
                         exception.getMessage()
                 );
-                Thread.sleep(currentBackoffDelay);
-                currentBackoffDelay = Math.min(currentBackoffDelay * BACKOFF_MULTIPLIER, MAX_BACKOFF_DELAY_MS);
+                Thread.sleep(currentDelay.toMillis());
+                currentDelay = backoff.next(currentDelay);
             }
         }
     }
