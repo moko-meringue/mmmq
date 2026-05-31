@@ -6,7 +6,7 @@ import org.mmmq.core.annotation.Nullable;
 
 public class Metadata {
 
-    static final String HANDLER_ID = "MMMQ-Handler-Id";
+    static final String HANDLER_ID = "mmmq-handler-id";
 
     private final Map<String, String> headers;
 

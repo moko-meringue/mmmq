@@ -84,7 +84,7 @@ class SenderTest {
 
         server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/mmmq/messages"))
                 .andExpect(method(HttpMethod.POST))
-                .andExpect(header("MMMQ-Handler-Id", HANDLER_ID))
+                .andExpect(header("mmmq-handler-id", HANDLER_ID))
                 .andRespond(withSuccess(
                         objectMapper.writeValueAsString(new ConsumerAcknowledgement(Acknowledgement.ACK)),
                         MediaType.APPLICATION_JSON

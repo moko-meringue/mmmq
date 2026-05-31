@@ -171,7 +171,7 @@ class ConsumerRoutingTest {
 
     private Map<String, String> handlerIdHeader(String handlerId) {
         Map<String, String> headers = new HashMap<>();
-        headers.put("MMMQ-Handler-Id", handlerId);
+        headers.put("mmmq-handler-id", handlerId);
         return headers;
     }
 
