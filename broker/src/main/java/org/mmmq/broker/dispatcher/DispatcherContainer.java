@@ -37,7 +37,6 @@ public class DispatcherContainer {
     }
 
     public List<Dispatcher> getSubscribers(TopicQueue topicQueue) {
-        List<Dispatcher> result = subscriptions.get(topicQueue);
-        return result == null ? List.of() : result;
+        return subscriptions.getOrDefault(topicQueue, List.of());
     }
 }
