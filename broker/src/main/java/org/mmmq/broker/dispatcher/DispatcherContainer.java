@@ -22,9 +22,9 @@ public class DispatcherContainer {
     public DispatcherContainer(Collection<Dispatcher> dispatchers) {
         Set<String> seen = new HashSet<>();
         dispatchers.forEach(dispatcher -> {
-            if (!seen.add(dispatcher.handlerId())) {
+            if (!seen.add(dispatcher.consumerId())) {
                 throw new IllegalStateException(
-                        "Duplicate handlerId '" + dispatcher.handlerId() + "' across multiple Dispatcher beans"
+                        "Duplicate consumerId '" + dispatcher.consumerId() + "' across multiple Dispatcher beans"
                 );
             }
         });
@@ -50,7 +50,7 @@ public class DispatcherContainer {
             } catch (Exception exception) {
                 log.warn(
                         "Dispatcher '{}' failed during drain on topic '{}'",
-                        dispatcher.handlerId(),
+                        dispatcher.consumerId(),
                         topicQueue.getTopic(),
                         exception
                 );

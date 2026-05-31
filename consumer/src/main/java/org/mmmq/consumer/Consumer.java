@@ -33,9 +33,9 @@ public class Consumer {
             @RequestBody Message message
     ) {
         Metadata metadata = new Metadata(headers);
-        String handlerId = metadata.getHandlerId();
+        String handlerId = metadata.getConsumerId();
         if (handlerId == null) {
-            log.warn("Received message without handler id header: {}", message);
+            log.warn("Received message without consumer id header: {}", message);
             return ResponseEntity.ok(new ConsumerAcknowledgement(Acknowledgement.NACK));
         }
         HandlerExecution execution = handlerExecutionContainer.find(handlerId);

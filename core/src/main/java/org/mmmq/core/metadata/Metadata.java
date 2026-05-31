@@ -6,7 +6,7 @@ import org.mmmq.core.annotation.Nullable;
 
 public class Metadata {
 
-    static final String HANDLER_ID = "mmmq-handler-id";
+    static final String CONSUMER_ID = "mmmq-consumer-id";
 
     private final Map<String, String> headers;
 
@@ -19,12 +19,12 @@ public class Metadata {
     }
 
     @Nullable
-    public String getHandlerId() {
-        return headers.get(HANDLER_ID);
+    public String getConsumerId() {
+        return headers.get(CONSUMER_ID);
     }
 
-    public void setHandlerId(String handlerId) {
-        headers.put(HANDLER_ID, handlerId);
+    public void setConsumerId(String consumerId) {
+        headers.put(CONSUMER_ID, consumerId);
     }
 
     public Map<String, String> toMap() {

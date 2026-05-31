@@ -41,18 +41,18 @@ class DispatcherTest {
     }
 
     @Test
-    @DisplayName("handler id가 regex에 부합하지 않으면 예외를 던진다")
-    void rejectInvalidHandlerId() {
+    @DisplayName("consumer id가 regex에 부합하지 않으면 예외를 던진다")
+    void rejectInvalidConsumerId() {
         assertThatThrownBy(() -> new Dispatcher(host, "invalid handler!", new TopicPattern("**")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    @DisplayName("handler id getter가 생성자 인자를 그대로 반환한다")
-    void handlerIdGetter() {
+    @DisplayName("consumer id getter가 생성자 인자를 그대로 반환한다")
+    void consumerIdGetter() {
         Dispatcher dispatcher = new Dispatcher(host, "order-dispatcher", new TopicPattern("order.*"));
 
-        assertThat(dispatcher.handlerId()).isEqualTo("order-dispatcher");
+        assertThat(dispatcher.consumerId()).isEqualTo("order-dispatcher");
     }
 
     @Test
@@ -70,7 +70,7 @@ class DispatcherTest {
         CountDownLatch latch = new CountDownLatch(1);
         dispatcher.sender = new Sender(null) {
             @Override
-            public boolean send(Message message, String handlerId, int retryCount) {
+            public boolean send(Message message, String consumerId, int retryCount) {
                 latch.countDown();
                 return true;
             }
@@ -91,7 +91,7 @@ class DispatcherTest {
         CountDownLatch latch = new CountDownLatch(2);
         dispatcher.sender = new Sender(null) {
             @Override
-            public boolean send(Message message, String handlerId, int retryCount) {
+            public boolean send(Message message, String consumerId, int retryCount) {
                 latch.countDown();
                 return true;
             }
@@ -117,7 +117,7 @@ class DispatcherTest {
         CountDownLatch latch = new CountDownLatch(3);
         dispatcher.sender = new Sender(null) {
             @Override
-            public boolean send(Message message, String handlerId, int retryCount) {
+            public boolean send(Message message, String consumerId, int retryCount) {
                 latch.countDown();
                 return true;
             }
@@ -144,7 +144,7 @@ class DispatcherTest {
         Dispatcher dispatcher = new Dispatcher(host, "test-dispatcher", new TopicPattern("order.*"));
         dispatcher.sender = new Sender(null) {
             @Override
-            public boolean send(Message message, String handlerId, int retryCount) {
+            public boolean send(Message message, String consumerId, int retryCount) {
                 return true;
             }
         };
@@ -157,15 +157,15 @@ class DispatcherTest {
     }
 
     @Test
-    @DisplayName("send에는 dispatcher의 handlerId가 전달된다")
-    void deliversHandlerIdToSender() throws InterruptedException {
+    @DisplayName("send에는 dispatcher의 consumerId가 전달된다")
+    void deliversConsumerIdToSender() throws InterruptedException {
         Dispatcher dispatcher = new Dispatcher(host, "my-handler", new TopicPattern("**"));
         CountDownLatch latch = new CountDownLatch(1);
-        String[] receivedHandlerId = new String[1];
+        String[] receivedConsumerId = new String[1];
         dispatcher.sender = new Sender(null) {
             @Override
-            public boolean send(Message message, String handlerId, int retryCount) {
-                receivedHandlerId[0] = handlerId;
+            public boolean send(Message message, String consumerId, int retryCount) {
+                receivedConsumerId[0] = consumerId;
                 latch.countDown();
                 return true;
             }
@@ -177,7 +177,7 @@ class DispatcherTest {
         dispatcher.drain(queue);
 
         assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
-        assertThat(receivedHandlerId[0]).isEqualTo("my-handler");
+        assertThat(receivedConsumerId[0]).isEqualTo("my-handler");
         dispatcher.destroy();
     }
 

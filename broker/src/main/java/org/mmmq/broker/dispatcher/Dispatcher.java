@@ -28,27 +28,27 @@ public class Dispatcher {
     private static final int BACKOFF_MULTIPLIER = 2;
 
     private static final Logger log = LoggerFactory.getLogger(Dispatcher.class);
-    private static final Pattern HANDLER_ID_PATTERN = Pattern.compile("[A-Za-z0-9._-]+");
+    private static final Pattern CONSUMER_ID_PATTERN = Pattern.compile("[A-Za-z0-9._-]+");
 
     final Host host;
-    final String handlerId;
+    final String consumerId;
     final TopicPattern pattern;
     final ConcurrentHashMap<TopicQueue, Offset> subscriptions = new ConcurrentHashMap<>();
     final WorkerPool workerPool = new WorkerPool();
     Sender sender;
 
-    public Dispatcher(Host host, String handlerId, TopicPattern pattern) {
-        if (!HANDLER_ID_PATTERN.matcher(handlerId).matches()) {
-            throw new IllegalArgumentException("handlerId must match [A-Za-z0-9._-]+, but was: " + handlerId);
+    public Dispatcher(Host host, String consumerId, TopicPattern pattern) {
+        if (!CONSUMER_ID_PATTERN.matcher(consumerId).matches()) {
+            throw new IllegalArgumentException("consumerId must match [A-Za-z0-9._-]+, but was: " + consumerId);
         }
         this.host = host;
-        this.handlerId = handlerId;
+        this.consumerId = consumerId;
         this.pattern = pattern;
         this.sender = Sender.from(host);
     }
 
-    public String handlerId() {
-        return handlerId;
+    public String consumerId() {
+        return consumerId;
     }
 
     boolean matches(Topic topic) {
@@ -56,7 +56,7 @@ public class Dispatcher {
     }
 
     void subscribe(TopicQueue topicQueue) {
-        subscriptions.computeIfAbsent(topicQueue, queue -> queue.subscribe(handlerId));
+        subscriptions.computeIfAbsent(topicQueue, queue -> queue.subscribe(consumerId));
     }
 
     void drain(TopicQueue topicQueue) {
@@ -78,20 +78,20 @@ public class Dispatcher {
                     deliver(message);
                 } catch (CorruptionException exception) {
                     log.error("Dispatcher {} skipped corrupted entry on topic {} at offset {}",
-                            handlerId,
+                            consumerId,
                             topicQueue.getTopic(),
                             offset,
                             exception
                     );
                 }
-                offset = topicQueue.commit(handlerId, offset);
+                offset = topicQueue.commit(consumerId, offset);
                 subscriptions.put(topicQueue, offset);
             }
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            log.info("Dispatcher {} drain interrupted on topic {}", handlerId, topicQueue.getTopic());
+            log.info("Dispatcher {} drain interrupted on topic {}", consumerId, topicQueue.getTopic());
         } catch (Exception exception) {
-            log.error("Dispatcher {} aborted drain on topic {}", handlerId, topicQueue.getTopic(), exception);
+            log.error("Dispatcher {} aborted drain on topic {}", consumerId, topicQueue.getTopic(), exception);
         }
     }
 
@@ -102,7 +102,7 @@ public class Dispatcher {
                 throw new InterruptedException();
             }
             try {
-                if (!sender.send(message, handlerId, MAX_NACK_RETRY_COUNT)) {
+                if (!sender.send(message, consumerId, MAX_NACK_RETRY_COUNT)) {
                     log.warn("NACK exhausted. Dropping message: {}", message);
                 }
                 return;

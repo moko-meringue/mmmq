@@ -83,7 +83,7 @@ class ConsumerRoutingTest {
     }
 
     @Test
-    @DisplayName("handler id 헤더가 없으면 NACK를 반환한다")
+    @DisplayName("consumer id 헤더가 없으면 NACK를 반환한다")
     void returnsNackWhenHandlerIdMissing() {
         FakeHandlerExecution handler = new FakeHandlerExecution("handler-A");
         handlerExecutionContainer.add(handler);
@@ -176,7 +176,7 @@ class ConsumerRoutingTest {
 
     private Map<String, String> handlerIdHeader(String handlerId) {
         Map<String, String> headers = new HashMap<>();
-        headers.put("mmmq-handler-id", handlerId);
+        headers.put("mmmq-consumer-id", handlerId);
         return headers;
     }
 

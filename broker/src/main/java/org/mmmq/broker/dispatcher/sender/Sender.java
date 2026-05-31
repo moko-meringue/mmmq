@@ -29,18 +29,18 @@ public class Sender {
         return new Sender(restClient);
     }
 
-    public boolean send(Message message, String handlerId, int maxRetryCount) {
+    public boolean send(Message message, String consumerId, int maxRetryCount) {
         for (int attempt = 1; attempt <= maxRetryCount; attempt++) {
-            if (post(message, handlerId).isAck()) {
+            if (post(message, consumerId).isAck()) {
                 return true;
             }
         }
         return false;
     }
 
-    ConsumerAcknowledgement post(Message message, String handlerId) {
+    ConsumerAcknowledgement post(Message message, String consumerId) {
         Metadata metadata = new Metadata();
-        metadata.setHandlerId(handlerId);
+        metadata.setConsumerId(consumerId);
         return restClient.post()
                 .uri("/mmmq/messages")
                 .contentType(MediaType.APPLICATION_JSON)
