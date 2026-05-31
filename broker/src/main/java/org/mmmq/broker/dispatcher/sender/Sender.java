@@ -31,7 +31,7 @@ public class Sender {
     }
 
     public boolean send(Message message, ConsumerId consumerId, int maxRetryCount) {
-        for (int attempt = 1; attempt <= maxRetryCount; attempt++) {
+        for (int retry = 0; retry <= maxRetryCount; retry++) {
             if (post(message, consumerId).isAck()) {
                 return true;
             }

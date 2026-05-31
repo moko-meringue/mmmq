@@ -102,7 +102,7 @@ class SenderTest {
     void sendNackReturnFalseAfterRetriesTest() throws JsonProcessingException {
         Sender sender = new Sender(restClient);
 
-        server.expect(ExpectedCount.twice(), requestTo(host.toUri() + "/mmmq/messages"))
+        server.expect(ExpectedCount.times(3), requestTo(host.toUri() + "/mmmq/messages"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(
                         objectMapper.writeValueAsString(new ConsumerAcknowledgement(Acknowledgement.NACK)),
