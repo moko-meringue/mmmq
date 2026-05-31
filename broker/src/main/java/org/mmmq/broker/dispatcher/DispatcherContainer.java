@@ -19,8 +19,8 @@ public class DispatcherContainer implements SmartInitializingSingleton, Priority
     private static final Logger log = LoggerFactory.getLogger(DispatcherContainer.class);
 
     private final ObjectProvider<Dispatcher> dispatcherProvider;
-    private final Map<String, Dispatcher> byHandlerId = new HashMap<>();
-    private final Map<TopicQueue, List<Dispatcher>> subscribersByQueue = new ConcurrentHashMap<>();
+    private final Map<String, Dispatcher> handlerIdToDispatcher = new HashMap<>();
+    private final Map<TopicQueue, List<Dispatcher>> queueToSubscribers = new ConcurrentHashMap<>();
 
     public DispatcherContainer(ObjectProvider<Dispatcher> dispatcherProvider) {
         this.dispatcherProvider = dispatcherProvider;
@@ -30,7 +30,7 @@ public class DispatcherContainer implements SmartInitializingSingleton, Priority
     public void afterSingletonsInstantiated() {
         dispatcherProvider.stream()
                 .forEach(dispatcher -> {
-                    Dispatcher previous = byHandlerId.putIfAbsent(dispatcher.handlerId(), dispatcher);
+                    Dispatcher previous = handlerIdToDispatcher.putIfAbsent(dispatcher.handlerId(), dispatcher);
                     if (previous != null) {
                         throw new IllegalStateException(
                                 "Duplicate handlerId '" + dispatcher.handlerId() + "' across multiple Dispatcher beans"
@@ -40,15 +40,15 @@ public class DispatcherContainer implements SmartInitializingSingleton, Priority
     }
 
     public void onTopicQueueInitialized(TopicQueue topicQueue) {
-        List<Dispatcher> matched = byHandlerId.values().stream()
+        List<Dispatcher> matched = handlerIdToDispatcher.values().stream()
                 .filter(dispatcher -> dispatcher.matches(topicQueue.getTopic()))
                 .toList();
         matched.forEach(dispatcher -> dispatcher.subscribe(topicQueue));
-        subscribersByQueue.put(topicQueue, matched);
+        queueToSubscribers.put(topicQueue, matched);
     }
 
     public void dispatch(TopicQueue topicQueue) {
-        List<Dispatcher> subscribers = subscribersByQueue.get(topicQueue);
+        List<Dispatcher> subscribers = queueToSubscribers.get(topicQueue);
         if (subscribers == null) {
             return;
         }

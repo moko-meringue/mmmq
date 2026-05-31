@@ -8,24 +8,23 @@ import org.springframework.stereotype.Component;
 @Component
 public class HandlerExecutions {
 
-    private final Map<String, HandlerExecution> byHandlerId = new ConcurrentHashMap<>();
+    private final Map<String, HandlerExecution> handlerIdToExecution = new ConcurrentHashMap<>();
 
     public void add(HandlerExecution handlerExecution) {
-        String handlerId = handlerExecution.id();
-        if (byHandlerId.containsKey(handlerId)) {
+        HandlerExecution previous = handlerIdToExecution.putIfAbsent(handlerExecution.id(), handlerExecution);
+        if (previous != null) {
             throw new IllegalStateException(
-                    "Duplicate HandlerExecution id '" + handlerId + "'"
+                    "Duplicate HandlerExecution id '" + handlerExecution.id() + "'"
             );
         }
-        byHandlerId.put(handlerId, handlerExecution);
     }
 
     @Nullable
     public HandlerExecution find(String id) {
-        return byHandlerId.get(id);
+        return handlerIdToExecution.get(id);
     }
 
     public int size() {
-        return byHandlerId.size();
+        return handlerIdToExecution.size();
     }
 }
