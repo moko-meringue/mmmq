@@ -68,7 +68,7 @@
 }
 
 <span class="tk-key">dependencies</span> {
-    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:broker:0.0.1"</span>
+    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:broker:0.0.2"</span>
 }</pre>
                     </div>
 
@@ -92,10 +92,10 @@
     <span class="tk-key">@Bean</span>
     <span class="tk-key">public</span> <span class="tk-fn">Dispatcher</span> helloDispatcher() {
         <span class="tk-key">return</span> <span class="tk-key">new</span> Dispatcher(
-                <span class="tk-str">"hello-dispatcher"</span>,
                 <span class="tk-key">new</span> Host(WebProtocol.HTTP, <span class="tk-str">"localhost"</span>, <span
-                                    class="tk-str">8080</span>),
-                List.<span class="tk-fn">of</span>(<span class="tk-key">new</span> TopicPattern(<span class="tk-str">"hello.*"</span>))
+                                    class="tk-str">8082</span>),
+                <span class="tk-key">new</span> ConsumerId(<span class="tk-str">"hello-handler"</span>),
+                <span class="tk-key">new</span> TopicPattern(<span class="tk-str">"hello.mmmq"</span>)
         );
     }
 }</pre>
@@ -124,7 +124,7 @@
 }
 
 <span class="tk-key">dependencies</span> {
-    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:consumer:0.0.1"</span>
+    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:consumer:0.0.2"</span>
 }</pre>
                     </div>
 
@@ -145,7 +145,7 @@
                         <pre><span class="tk-key">@Service</span>
 <span class="tk-key">public class</span> <span class="tk-fn">HelloHandler</span> {
 
-    <span class="tk-key">@MMMQListener</span>(<span class="tk-str">"hello.mmmq"</span>)
+    <span class="tk-key">@MMMQListener</span>(id = <span class="tk-str">"hello-handler"</span>)
     <span class="tk-key">public void</span> <span class="tk-fn">handleMessage</span>(Object content) {
         System.out.<span class="tk-fn">println</span>(<span class="tk-str">"Received: "</span> + content);
     }
@@ -177,7 +177,7 @@
 }
 
 <span class="tk-key">dependencies</span> {
-    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:producer:0.0.1"</span>
+    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:producer:0.0.2"</span>
 }</pre>
                     </div>
 

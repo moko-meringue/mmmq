@@ -87,51 +87,47 @@
                 </div>
             </div>
             <p class="lede">
-                broker가 보낸 메시지를 받아 패턴에 맞는 핸들러로 라우팅하는 모듈입니다.
-                어노테이션과 인터페이스 두 가지 등록 방식, 그리고 자동 ACK/NACK 응답을 제공합니다.
+                broker가 보낸 메시지를 <code>ConsumerId</code>로 식별된 핸들러에 라우팅하는 모듈입니다.
             </p>
 
             <section id="overview">
                 <h2>개요</h2>
                 <p>
-                    <code>consumer</code>는 broker가 보낸 메시지를 <code>POST /mmmq/messages</code>로 받고,
-                    등록된 핸들러 중 토픽 패턴이 매칭되는 것을 호출합니다.
+                    사용자 애플리케이션이 broker로부터 메시지를 받아 등록된 핸들러로 라우팅할 때 사용하는 모듈입니다.
                 </p>
-                <p>
-                    내부에서는 <code>FrontHandler</code>가 <code>ArrayBlockingQueue(1000)</code>과
-                    <code>ThreadPoolExecutor(2-5)</code>를 활용해 메시지를 비동기로 처리하고, 핸들러 호출 결과에 따라
-                    ACK 또는 NACK를 broker에 돌려줍니다.
-                </p>
-                <div class="callout callout--info">
-                    <div class="callout__bar"></div>
-                    <div>
-                        <div class="callout__label">참고</div>
-                        <div class="callout__body">
-                            같은 메시지에 매칭되는 핸들러가 여러 개라면 모두 호출됩니다.
-                            패턴은 Ant 스타일이며 <code>order.*</code>, <code>**</code> 같은 표현을 사용할 수 있습니다.
-                        </div>
-                    </div>
-                </div>
             </section>
 
-            <section id="features">
-                <h2>기능</h2>
-                <ul>
-                    <li><strong>두 가지 등록 방식</strong> — <code>@MMMQListener</code> 어노테이션 또는
-                        <code>MMMQListener&lt;T&gt;</code> 인터페이스 구현
-                    </li>
-                    <li><strong>패턴 매칭 라우팅</strong> — 토픽이 패턴에 매칭되는 핸들러로 자동 분배</li>
-                    <li><strong>자동 ACK/NACK</strong> — 핸들러 정상 종료 시 ACK, 예외 시 NACK 응답</li>
-                    <li><strong>비동기 처리</strong> — BlockingQueue + ThreadPoolExecutor 기반</li>
-                    <li><strong>POJO 매핑</strong> — Jackson을 통한 JSON ↔ POJO 자동 변환</li>
-                </ul>
+            <section id="requirements">
+                <h2>요구사항</h2>
+                <p>consumer를 사용하려면 다음 환경이 필요합니다.</p>
+                <table class="tbl">
+                    <thead>
+                    <tr>
+                        <th>항목</th>
+                        <th>최소 버전</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td>Java</td>
+                        <td><code>17</code></td>
+                    </tr>
+                    <tr>
+                        <td>Spring Boot</td>
+                        <td><code>3.2.0</code></td>
+                    </tr>
+                    </tbody>
+                </table>
             </section>
 
             <section id="installation">
                 <h2>설치</h2>
-                <p>JitPack 저장소와 consumer 아티팩트를 추가합니다.</p>
+                <p>
+                    consumer는 <a class="lk" href="https://jitpack.io/#moko-meringue/mmmq">JitPack</a>으로 배포됩니다. <br>
+                    <code>build.gradle</code>에 의존성을 추가해 주세요.
+                </p>
 
-                <h3>build.gradle</h3>
+                <h3>build.gradle (Groovy DSL)</h3>
                 <div class="code-block">
                     <div class="code-block__head">
                         <span class="code-block__lang">build.gradle</span>
@@ -143,28 +139,47 @@
 }
 
 <span class="tk-key">dependencies</span> {
-    implementation <span class="tk-str">"org.springframework.boot:spring-boot-starter-web"</span>
     implementation <span class="tk-str">"com.github.moko-meringue.mmmq:consumer:0.0.2"</span>
+}</pre>
+                </div>
+
+                <h3>build.gradle.kts (Kotlin DSL)</h3>
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">build.gradle.kts</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre><span class="tk-key">repositories</span> {
+    mavenCentral()
+    maven(<span class="tk-str">"https://jitpack.io"</span>)
+}
+
+<span class="tk-key">dependencies</span> {
+    implementation(<span class="tk-str">"com.github.moko-meringue.mmmq:consumer:0.0.2"</span>)
 }</pre>
                 </div>
             </section>
 
-            <section id="configuration">
-                <h2>설정</h2>
+            <section id="consumer">
+                <h2>Consumer</h2>
                 <p>
-                    consumer는 broker가 호출하는 HTTP 엔드포인트(<code>POST /mmmq/messages</code>)를 자동으로 노출합니다.
-                    <code>mmmq.consumer.*</code> 같은 별도 키는 없고, Spring Boot의 <code>server.port</code>가 곧 consumer의 수신
-                    포트입니다.
+                    <code>Consumer</code>는 broker가 보낸 메시지를 수신해 등록된 핸들러를 호출하는 클래스입니다. <br>
+                    Spring 자동 구성으로 빈이 등록되므로 사용자가 직접 정의할 필요는 없습니다.
                 </p>
 
-                <h3>application.yml</h3>
+                <h3 id="endpoint">POST /mmmq/messages 엔드포인트</h3>
+                <p>
+                    <code>Consumer</code>는 <code>@PostMapping("/mmmq/messages")</code>를 통해 broker가 보낸 메시지를 수신합니다. <br>
+                    수신 포트는 Spring Boot의 <code>server.port</code> 값을 그대로 사용합니다.
+                </p>
+
                 <div class="code-block">
                     <div class="code-block__head">
                         <span class="code-block__lang">application.yml</span>
                         <button class="code-block__copy">복사</button>
                     </div>
                     <pre><span class="tk-key">server</span>:
-  <span class="tk-key">port</span>: <span class="tk-str">8081</span>           <span class="tk-com"># broker가 이 포트로 메시지를 보냅니다</span></pre>
+  <span class="tk-key">port</span>: <span class="tk-str">8081</span></pre>
                 </div>
 
                 <div class="callout callout--warn">
@@ -172,116 +187,189 @@
                     <div>
                         <div class="callout__label">주의</div>
                         <div class="callout__body">
-                            broker의 <code>Dispatcher</code> 빈에 등록한 consumer Host(포트)가 여기서 띄운 <code>server.port</code>와
-                            일치해야 합니다.
+                            broker의 <code>Dispatcher</code> 빈에 등록한 consumer <code>Host</code>(포트)가 여기서 띄운
+                            <code>server.port</code>와 일치해야 합니다.
                         </div>
                     </div>
                 </div>
-            </section>
 
-            <section id="usage">
-                <h2>사용 예제</h2>
+                <h3 id="routing">라우팅</h3>
+                <p>
+                    <code>Consumer</code>는 수신한 메시지를 <strong>동기</strong>로 다음 순서에 따라 처리합니다.
+                </p>
+                <ol>
+                    <li>
+                        요청의 <code>mmmq-consumer-id</code> 헤더에서 <code>ConsumerId</code>를 읽습니다. <br>
+                        헤더가 없거나 형식이 잘못된 경우 핸들러를 호출하지 않고 <code>NACK</code>를 반환합니다.
+                    </li>
+                    <li>
+                        <code>ConsumerId</code>로 등록된 핸들러를 찾습니다. <br>
+                        매칭되는 핸들러가 없으면 <code>NACK</code>를 반환합니다.
+                    </li>
+                    <li>
+                        요청을 받은 Tomcat 스레드 위에서 핸들러를 실행합니다.
+                    </li>
+                    <li>
+                        핸들러가 예외 없이 끝나면 <code>ACK</code>, 예외가 던져지면 <code>NACK</code>를 같은 HTTP 응답으로 돌려줍니다.
+                    </li>
+                </ol>
 
-                <h3>방식 1 — 어노테이션 (가장 간단)</h3>
-                <p>일반 Spring Bean 메서드에 <code>@MMMQListener</code>를 붙이면 자동으로 등록됩니다.</p>
+                <div class="callout callout--warn">
+                    <div class="callout__bar"></div>
+                    <div>
+                        <div class="callout__label">주의</div>
+                        <div class="callout__body">
+                            동기 처리 모델은 핸들러 실행이 끝날 때까지 broker의 워커가 대기한다는 의미입니다. <br>
+                            핸들러가 오래 걸리는 작업이라면 핸들러 내부에서 비동기로 위임하거나, broker 쪽 <code>Dispatcher</code>를 분리해 처리 경로를
+                            나누는 것이 좋습니다.
+                        </div>
+                    </div>
+                </div>
+
+                <h3 id="response">응답</h3>
+                <p>응답은 JSON입니다.</p>
+
                 <div class="code-block">
                     <div class="code-block__head">
-                        <span class="code-block__lang">Java · @MMMQListener</span>
+                        <span class="code-block__lang">응답</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre>{ <span class="tk-str">"acknowledgement"</span>: <span class="tk-str">"ACK"</span> }</pre>
+                </div>
+
+                <table class="tbl">
+                    <thead>
+                    <tr>
+                        <th>응답</th>
+                        <th>의미</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td><code>ACK</code></td>
+                        <td>핸들러가 예외 없이 처리 완료했습니다.</td>
+                    </tr>
+                    <tr>
+                        <td><code>NACK</code></td>
+                        <td>
+                            <code>ConsumerId</code> 헤더 누락 또는 형식 오류, 매칭 핸들러 부재, 핸들러 실행 중 예외 등의 사유로 처리에 실패했습니다.
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="mmmq-listener">
+                <h2>MMMQListener</h2>
+                <p>
+                    <code>MMMQListener</code>는 consumer에 핸들러를 등록하기 위한 API입니다.
+                </p>
+
+                <div class="callout callout--info">
+                    <div class="callout__bar"></div>
+                    <div>
+                        <div class="callout__label">참고</div>
+                        <div class="callout__body">
+                            핸들러는 <code>ConsumerId</code>로 식별됩니다. 같은 ID를 가진 핸들러는 한 consumer 안에 하나만 존재할 수 있으며,
+                            중복이 발견되면 시작 시점에 거부됩니다. <br>
+                            각 핸들러는 자신에게 라우팅된 메시지를 도착한 순서대로 받습니다.
+                        </div>
+                    </div>
+                </div>
+
+                <h3 id="annotation-style">어노테이션 방식</h3>
+                <p>
+                    일반 Spring Bean 메서드에 <code>@MMMQListener(id = "...")</code>를 붙이면 자동으로 등록됩니다. <br>
+                    같은 클래스 안에 서로 다른 ID의 핸들러를 여러 개 둘 수 있습니다.
+                </p>
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">OrderService.java</span>
                         <button class="code-block__copy">복사</button>
                     </div>
                     <pre><span class="tk-key">@Service</span>
 <span class="tk-key">public class</span> <span class="tk-fn">OrderService</span> {
 
-    <span class="tk-key">@MMMQListener</span>(<span class="tk-str">"order.*"</span>)
-    <span class="tk-key">public void</span> <span class="tk-fn">handleOrder</span>(Order order) {
-        <span class="tk-com">// JSON 페이로드가 Order로 자동 역직렬화</span>
+    <span class="tk-key">@MMMQListener</span>(id = <span class="tk-str">"order-created"</span>)
+    <span class="tk-key">public void</span> <span class="tk-fn">handleOrderCreated</span>(Order order) {
+        <span class="tk-com">// JSON 본문이 Order로 자동 역직렬화되어 전달됩니다.</span>
     }
 
-    <span class="tk-key">@MMMQListener</span>(<span class="tk-str">"payment.*"</span>)
-    <span class="tk-key">public void</span> <span class="tk-fn">handlePayment</span>(Map&lt;String, Object&gt; payment) {
-        <span class="tk-com">// Map으로 받아도 OK</span>
-    }
-
-    <span class="tk-key">@MMMQListener</span>  <span class="tk-com">// 패턴 생략 시 "**" (전체 토픽)</span>
-    <span class="tk-key">public void</span> <span class="tk-fn">handleAll</span>(Object content) { }
-}</pre>
-                </div>
-
-                <h3>방식 2 — 인터페이스 구현 (타입 안전)</h3>
-                <p>제네릭 타입 정보를 컴파일 타임에 보존하고 싶을 때 사용합니다.</p>
-                <div class="code-block">
-                    <div class="code-block__head">
-                        <span class="code-block__lang">Java · MMMQListener&lt;T&gt;</span>
-                        <button class="code-block__copy">복사</button>
-                    </div>
-                    <pre><span class="tk-key">@Service</span>
-<span class="tk-key">public class</span> <span class="tk-fn">PaymentService</span> <span
-                                class="tk-key">implements</span> MMMQListener&lt;PaymentEvent&gt; {
-
-    <span class="tk-key">@Override</span>
-    <span class="tk-key">public</span> TopicPattern <span class="tk-fn">listens</span>() {
-        <span class="tk-key">return new</span> TopicPattern(<span class="tk-str">"payment.*"</span>);
-    }
-
-    <span class="tk-key">@Override</span>
-    <span class="tk-key">public void</span> <span class="tk-fn">handle</span>(PaymentEvent event) {
-        <span class="tk-com">// 런타임 제네릭 해석으로 PaymentEvent 그대로 받음</span>
+    <span class="tk-key">@MMMQListener</span>(id = <span class="tk-str">"payment-completed"</span>)
+    <span class="tk-key">public void</span> <span class="tk-fn">handlePaymentCompleted</span>(Map&lt;String, Object&gt; payment) {
+        <span class="tk-com">// Map 형태로 받을 수도 있습니다.</span>
     }
 }</pre>
                 </div>
-            </section>
 
-            <section id="api">
-                <h2>API 레퍼런스</h2>
-
-                <h3>핵심 클래스/어노테이션</h3>
+                <p><strong>어노테이션 속성</strong></p>
                 <table class="tbl">
                     <thead>
                     <tr>
-                        <th>요소</th>
+                        <th>속성</th>
+                        <th>타입</th>
                         <th>설명</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr>
-                        <td><code>@MMMQListener(String pattern)</code></td>
-                        <td>메서드를 메시지 핸들러로 등록. 패턴 생략 시 <code>**</code>.</td>
-                    </tr>
-                    <tr>
-                        <td><code>MMMQListener&lt;T&gt;</code></td>
-                        <td>인터페이스 등록 방식. <code>listens()</code> + <code>handle(T)</code>.</td>
-                    </tr>
-                    <tr>
-                        <td><code>FrontHandler</code></td>
-                        <td>수신 큐 + 스레드 풀로 메시지를 비동기 처리.</td>
-                    </tr>
-                    <tr>
-                        <td><code>HandlerExecutions</code></td>
-                        <td>등록된 핸들러 레지스트리. 패턴 매칭 + 캐싱.</td>
+                        <td><code>id</code></td>
+                        <td><code>String</code></td>
+                        <td>핸들러를 식별하는 <code>ConsumerId</code> 값.</td>
                     </tr>
                     </tbody>
                 </table>
 
-                <h3>패턴 매칭 표</h3>
+                <p><strong>메서드 매개변수</strong></p>
+                <p>
+                    메서드 매개변수 타입은 자유롭게 정할 수 있으며, broker가 보낸 메시지의 <code>content</code>가 Jackson으로 역직렬화되어 전달됩니다.
+                </p>
+
+                <h3 id="interface-style">인터페이스 방식</h3>
+                <p>
+                    제네릭 타입 정보를 컴파일 타임에 보존하고 싶을 때 사용합니다. <br>
+                    <code>MMMQListener&lt;T&gt;</code>를 구현한 Spring Bean이 자동으로 등록됩니다.
+                </p>
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">PaymentEventListener.java</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre><span class="tk-key">@Service</span>
+<span class="tk-key">public class</span> <span class="tk-fn">PaymentEventListener</span> <span
+                                class="tk-key">implements</span> MMMQListener&lt;PaymentEvent&gt; {
+
+    <span class="tk-key">@Override</span>
+    <span class="tk-key">public</span> String <span class="tk-fn">id</span>() {
+        <span class="tk-key">return</span> <span class="tk-str">"payment-event"</span>;
+    }
+
+    <span class="tk-key">@Override</span>
+    <span class="tk-key">public void</span> <span class="tk-fn">handle</span>(PaymentEvent event) {
+        <span class="tk-com">// 런타임 제네릭 해석으로 PaymentEvent 그대로 받습니다.</span>
+    }
+}</pre>
+                </div>
+
+                <p><strong>인터페이스 메서드</strong></p>
                 <table class="tbl">
                     <thead>
                     <tr>
-                        <th>패턴</th>
-                        <th>매칭 예</th>
+                        <th>메서드</th>
+                        <th>반환 / 매개변수</th>
+                        <th>설명</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr>
-                        <td><code>order.*</code></td>
-                        <td><code>order.created</code>, <code>order.shipped</code></td>
+                        <td><code>id()</code></td>
+                        <td><code>String</code></td>
+                        <td>핸들러를 식별하는 <code>ConsumerId</code> 값을 반환합니다.</td>
                     </tr>
                     <tr>
-                        <td><code>payment.kakao.*</code></td>
-                        <td><code>payment.kakao.success</code></td>
-                    </tr>
-                    <tr>
-                        <td><code>**</code></td>
-                        <td>모든 토픽</td>
+                        <td><code>handle(T)</code></td>
+                        <td><code>T</code></td>
+                        <td>제네릭 타입 <code>T</code>로 역직렬화된 메시지 본문을 받아 처리합니다.</td>
                     </tr>
                     </tbody>
                 </table>
@@ -294,11 +382,10 @@
             <div class="docs-toc__head">문서</div>
             <ol>
                 <li><a href="#overview">개요</a></li>
-                <li><a href="#features">기능</a></li>
+                <li><a href="#requirements">요구사항</a></li>
                 <li><a href="#installation">설치</a></li>
-                <li><a href="#configuration">설정</a></li>
-                <li><a href="#usage">사용 예제</a></li>
-                <li><a href="#api">API 레퍼런스</a></li>
+                <li><a href="#consumer">Consumer</a></li>
+                <li><a href="#mmmq-listener">MMMQListener</a></li>
             </ol>
         </aside>
 

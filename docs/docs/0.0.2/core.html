@@ -202,7 +202,7 @@
             <section id="topic-pattern">
                 <h2>TopicPattern</h2>
                 <p>
-                    consumer가 어떤 토픽을 구독할지 표현하는 패턴입니다.
+                    <code>Dispatcher</code>가 어떤 토픽을 구독할지 표현하는 패턴입니다.
                 </p>
 
                 <div class="code-block">
@@ -292,6 +292,62 @@ Topic topic = <span class="tk-key">new</span> Topic(<span class="tk-str">"order.
                 </table>
             </section>
 
+            <section id="consumer-id">
+                <h2>ConsumerId</h2>
+                <p>
+                    consumer에 등록된 핸들러를 식별하는 ID입니다.
+                </p>
+
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">Java</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre>ConsumerId consumerId = <span class="tk-key">new</span> ConsumerId(<span class="tk-str">"order-created"</span>);</pre>
+                </div>
+
+                <h3>형식</h3>
+                <p>
+                    <code>ConsumerId</code>는 단일 문자열 값을 담는 record이며, 다음 정규식을 만족해야 합니다.
+                </p>
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">정규식</span>
+                        <button class="code-block__copy">복사</button>
+                    </div>
+                    <pre>[A-Za-z0-9._-]+</pre>
+                </div>
+                <p>
+                    영문, 숫자, 점(<code>.</code>), 밑줄(<code>_</code>), 하이픈(<code>-</code>)만 사용할 수 있습니다. <br>
+                    형식에 맞지 않거나 값이 비어 있으면 생성자에서 <code>IllegalArgumentException</code>이 발생합니다.
+                </p>
+            </section>
+
+            <section id="metadata">
+                <h2>Metadata</h2>
+                <p>
+                    <code>Message</code>와 함께 다루는 메타데이터를 담는 객체입니다.
+                </p>
+
+                <h3>구조</h3>
+                <table class="tbl">
+                    <thead>
+                    <tr>
+                        <th>필드</th>
+                        <th>타입</th>
+                        <th>설명</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td><code>consumerId</code></td>
+                        <td><code>ConsumerId</code></td>
+                        <td>메시지 라우팅 대상 <code>ConsumerId</code></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+
         </main>
 
         <!-- On this page -->
@@ -303,6 +359,8 @@ Topic topic = <span class="tk-key">new</span> Topic(<span class="tk-str">"order.
                 <li><a href="#topic">Topic</a></li>
                 <li><a href="#message">Message</a></li>
                 <li><a href="#topic-pattern">TopicPattern</a></li>
+                <li><a href="#consumer-id">ConsumerId</a></li>
+                <li><a href="#metadata">Metadata</a></li>
             </ol>
         </aside>
 

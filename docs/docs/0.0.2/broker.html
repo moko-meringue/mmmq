@@ -286,20 +286,32 @@
                 <h2>Dispatcher</h2>
                 <p>
                     <code>Dispatcher</code>는 <code>TopicQueue</code>에 저장된 메시지를 consumer에게 전송하는 클래스입니다. <br>
-                    <code>TopicPattern</code>들을 구독하고, 구독 중인 <code>TopicPattern</code>들에 매칭되는 <code>TopicQueue</code>의
-                    메시지를 consumer에게 전송합니다.
+                    하나의 <code>Dispatcher</code>는 자신의 <code>ConsumerId</code>로 식별되며, <code>Host</code>로 메시지를 전송할 consumer를
+                    가리킵니다.
                 </p>
                 <p>
-                    여러 <code>Dispatcher</code>를 동시에 빈으로 등록할 수 있고, 각 <code>Dispatcher</code>는 자신의
-                    <code>TopicPattern</code>들에 따라 독립적으로 메시지를 전송합니다.
+                    여러 <code>Dispatcher</code>를 동시에 빈으로 등록할 수 있습니다. <br>
+                    같은 <code>Host</code>를 공유하는 <code>Dispatcher</code>들은 같은 consumer로 향하지만, 각자 다른 <code>ConsumerId</code>를
+                    메시지에 실어 보내므로 서로 독립된 메시지 흐름이 됩니다.
                 </p>
 
                 <h3 id="dispatcher-create">생성</h3>
                 <p>
                     <code>Dispatcher</code>는 Spring Bean으로 등록해 생성합니다. <br>
-                    하나의 <code>Dispatcher</code>는 이름, 메시지를 전송할 consumer 주소, 구독할 <code>TopicPattern</code> 목록을 생성자 인자로
-                    받습니다.
+                    하나의 <code>Dispatcher</code>는 메시지를 전송할 consumer의 <code>Host</code>, 자신의 <code>ConsumerId</code>,
+                    구독할 <code>TopicPattern</code>을 생성자 인자로 받습니다.
                 </p>
+                <div class="callout callout--info">
+                    <div class="callout__bar"></div>
+                    <div>
+                        <div class="callout__label">참고</div>
+                        <div class="callout__body">
+                            <code>Dispatcher</code>는 <code>ConsumerId</code> 단위로 구분됩니다. <br>
+                            같은 <code>Host</code>와 같은 <code>TopicPattern</code>을 가졌더라도 <code>ConsumerId</code>가 다르면
+                            서로 다른 <code>Dispatcher</code>이며, 각자 독립된 메시지 흐름을 가집니다.
+                        </div>
+                    </div>
+                </div>
 
                 <p><strong>Spring Bean 등록</strong></p>
                 <div class="code-block">
@@ -311,33 +323,31 @@
 <span class="tk-key">public class</span> <span class="tk-fn">DispatcherConfig</span> {
 
     <span class="tk-key">@Bean</span>
-    <span class="tk-key">public</span> Dispatcher <span class="tk-fn">orderDispatcher</span>() {
-        Host consumerHost = <span class="tk-key">new</span> Host(WebProtocol.HTTP, <span
-                                class="tk-str">"localhost"</span>, <span class="tk-str">8081</span>);
-        TopicPattern orderPattern = <span class="tk-key">new</span> TopicPattern(<span class="tk-str">"order.**"</span>);
-        TopicPattern paymentPattern = <span class="tk-key">new</span> TopicPattern(<span
-                                class="tk-str">"payment.*"</span>);
+    <span class="tk-key">public</span> Dispatcher <span class="tk-fn">orderCreatedDispatcher</span>() {
         <span class="tk-key">return new</span> Dispatcher(
-                <span class="tk-str">"order-dispatcher"</span>,
-                consumerHost,
-                List.<span class="tk-fn">of</span>(orderPattern, paymentPattern)
+                <span class="tk-key">new</span> Host(WebProtocol.HTTP, <span class="tk-str">"localhost"</span>, <span
+                                class="tk-str">8081</span>),
+                <span class="tk-key">new</span> ConsumerId(<span class="tk-str">"order-created"</span>),
+                <span class="tk-key">new</span> TopicPattern(<span class="tk-str">"order.created"</span>)
         );
     }
 
     <span class="tk-key">@Bean</span>
-    <span class="tk-key">public</span> Dispatcher <span class="tk-fn">notificationDispatcher</span>() {
-        Host consumerHost = <span class="tk-key">new</span> Host(WebProtocol.HTTP, <span
-                                class="tk-str">"localhost"</span>, <span class="tk-str">8082</span>);
-        TopicPattern notificationPattern = <span class="tk-key">new</span> TopicPattern(<span
-                                class="tk-str">"notification.**"</span>);
+    <span class="tk-key">public</span> Dispatcher <span class="tk-fn">orderShippedDispatcher</span>() {
         <span class="tk-key">return new</span> Dispatcher(
-                <span class="tk-str">"notification-dispatcher"</span>,
-                consumerHost,
-                List.<span class="tk-fn">of</span>(notificationPattern)
+                <span class="tk-key">new</span> Host(WebProtocol.HTTP, <span class="tk-str">"localhost"</span>, <span
+                                class="tk-str">8081</span>),
+                <span class="tk-key">new</span> ConsumerId(<span class="tk-str">"order-shipped"</span>),
+                <span class="tk-key">new</span> TopicPattern(<span class="tk-str">"order.shipped"</span>)
         );
     }
 }</pre>
                 </div>
+                <p>
+                    위 예시는 같은 consumer 호스트(<code>localhost:8081</code>)로 향하는 두 <code>Dispatcher</code>를 보여줍니다. <br>
+                    같은 <code>Host</code>를 공유하지만 <code>ConsumerId</code>(<code>order-created</code>,
+                    <code>order-shipped</code>)가 다르므로, consumer 안에서는 서로 다른 메시지로 구분됩니다.
+                </p>
 
                 <p><strong>생성자 매개변수</strong></p>
                 <table class="tbl">
@@ -350,26 +360,28 @@
                     </thead>
                     <tbody>
                     <tr>
-                        <td><code>name</code></td>
-                        <td><code>String</code></td>
-                        <td><code>Dispatcher</code> 식별자로, <code>[A-Za-z0-9._-]+</code> 형식이어야 합니다</td>
-                    </tr>
-                    <tr>
                         <td><code>host</code></td>
                         <td><code>Host</code></td>
                         <td>메시지를 전송할 consumer의 <code>Host</code></td>
                     </tr>
                     <tr>
-                        <td><code>patterns</code></td>
-                        <td><code>List&lt;TopicPattern&gt;</code></td>
-                        <td>구독할 <code>TopicPattern</code> 목록</td>
+                        <td><code>consumerId</code></td>
+                        <td><code>ConsumerId</code></td>
+                        <td>이 <code>Dispatcher</code>의 식별자이자 consumer에 전달되는 라우팅 키.
+                            <code>mmmq-consumer-id</code> 헤더로 함께 전송됩니다.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>pattern</code></td>
+                        <td><code>TopicPattern</code></td>
+                        <td>구독할 단일 <code>TopicPattern</code></td>
                     </tr>
                     </tbody>
                 </table>
 
                 <h3 id="subscription-model">TopicQueue 구독 모델</h3>
                 <p>
-                    <code>Dispatcher</code>는 자신의 <code>TopicPattern</code>들과 매칭되는 모든 <code>TopicQueue</code>를 구독합니다.
+                    <code>Dispatcher</code>는 자신의 <code>TopicPattern</code>과 매칭되는 모든 <code>TopicQueue</code>를 구독합니다.
                 </p>
 
                 <p>
@@ -383,29 +395,34 @@
                     </li>
                     <li>
                         <strong>워커 스레드</strong>: <code>TopicQueue</code>를 전담하는 스레드입니다. <br>
-                        워커는 <code>TopicQueue</code>의 조회 가능한 메시지를 모두 소비한 뒤 종료되고, 새 메시지가 도착하면 다시 실행됩니다. <br>
-                        같은 <code>TopicQueue</code>의 메시지를 순서대로 직렬 처리하므로, 메시지 순서가 보장됩니다.
+                        워커는 <code>TopicQueue</code>의 조회 가능한 메시지를 모두 소비한 뒤 종료되고, 새 메시지가 도착하면 다시 실행됩니다.
                     </li>
                 </ul>
 
                 <h3 id="boot">broker 구동 시</h3>
                 <p>
-                    broker가 시작되면 모든 <code>Dispatcher</code>는 자신이 가진 <code>TopicPattern</code>들과 매칭되는 모든
-                    <code>TopicQueue</code>를 구독합니다. <br>
+                    broker가 시작되면 빈으로 등록된 모든 <code>Dispatcher</code>의 <code>ConsumerId</code>가 서로 다른지 검사합니다. <br>
+                    같은 <code>ConsumerId</code>를 가진 <code>Dispatcher</code> 빈이 둘 이상 발견되면 broker 시작이 거부됩니다.
+                </p>
+                <p>
+                    검사가 끝나면 각 <code>Dispatcher</code>는 자신의 <code>TopicPattern</code>과 매칭되는 모든 <code>TopicQueue</code>를
+                    구독합니다. <br>
                     구독한 <code>TopicQueue</code>마다 오프셋과 워커 하나가 할당되고, 메시지 소비가 시작됩니다.
                 </p>
 
                 <h3 id="new-topic-queue">새 TopicQueue 생성 시</h3>
                 <p>
                     새 <code>TopicQueue</code>가 생성되면 모든 <code>Dispatcher</code>는 새 토픽과 자신의
-                    <code>TopicPattern</code>들을 비교해 구독 여부를 판단합니다. <br>
-                    만약 자신의 <code>TopicPattern</code>과 새 <code>TopicQueue</code>의 토픽이 매칭된다면, 그 <code>Dispatcher</code>는 새
-                    <code>TopicQueue</code>를 구독합니다. <br>
+                    <code>TopicPattern</code>을 비교해 구독 여부를 판단합니다. <br>
+                    자신의 <code>TopicPattern</code>과 새 <code>TopicQueue</code>의 토픽이 매칭된다면, 그 <code>Dispatcher</code>는 새
+                    <code>TopicQueue</code>를 구독합니다.
                 </p>
 
                 <h3 id="message-arrival">메시지 도착 시</h3>
                 <p>
                     구독 중인 <code>TopicQueue</code>에 메시지가 도착하면 워커가 그 메시지를 조회해 consumer에게 전송합니다. <br>
+                    전송 시에는 자신의 <code>ConsumerId</code>를 <code>mmmq-consumer-id</code> 헤더에 실어 보냅니다.
+                    <br>
                     <code>ACK</code>을 받으면 오프셋을 커밋하고 다음 메시지로 진행합니다.
                     <br>
                     더 이상 조회 가능한 메시지가 없으면 다음 메시지가 도착하기 전까지 대기합니다.
@@ -455,13 +472,13 @@
 │   ├── 0000000000000123456.mmm
 │   ├── 0000000000000123456.idx
 │   └── checkpoints/                <span class="tk-com"># Dispatcher별 체크포인트 디렉터리</span>
-│       ├── order-created-dispatcher.checkpoint
-│       └── order-completed-dispatcher.checkpoint
+│       ├── order-created.checkpoint
+│       └── order-audit.checkpoint
 └── notification.sent/
     ├── 0000000000000000000.mmm
     ├── 0000000000000000000.idx
     └── checkpoints/
-        └── notification-dispatcher.checkpoint</pre>
+        └── notification-mailer.checkpoint</pre>
                 </div>
 
                 <p>각 파일의 역할은 다음과 같습니다.</p>
@@ -649,7 +666,7 @@ byte    0          8         16         24</pre>
                 <p>
                     <strong>체크포인트는</strong> <code>Dispatcher</code>가 <code>TopicQueue</code>에서 다음에 조회할 오프셋을 저장한
                     파일입니다. <br>
-                    각 토픽 디렉터리의 <code>checkpoints/</code> 하위에 <code>&lt;dispatcher 이름&gt;.checkpoint</code> 형태로 저장됩니다.
+                    각 토픽 디렉터리의 <code>checkpoints/</code> 하위에 <code>&lt;consumerId&gt;.checkpoint</code> 형태로 저장됩니다.
                 </p>
                 <p>
                     <code>Dispatcher</code>가 한 메시지의 처리를 마친 뒤 체크포인트의 오프셋을 다음 값으로 옮기는 동작을 <strong>커밋</strong>이라 부릅니다. <br>
@@ -667,9 +684,9 @@ byte    0          8         16         24</pre>
 └── order.created/
     ├── ...
     └── checkpoints/
-        ├── order-dispatcher.checkpoint
-        ├── billing-dispatcher.checkpoint
-        └── audit-dispatcher.checkpoint</pre>
+        ├── order-fulfillment.checkpoint
+        ├── billing.checkpoint
+        └── audit.checkpoint</pre>
                 </div>
 
                 <p>
@@ -702,9 +719,9 @@ byte    0          8         16         24</pre>
     └─────┴─────┴─────┴─────┴─────┴─────┴─────┘
        ▲                 ▲           ▲
        │                 │           │
-       │                 │           └─── billing-dispatcher.checkpoint = 5
-       │                 └─── analytics-dispatcher.checkpoint = 3
-       └─── audit-dispatcher.checkpoint = 0</pre>
+       │                 │           └─── billing.checkpoint = 5
+       │                 └─── analytics.checkpoint = 3
+       └─── audit.checkpoint = 0</pre>
                 </div>
 
                 <p>
@@ -860,7 +877,8 @@ byte    0          8         16         24</pre>
                 <ol>
                     <li>
                         <strong>메시지 전송</strong>: <code>Dispatcher</code>는 조회한 메시지를 설정된 consumer의
-                        <code>/mmmq/messages</code> 엔드포인트로 전송합니다.
+                        <code>/mmmq/messages</code> 엔드포인트로 전송합니다. <br>
+                        이때 자신의 <code>ConsumerId</code>를 <code>mmmq-consumer-id</code> 헤더에 실어 보냅니다.
                     </li>
                     <li>
                         <strong>ACK 처리</strong>: consumer가 <code>ACK</code>을 반환하면 해당 메시지는 처리 완료로 간주됩니다. <br>
