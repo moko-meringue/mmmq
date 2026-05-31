@@ -25,14 +25,10 @@ public class TopicQueueContainer {
     public TopicQueue getOrCreate(Topic topic) {
         return queues.computeIfAbsent(topic, key -> {
             TopicQueue queue = factory.create(key);
-            log.info("Topic queue created: {}", queue.getTopic().name());
+            log.info("Topic queue created: {}", key.name());
             dispatcherContainer.register(queue);
             return queue;
         });
-    }
-
-    void register(Topic topic) {
-        getOrCreate(topic);
     }
 
     @PreDestroy
