@@ -24,7 +24,9 @@ class MethodExecutorRegistrationTest {
     @Test
     @DisplayName("메서드 실행 등록이 정상적으로 수행된다.")
     void methodExecutionRegistrationTest() {
-        assertThat(handlerExecutionContainer.size()).isEqualTo(3);
+        assertThat(handlerExecutionContainer.find("topic1")).isNotNull();
+        assertThat(handlerExecutionContainer.find("topic2")).isNotNull();
+        assertThat(handlerExecutionContainer.find("topic3")).isNotNull();
     }
 
     @Test

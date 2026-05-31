@@ -23,8 +23,4 @@ public class HandlerExecutionContainer {
     public HandlerExecution find(String id) {
         return handlerExecutions.get(id);
     }
-
-    public int size() {
-        return handlerExecutions.size();
-    }
 }
