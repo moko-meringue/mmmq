@@ -55,14 +55,14 @@ public class Dispatcher {
         subscriptions.computeIfAbsent(topicQueue, queue -> queue.subscribe(consumerId.value()));
     }
 
-    void drain(TopicQueue topicQueue) {
+    void dispatch(TopicQueue topicQueue) {
         if (!subscriptions.containsKey(topicQueue)) {
             return;
         }
-        workerPool.submit(topicQueue, () -> drainLoop(topicQueue));
+        workerPool.submit(topicQueue, () -> drain(topicQueue));
     }
 
-    private void drainLoop(TopicQueue topicQueue) {
+    private void drain(TopicQueue topicQueue) {
         try {
             Offset offset = subscriptions.get(topicQueue);
             while (true) {

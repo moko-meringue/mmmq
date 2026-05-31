@@ -28,7 +28,7 @@ public class FrontDispatcher {
         }
         dispatcherContainer.subscribers(queue).forEach(dispatcher -> {
             try {
-                dispatcher.drain(queue);
+                dispatcher.dispatch(queue);
             } catch (Exception exception) {
                 log.warn(
                         "Dispatcher '{}' failed during drain on topic '{}'",

@@ -80,7 +80,7 @@ class DispatcherTest {
         TopicQueue topicQueue = createTopicQueue(new Topic("test"));
         dispatcher.subscribe(topicQueue);
         topicQueue.offer(new Message(new Topic("test"), Map.of("key", "value")));
-        dispatcher.drain(topicQueue);
+        dispatcher.dispatch(topicQueue);
 
         assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
         dispatcher.destroy();
@@ -105,8 +105,8 @@ class DispatcherTest {
 
         orderQueue.offer(new Message(new Topic("order.new"), Map.of("id", 1)));
         paymentQueue.offer(new Message(new Topic("payment.kakao"), Map.of("id", 2)));
-        dispatcher.drain(orderQueue);
-        dispatcher.drain(paymentQueue);
+        dispatcher.dispatch(orderQueue);
+        dispatcher.dispatch(paymentQueue);
 
         assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
         dispatcher.destroy();
@@ -132,8 +132,8 @@ class DispatcherTest {
         topicA.offer(new Message(new Topic("topicA"), Map.of("seq", 1)));
         topicA.offer(new Message(new Topic("topicA"), Map.of("seq", 2)));
         topicB.offer(new Message(new Topic("topicB"), Map.of("seq", 1)));
-        dispatcher.drain(topicA);
-        dispatcher.drain(topicB);
+        dispatcher.dispatch(topicA);
+        dispatcher.dispatch(topicB);
 
         assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
         dispatcher.destroy();
@@ -152,7 +152,7 @@ class DispatcherTest {
 
         TopicQueue paymentQueue = createTopicQueue(new Topic("payment.kakao"));
         paymentQueue.offer(new Message(new Topic("payment.kakao"), Map.of("id", 1)));
-        assertThatCode(() -> dispatcher.drain(paymentQueue)).doesNotThrowAnyException();
+        assertThatCode(() -> dispatcher.dispatch(paymentQueue)).doesNotThrowAnyException();
 
         assertThat(dispatcher.subscriptions).doesNotContainKey(paymentQueue);
     }
@@ -175,7 +175,7 @@ class DispatcherTest {
         TopicQueue queue = createTopicQueue(new Topic("test"));
         dispatcher.subscribe(queue);
         queue.offer(new Message(new Topic("test"), Map.of("k", "v")));
-        dispatcher.drain(queue);
+        dispatcher.dispatch(queue);
 
         assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
         assertThat(receivedConsumerId[0]).isEqualTo(new ConsumerId("my-handler"));
