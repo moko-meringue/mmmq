@@ -33,12 +33,7 @@ public class TopicQueueContainer {
 
     @SuppressWarnings("resource")
     void register(Topic topic) {
-        queues.computeIfAbsent(topic, key -> {
-            TopicQueue queue = factory.create(key);
-            log.info("Topic queue registered: {}", key.name());
-            dispatcherContainer.register(queue);
-            return queue;
-        });
+        getOrCreate(topic);
     }
 
     @PreDestroy
