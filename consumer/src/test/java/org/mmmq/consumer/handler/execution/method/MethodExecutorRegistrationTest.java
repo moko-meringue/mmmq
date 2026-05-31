@@ -1,11 +1,10 @@
 package org.mmmq.consumer.handler.execution.method;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mmmq.consumer.handler.FrontHandler;
-import org.mmmq.consumer.handler.FrontHandlerUtil;
+import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.consumer.handler.execution.HandlerExecutions;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
@@ -20,28 +19,42 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 class MethodExecutorRegistrationTest {
 
     @Autowired
-    FrontHandler frontHandler;
+    HandlerExecutions handlerExecutions;
 
     @Test
     @DisplayName("메서드 실행 등록이 정상적으로 수행된다.")
     void methodExecutionRegistrationTest() {
-        HandlerExecutions handlerExecutions = FrontHandlerUtil.getHandlerExecutions(frontHandler);
         assertThat(handlerExecutions.size()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("등록된 핸들러는 id로 조회된다.")
+    void findsRegisteredHandlerById() {
+        HandlerExecution execution = handlerExecutions.find("topic1");
+
+        assertThat(execution).isNotNull();
+        assertThat(execution.id()).isEqualTo("topic1");
     }
 
     @Configuration
     static class MethodExecutionRegistrationConfiguration {
 
         @Bean
-        FrontHandler frontHandler() {
-            return new FrontHandler();
+        ObjectMapper objectMapper() {
+            return new ObjectMapper();
+        }
+
+        @Bean
+        HandlerExecutions handlerExecutions() {
+            return new HandlerExecutions();
         }
 
         @Bean
         MethodExecutionRegistration methodExecutionRegistration(
-                ObjectProvider<FrontHandler> frontHandlerObjectProvider
+                HandlerExecutions handlerExecutions,
+                ObjectMapper objectMapper
         ) {
-            return new MethodExecutionRegistration(frontHandlerObjectProvider);
+            return new MethodExecutionRegistration(handlerExecutions, objectMapper);
         }
 
         @Bean
@@ -62,21 +75,21 @@ class MethodExecutorRegistrationTest {
 
     static class Bean1 {
 
-        @MMMQListener(pattern = "topic1")
+        @MMMQListener(id = "topic1")
         void handle1(String content) {
         }
     }
 
     static class Bean2 {
 
-        @MMMQListener(pattern = "topic2")
+        @MMMQListener(id = "topic2")
         void handle2(String content) {
         }
     }
 
     static class Bean3 {
 
-        @MMMQListener(pattern = "topic3")
+        @MMMQListener(id = "topic3")
         void handle3(String content) {
         }
     }

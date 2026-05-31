@@ -1,17 +1,25 @@
 package org.mmmq.consumer.handler.execution.type;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
-import org.mmmq.core.message.TopicPattern;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 class InterfaceExecutionTest {
 
     ObjectMapper objectMapper = new ObjectMapper();
+
+    @Test
+    @DisplayName("id는 MMMQListener의 id() 반환값과 같다.")
+    void idReturnsListenerId() {
+        SampleListener sampleListener = new SampleListener();
+        InterfaceExecution interfaceExecution = new InterfaceExecution(sampleListener, objectMapper);
+
+        assertThat(interfaceExecution.id()).isEqualTo("order-new");
+    }
 
     @Test
     @DisplayName("content가 null이면 인터페이스 핸들러에 null을 전달한다")
@@ -26,6 +34,7 @@ class InterfaceExecutionTest {
     }
 
     static class SampleDto {
+
         String name;
     }
 
@@ -35,8 +44,8 @@ class InterfaceExecutionTest {
         SampleDto receivedDto;
 
         @Override
-        public TopicPattern listens() {
-            return new TopicPattern("order.new");
+        public String id() {
+            return "order-new";
         }
 
         @Override

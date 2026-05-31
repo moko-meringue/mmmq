@@ -24,12 +24,15 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class SenderTest {
+
+    private static final String HANDLER_ID = "handler-1";
 
     RestClient restClient;
     MockRestServiceServer server;
@@ -68,7 +71,26 @@ class SenderTest {
                         MediaType.APPLICATION_JSON
                 ));
 
-        boolean result = sender.send(new Message(new Topic("topic"), Map.of("key", "value")), 1);
+        boolean result = sender.send(new Message(new Topic("topic"), Map.of("key", "value")), HANDLER_ID, 1);
+
+        assertThat(result).isTrue();
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("메시지 전송 시 handler id를 헤더에 실어 보낸다.")
+    void sendIncludesHandlerIdHeader() throws JsonProcessingException {
+        Sender sender = new Sender(restClient);
+
+        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/mmmq/messages"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("MMMQ-Handler-Id", HANDLER_ID))
+                .andRespond(withSuccess(
+                        objectMapper.writeValueAsString(new ConsumerAcknowledgement(Acknowledgement.ACK)),
+                        MediaType.APPLICATION_JSON
+                ));
+
+        boolean result = sender.send(new Message(new Topic("topic"), Map.of("key", "value")), HANDLER_ID, 1);
 
         assertThat(result).isTrue();
         server.verify();
@@ -86,7 +108,7 @@ class SenderTest {
                         MediaType.APPLICATION_JSON
                 ));
 
-        boolean result = sender.send(new Message(new Topic("topic"), Map.of("key", "value")), 2);
+        boolean result = sender.send(new Message(new Topic("topic"), Map.of("key", "value")), HANDLER_ID, 2);
 
         assertThat(result).isFalse();
         server.verify();
@@ -110,7 +132,7 @@ class SenderTest {
                         MediaType.APPLICATION_JSON
                 ));
 
-        boolean result = sender.send(new Message(new Topic("topic"), Map.of("key", "value")), 3);
+        boolean result = sender.send(new Message(new Topic("topic"), Map.of("key", "value")), HANDLER_ID, 3);
 
         assertThat(result).isTrue();
         server.verify();
@@ -125,7 +147,7 @@ class SenderTest {
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
 
-        assertThatThrownBy(() -> sender.send(new Message(new Topic("topic"), Map.of("key", "value")), 3))
+        assertThatThrownBy(() -> sender.send(new Message(new Topic("topic"), Map.of("key", "value")), HANDLER_ID, 3))
                 .isInstanceOf(MessageDeliveryException.class);
     }
 }
