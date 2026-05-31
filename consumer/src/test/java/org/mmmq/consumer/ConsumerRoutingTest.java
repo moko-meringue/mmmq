@@ -113,7 +113,12 @@ class ConsumerRoutingTest {
     @Test
     @DisplayName("핸들러가 예외를 던지면 NACK를 반환한다")
     void returnsNackWhenHandlerThrows() {
-        handlerExecutions.add(new HandlerExecution("failing-handler") {
+        handlerExecutions.add(new HandlerExecution() {
+            @Override
+            public String id() {
+                return "failing-handler";
+            }
+
             @Override
             public void execute(Message message) {
                 throw new IllegalStateException("boom");
@@ -175,12 +180,18 @@ class ConsumerRoutingTest {
         return headers;
     }
 
-    static class FakeHandlerExecution extends HandlerExecution {
+    static class FakeHandlerExecution implements HandlerExecution {
 
+        private final String id;
         final AtomicInteger executionCount = new AtomicInteger();
 
-        protected FakeHandlerExecution(String id) {
-            super(id);
+        FakeHandlerExecution(String id) {
+            this.id = id;
+        }
+
+        @Override
+        public String id() {
+            return id;
         }
 
         @Override

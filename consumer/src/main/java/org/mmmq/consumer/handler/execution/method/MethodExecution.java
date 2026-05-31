@@ -10,16 +10,17 @@ import org.mmmq.core.message.Message;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-class MethodExecution extends HandlerExecution {
+class MethodExecution implements HandlerExecution {
 
-    final Object bean;
-    final Method method;
-    final JavaType parameterType;
-    final ObjectMapper objectMapper;
+    private final String id;
+    private final Object bean;
+    private final Method method;
+    private final JavaType parameterType;
+    private final ObjectMapper objectMapper;
 
     MethodExecution(String id, Object bean, Method method, ObjectMapper objectMapper) {
-        super(id);
         method.setAccessible(true);
+        this.id = id;
         this.bean = bean;
         this.method = method;
         this.objectMapper = objectMapper;
@@ -31,6 +32,11 @@ class MethodExecution extends HandlerExecution {
             throw new InvalidHandlerException("MethodExecution must have exactly one parameter: " + id);
         }
         return objectMapper.constructType(method.getGenericParameterTypes()[0]);
+    }
+
+    @Override
+    public String id() {
+        return id;
     }
 
     @Override

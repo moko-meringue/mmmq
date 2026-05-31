@@ -8,15 +8,16 @@ import org.mmmq.core.message.Message;
 import org.springframework.core.GenericTypeResolver;
 import org.springframework.util.ClassUtils;
 
-class InterfaceExecution extends HandlerExecution {
+class InterfaceExecution implements HandlerExecution {
 
-    final MMMQListener<Object> mmmqListener;
-    final JavaType parameterType;
-    final ObjectMapper objectMapper;
+    private final String id;
+    private final MMMQListener<Object> mmmqListener;
+    private final JavaType parameterType;
+    private final ObjectMapper objectMapper;
 
     @SuppressWarnings("unchecked")
     InterfaceExecution(MMMQListener<?> mmmqListener, ObjectMapper objectMapper) {
-        super(mmmqListener.id());
+        this.id = mmmqListener.id();
         this.mmmqListener = (MMMQListener<Object>) mmmqListener;
         this.objectMapper = objectMapper;
         this.parameterType = resolveParameterType(mmmqListener, objectMapper);
@@ -27,6 +28,11 @@ class InterfaceExecution extends HandlerExecution {
         Class<?> genericType = GenericTypeResolver.resolveTypeArgument(userClass, MMMQListener.class);
 
         return objectMapper.constructType(genericType != null ? genericType : Object.class);
+    }
+
+    @Override
+    public String id() {
+        return id;
     }
 
     @Override
