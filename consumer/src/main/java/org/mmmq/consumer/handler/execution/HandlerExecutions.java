@@ -11,12 +11,13 @@ public class HandlerExecutions {
     private final Map<String, HandlerExecution> byHandlerId = new ConcurrentHashMap<>();
 
     public void add(HandlerExecution handlerExecution) {
-        HandlerExecution previous = byHandlerId.putIfAbsent(handlerExecution.id(), handlerExecution);
-        if (previous != null) {
+        String handlerId = handlerExecution.id();
+        if (byHandlerId.containsKey(handlerId)) {
             throw new IllegalStateException(
-                    "Duplicate HandlerExecution id '" + handlerExecution.id() + "'"
+                    "Duplicate HandlerExecution id '" + handlerId + "'"
             );
         }
+        byHandlerId.put(handlerId, handlerExecution);
     }
 
     @Nullable
