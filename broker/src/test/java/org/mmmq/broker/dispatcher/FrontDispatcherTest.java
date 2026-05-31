@@ -11,6 +11,7 @@ import org.mmmq.core.message.Topic;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,6 +36,7 @@ class FrontDispatcherTest {
         TopicQueue mockQueue = mock(TopicQueue.class);
         when(container.get(new Topic("order.new"))).thenReturn(mockQueue);
         when(mockQueue.offer(any())).thenReturn(true);
+        when(dispatcherContainer.subscribers(mockQueue)).thenReturn(List.of());
 
         FrontDispatcher frontDispatcher = new FrontDispatcher(container, dispatcherContainer);
         Message message = new Message(new Topic("order.new"), Map.of("id", 1));
@@ -44,7 +46,7 @@ class FrontDispatcherTest {
         assertThat(acknowledgement).isEqualTo(Acknowledgement.ACK);
         verify(container).get(new Topic("order.new"));
         verify(mockQueue).offer(message);
-        verify(dispatcherContainer).dispatch(mockQueue);
+        verify(dispatcherContainer).subscribers(mockQueue);
     }
 
     @Test
@@ -53,6 +55,7 @@ class FrontDispatcherTest {
         TopicQueue mockQueue = mock(TopicQueue.class);
         when(container.get(new Topic("payment.kakao"))).thenReturn(mockQueue);
         when(mockQueue.offer(any())).thenReturn(true);
+        when(dispatcherContainer.subscribers(mockQueue)).thenReturn(List.of());
 
         FrontDispatcher frontDispatcher = new FrontDispatcher(container, dispatcherContainer);
         Message message = new Message(new Topic("payment.kakao"), Map.of("id", 1));
@@ -61,7 +64,7 @@ class FrontDispatcherTest {
 
         assertThat(acknowledgement).isEqualTo(Acknowledgement.ACK);
         verify(mockQueue).offer(message);
-        verify(dispatcherContainer).dispatch(mockQueue);
+        verify(dispatcherContainer).subscribers(mockQueue);
     }
 
     @Test

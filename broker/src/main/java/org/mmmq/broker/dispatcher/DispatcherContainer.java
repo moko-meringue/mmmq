@@ -8,14 +8,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.core.identifier.ConsumerId;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
 public class DispatcherContainer {
-
-    private static final Logger log = LoggerFactory.getLogger(DispatcherContainer.class);
 
     private final List<Dispatcher> dispatchers;
     private final Map<TopicQueue, List<Dispatcher>> subscriptions = new ConcurrentHashMap<>();
@@ -40,22 +36,8 @@ public class DispatcherContainer {
         subscriptions.put(topicQueue, matched);
     }
 
-    public void dispatch(TopicQueue topicQueue) {
-        List<Dispatcher> subscribers = subscriptions.get(topicQueue);
-        if (subscribers == null) {
-            return;
-        }
-        subscribers.forEach(dispatcher -> {
-            try {
-                dispatcher.drain(topicQueue);
-            } catch (Exception exception) {
-                log.warn(
-                        "Dispatcher '{}' failed during drain on topic '{}'",
-                        dispatcher.consumerId(),
-                        topicQueue.getTopic(),
-                        exception
-                );
-            }
-        });
+    public List<Dispatcher> subscribers(TopicQueue topicQueue) {
+        List<Dispatcher> result = subscriptions.get(topicQueue);
+        return result == null ? List.of() : result;
     }
 }
