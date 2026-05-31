@@ -16,12 +16,12 @@ public class DispatcherContainer {
 
     private static final Logger log = LoggerFactory.getLogger(DispatcherContainer.class);
 
-    private final Map<String, Dispatcher> handlerIdToDispatcher = new HashMap<>();
-    private final Map<TopicQueue, List<Dispatcher>> queueToSubscribers = new ConcurrentHashMap<>();
+    private final Map<String, Dispatcher> dispatchers = new HashMap<>();
+    private final Map<TopicQueue, List<Dispatcher>> subscriptions = new ConcurrentHashMap<>();
 
     public DispatcherContainer(Collection<Dispatcher> dispatchers) {
         dispatchers.forEach(dispatcher -> {
-            Dispatcher previous = handlerIdToDispatcher.putIfAbsent(dispatcher.handlerId(), dispatcher);
+            Dispatcher previous = this.dispatchers.putIfAbsent(dispatcher.handlerId(), dispatcher);
             if (previous != null) {
                 throw new IllegalStateException(
                         "Duplicate handlerId '" + dispatcher.handlerId() + "' across multiple Dispatcher beans"
@@ -31,15 +31,15 @@ public class DispatcherContainer {
     }
 
     public void onTopicQueueInitialized(TopicQueue topicQueue) {
-        List<Dispatcher> matched = handlerIdToDispatcher.values().stream()
+        List<Dispatcher> matched = dispatchers.values().stream()
                 .filter(dispatcher -> dispatcher.matches(topicQueue.getTopic()))
                 .toList();
         matched.forEach(dispatcher -> dispatcher.subscribe(topicQueue));
-        queueToSubscribers.put(topicQueue, matched);
+        subscriptions.put(topicQueue, matched);
     }
 
     public void dispatch(TopicQueue topicQueue) {
-        List<Dispatcher> subscribers = queueToSubscribers.get(topicQueue);
+        List<Dispatcher> subscribers = subscriptions.get(topicQueue);
         if (subscribers == null) {
             return;
         }
