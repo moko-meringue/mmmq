@@ -3,7 +3,7 @@ package org.mmmq.consumer.handler.execution;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.mmmq.core.identifier.ConsumerId;
-import org.springframework.lang.Nullable;
+import org.mmmq.core.annotation.Nullable;
 import org.springframework.stereotype.Component;
 
 @Component

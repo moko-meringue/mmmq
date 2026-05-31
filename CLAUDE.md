@@ -32,13 +32,13 @@ Requirements: Java 17+, Spring Boot 3.2.0+, Spring Web starter.
 ## Module Architecture
 
 ```
-core/       # Shared types: Message, Topic, Pattern, Acknowledgement
+core/       # Shared types: Message, Topic, TopicPattern, Acknowledgement, ConsumerId, Metadata, @Nullable
 producer/   # Producer bean + Gateway (RestClient → POST /mmmq/messages to Broker)
-consumer/   # Consumer REST endpoint + FrontHandler + HandlerExecution
-broker/     # Broker REST endpoint + FrontDispatcher + Dispatcher + DeadLetterQueue
+consumer/   # Consumer REST controller + HandlerExecutionContainer + HandlerExecution
+broker/     # FrontDispatcher + DispatcherContainer + Dispatcher + Sender + TopicQueueContainer
 ```
 
-**Inter-module dependencies:** `producer → core`, `consumer → core`, `broker → core`
+**Inter-module dependencies:** `producer → core`, `consumer → core`, `broker → core`. No external Spring dependencies in `core`.
 
 ## Message Flow
 
@@ -46,60 +46,79 @@ broker/     # Broker REST endpoint + FrontDispatcher + Dispatcher + DeadLetterQu
 Producer.produce(message)
   → HTTP POST /mmmq/messages → Broker
   → FrontDispatcher.dispatch(message)
-    → Filters Dispatchers by Pattern.matches(topic)  [Ant-style wildcard, e.g. order.*]
-    → TopicQueueRegistry.get(topic) → TopicQueue (SegmentChain, segmentFile capacity 1000)
-    → TopicQueue.offer(message) + publishes MessageArrivedEvent
-    → Dispatcher (per Consumer): subscribes to TopicQueue, single Subscription worker thread
-      → Drains TopicQueue from per-Subscription Offset
-      → Sender.send(message, maxNackRetry=3)  [NACK → retry up to 3x]
-        → HTTP POST /mmmq/messages → Consumer
-          → FrontHandler: ArrayBlockingQueue(1000) + single worker thread
-            → ThreadPoolExecutor(2~5) for handler execution
-              → HandlerExecutions.getExecutions(message)  [filters by pattern.matches(topic)]
-                → MethodExecution (@MMMQListener annotation) or InterfaceExecution (MMMQListener<T>)
-      → On comm failure: exponential backoff (1s→2s→...→60s, infinite retry)
-      → On NACK exhausted: DeadLetterQueue.add(DeadLetter(message))
-        → CounterDeadLetterQueue (triggers at N messages) or TimerDeadLetterQueue (triggers on interval)
-          → DeadLetterHandler (e.g. DeadLetterFileWriter → JSON file)
+    → TopicQueueContainer.getOrCreate(topic) → TopicQueue (SegmentChain, per-topic queue)
+    → TopicQueue.offer(message)
+    → DispatcherContainer.getSubscribers(queue) → matched Dispatchers
+    → each matched Dispatcher.dispatch(queue)  [package-private, async trigger]
+      → WorkerPool submits drain(queue) on a single worker thread per (Dispatcher, queue)
+      → drain loop: peek → deliver → commit (offset persisted to <consumerId>.checkpoint)
+        → Sender.send(message, consumerId, maxRetry=3)
+          → Metadata.setConsumerId + HTTP POST /mmmq/messages with header `mmmq-consumer-id: <consumerId>`
+            → Consumer (REST controller, synchronous)
+              → Metadata.getConsumerId() from request headers
+              → HandlerExecutionContainer.find(consumerId) → HandlerExecution
+              → execution.execute(message)  [synchronous on Tomcat thread]
+              → ACK (success) | NACK (missing/invalid id, no handler, exception)
+        → On NACK: dispatcher retries up to MAX_NACK_RETRY_COUNT (3); drops after exhaustion
+        → On communication failure: exponential backoff (1s → 2s → ... → 60s, infinite retry)
 ```
+
+Bootstrap: `TopicQueueBootstrapper` (SmartInitializingSingleton) restores persisted topic queues at startup and calls `TopicQueueContainer.getOrCreate` for each, which in turn calls `DispatcherContainer.register(queue)` to bind matched Dispatchers.
 
 ## Key Design Points
 
-- **Pattern matching:** `Pattern` uses Spring's `AntPathMatcher`. Default `@MMMQListener` value is `"**"` (matches all). Consumer routing is keyed on `message.topic()` — `HandlerExecution.supports(message)` checks `pattern.matches(message.topic())`.
-- **Thread isolation:** Each `Dispatcher` Subscription has a single worker thread (not a pool); `FrontHandler` has a `ThreadPoolExecutor` (2–5 threads) for handler execution.
+- **HE-level proxy:** Each `Dispatcher` is a proxy for exactly one HandlerExecution. 1 ID = 1 Dispatcher = 1 HE. Multiple Dispatchers may target the same Consumer host but with different consumerIds.
+- **Pattern matching:** `TopicPattern` uses Spring's `AntPathMatcher` (e.g. `order.*`, `**`). Each Dispatcher holds a single pattern; `Dispatcher.canDispatch(topic)` checks it. Consumer-side routing is by `consumerId` header only — no pattern matching on Consumer.
+- **Synchronous response:** Consumer Controller runs `HandlerExecution.execute(message)` directly on the Tomcat request thread. ACK/NACK in the same HTTP response. No queue/worker pool on Consumer.
+- **Atomicity & isolation:** A failing or slow HE only blocks its own Dispatcher's drain loop; other Dispatchers are independent threads.
+- **Uniqueness on both sides:** Consumer rejects duplicate HE ids at registration (`HandlerExecutionContainer.add`). Broker rejects duplicate consumerIds at `DispatcherContainer` construction.
+- **Identifier:** `ConsumerId` is a `record` in `org.mmmq.core.identifier`, validated by regex `[A-Za-z0-9._-]+` in its compact constructor. Used everywhere (Dispatcher, Sender, HE, container) as a typed value object.
+- **Wire format:** `Metadata` (in `org.mmmq.core.metadata`) encapsulates HTTP header transport. Header name `mmmq-consumer-id` (lowercase per HTTP/2 spec).
+- **Thread model:** `Dispatcher.WorkerPool` creates one single-threaded `ThreadPoolExecutor` per (Dispatcher, TopicQueue). Consumer uses Tomcat's request thread pool directly.
 - **Retry layers:** Producer retries on Broker NACK (default 3). Dispatcher/Sender retries on Consumer NACK (max 3). Dispatcher retries indefinitely with exponential backoff (1s~60s) on network/comm failure.
-- **DeadLetter:** `DeadLetter` holds only `Message` (no cause/exception). Created when Sender exhausts NACK retries.
-- **Handler types:** `HandlerExecution` is abstract — `MethodExecution` invokes annotated methods via reflection with JSON deserialization; `InterfaceExecution` invokes `MMMQListener<T>.handle()`.
+- **Handler types:** `HandlerExecution` is an interface with `ConsumerId id()` and `void execute(Message)`. Two implementations:
+  - `MethodExecution`: invokes an annotated method via reflection with JSON deserialization.
+  - `InterfaceExecution`: invokes `MMMQListener<T>.handle()` on a bean implementing `MMMQListener<T>`.
 - **Producer Builder:** `Producer.builder(host).maxRetryCount(n).build()` for custom retry count.
 
 ## Consumer Handler Registration
 
 ```java
 // Annotation-based (method level)
-@MMMQListener("order.*")
+@MMMQListener(id = "order-created")
 public void handle(Order order) { ... }
 
 // Interface-based (class level)
 @Service
 public class OrderService implements MMMQListener<Order> {
-    public Pattern listens() { return new Pattern("order.*"); }
+
+    @Override
+    public String id() {
+        return "order-created";
+    }
+
+    @Override
     public void handle(Order order) { ... }
 }
 ```
 
+Both forms require an explicit string `id` matching the regex `[A-Za-z0-9._-]+`. Duplicate ids at startup throw `IllegalStateException` and fail bean initialization.
+
 ## Broker Dispatcher Registration
 
 ```java
-// Each Dispatcher binds to one or more Patterns.
+// Each Dispatcher proxies exactly one HandlerExecution (matched by consumerId).
 @Bean
-public Dispatcher orderDispatcher() {
+public Dispatcher orderCreatedDispatcher() {
     return new Dispatcher(
-        "order-dispatcher",
-        new Host("http", "ip", 8080),
-        List.of(new Pattern("order.*"))
+        new Host("http", "consumer-host", 8080),
+        new ConsumerId("order-created"),
+        new TopicPattern("order.created")
     );
 }
 ```
+
+Broker rejects duplicate consumerIds across all `Dispatcher` beans at startup via `DispatcherContainer`. Each Dispatcher gets its own `<consumerId>.checkpoint` file under the per-topic storage directory.
 
 ## Code Style Guide
 
@@ -115,6 +134,7 @@ public Dispatcher orderDispatcher() {
 ### Lombok
 - Allowed: `@Getter`, `@RequiredArgsConstructor`, `@NoArgsConstructor(access = AccessLevel.PROTECTED)`, `@Slf4j`.
 - Forbidden: NEVER use `@Setter` or `@Data`.
+- Note: `broker` module does NOT depend on Lombok — use explicit `Logger` declarations there.
 
 ### Immutability
 - Use `private final` fields with `@RequiredArgsConstructor` for DI.
@@ -124,6 +144,7 @@ public Dispatcher orderDispatcher() {
 ### Optional & Streams
 - Use `orElseThrow()` / `ifPresent()`. NEVER use `isPresent()` + `get()`.
 - Prefer Stream API over traditional for/while loops.
+- For nullable returns, use `@Nullable` from `org.mmmq.core.annotation` (project-defined, no external dep).
 
 ### Clean Code
 - Comments explain WHY, not WHAT. Code must be self-documenting.
@@ -135,12 +156,12 @@ public Dispatcher orderDispatcher() {
 ### Packages
 - Format: lowercase. Structure: `org.mmmq.{module}.{subpackage}`
 - `{module}`: `core`, `producer`, `consumer`, `broker`
-- Example: `org.mmmq.broker.dispatcher`, `org.mmmq.core.message`
+- Example: `org.mmmq.broker.dispatcher`, `org.mmmq.core.message`, `org.mmmq.core.identifier`
 
 ### Classes and Interfaces
 - Format: PascalCase, nouns or noun phrases.
 - Forbidden suffixes: `Client`, `Manager`, `Helper`, `Util` — avoid unless unavoidable.
-- `Handler` is permitted in messaging/event contexts (e.g., `DeadLetterHandler`, `FrontHandler`).
+- `Container` is used for components that own and manage a collection (e.g., `DispatcherContainer`, `TopicQueueContainer`, `HandlerExecutionContainer`).
 
 ### Methods
 - Format: camelCase, start with verbs.
@@ -151,7 +172,11 @@ public Dispatcher orderDispatcher() {
 - camelCase for variables. Names must clearly state purpose, regardless of length.
 - Lambda variables: NEVER use single-letter names. Use descriptive names.
 - Constants: `UPPER_SNAKE_CASE` for `static final` fields.
+- Map field names: prefer either a single domain noun (e.g. `dispatchers`, `subscriptions`) or `<key>To<value>` (e.g. `handlerIdToDispatcher`) — avoid `by` prefix.
 
 ### API Endpoints
 - MMMQ exposes `POST /mmmq/messages` as its primary endpoint.
 - If new endpoints are added: lowercase, kebab-case for multi-word paths.
+
+### HTTP Headers
+- Header names lowercase per HTTP/2 spec. Defined as constants in `Metadata` (e.g. `mmmq-consumer-id`).

@@ -34,27 +34,27 @@ public class Consumer {
             @RequestBody Message message
     ) {
         Metadata metadata = new Metadata(headers);
-        ConsumerId handlerId;
+        ConsumerId consumerId;
         try {
-            handlerId = metadata.getConsumerId();
+            consumerId = metadata.getConsumerId();
         } catch (IllegalArgumentException e) {
             log.warn("Received message with invalid consumer id header: {}", message, e);
             return ResponseEntity.ok(new ConsumerAcknowledgement(Acknowledgement.NACK));
         }
-        if (handlerId == null) {
+        if (consumerId == null) {
             log.warn("Received message without consumer id header: {}", message);
             return ResponseEntity.ok(new ConsumerAcknowledgement(Acknowledgement.NACK));
         }
-        HandlerExecution execution = handlerExecutionContainer.find(handlerId);
+        HandlerExecution execution = handlerExecutionContainer.find(consumerId);
         if (execution == null) {
-            log.warn("No HandlerExecution found for id '{}', message: {}", handlerId, message);
+            log.warn("No HandlerExecution found for consumer id '{}', message: {}", consumerId, message);
             return ResponseEntity.ok(new ConsumerAcknowledgement(Acknowledgement.NACK));
         }
         try {
             execution.execute(message);
             return ResponseEntity.ok(new ConsumerAcknowledgement(Acknowledgement.ACK));
         } catch (Exception e) {
-            log.warn("Handler execution failed for id '{}', message: {}", handlerId, message, e);
+            log.warn("Handler execution failed for consumer id '{}', message: {}", consumerId, message, e);
             return ResponseEntity.ok(new ConsumerAcknowledgement(Acknowledgement.NACK));
         }
     }
