@@ -1,35 +1,31 @@
 package org.mmmq.consumer.handler.execution;
 
-import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Topic;
+import org.springframework.lang.Nullable;
+import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Component
 public class HandlerExecutions {
 
-    final List<HandlerExecution> executions = new ArrayList<>();
-    final Map<Topic, List<HandlerExecution>> topicCache = new ConcurrentHashMap<>();
+    private final Map<String, HandlerExecution> byId = new ConcurrentHashMap<>();
 
-    public void add(HandlerExecution execution) {
-        executions.add(execution);
+    public void add(HandlerExecution handlerExecution) {
+        HandlerExecution previous = byId.putIfAbsent(handlerExecution.id(), handlerExecution);
+        if (previous != null) {
+            throw new IllegalStateException(
+                    "Duplicate HandlerExecution id '" + handlerExecution.id() + "'"
+            );
+        }
     }
 
-    public List<HandlerExecution> getExecutions(Message message) {
-        Topic topic = message.topic();
-        if (topicCache.containsKey(topic)) {
-            return topicCache.get(topic);
-        }
-        List<HandlerExecution> matchedExecutions = executions.stream()
-                .filter(execution -> execution.supports(message))
-                .toList();
-        topicCache.put(topic, matchedExecutions);
-        return matchedExecutions;
+    @Nullable
+    public HandlerExecution find(String id) {
+        return byId.get(id);
     }
 
     public int size() {
-        return executions.size();
+        return byId.size();
     }
 }

@@ -16,7 +16,7 @@ class InterfaceExecution extends HandlerExecution {
 
     @SuppressWarnings("unchecked")
     InterfaceExecution(MMMQListener<?> mmmqListener, ObjectMapper objectMapper) {
-        super(ClassUtils.getUserClass(mmmqListener).getCanonicalName(), mmmqListener.listens());
+        super(mmmqListener.id());
         this.mmmqListener = (MMMQListener<Object>) mmmqListener;
         this.objectMapper = objectMapper;
         this.parameterType = resolveParameterType(mmmqListener, objectMapper);
@@ -36,7 +36,7 @@ class InterfaceExecution extends HandlerExecution {
             mmmqListener.handle(content);
         } catch (Exception e) {
             throw new HandlerExecutionException(
-                    String.format("Unexpected error during interface execution %s: %s", name, e),
+                    String.format("Unexpected error during interface execution %s: %s", id, e),
                     e
             );
         }
@@ -50,7 +50,7 @@ class InterfaceExecution extends HandlerExecution {
             return objectMapper.convertValue(message.content(), parameterType);
         } catch (IllegalArgumentException e) {
             throw new HandlerExecutionException(
-                    String.format("Failed to convert parameter for interface execution '%s': %s", name, e.getMessage()),
+                    String.format("Failed to convert parameter for interface execution '%s': %s", id, e.getMessage()),
                     e
             );
         }
