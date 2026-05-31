@@ -22,7 +22,7 @@ public class FrontDispatcher {
     }
 
     public Acknowledgement dispatch(Message message) {
-        TopicQueue queue = container.get(message.topic());
+        TopicQueue queue = container.getOrCreate(message.topic());
         if (!queue.offer(message)) {
             return Acknowledgement.NACK;
         }

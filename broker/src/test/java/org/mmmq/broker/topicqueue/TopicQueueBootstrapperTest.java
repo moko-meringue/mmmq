@@ -38,8 +38,8 @@ class TopicQueueBootstrapperTest {
 
         bootstrapper.afterSingletonsInstantiated();
 
-        TopicQueue queueA = container.get(new Topic("topic-a"));
-        TopicQueue queueB = container.get(new Topic("topic-b"));
+        TopicQueue queueA = container.getOrCreate(new Topic("topic-a"));
+        TopicQueue queueB = container.getOrCreate(new Topic("topic-b"));
         Offset offsetA = queueA.subscribe("dispatcher-1");
         Offset offsetB = queueB.subscribe("dispatcher-1");
 
@@ -69,7 +69,7 @@ class TopicQueueBootstrapperTest {
         TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, container);
         bootstrapper.afterSingletonsInstantiated();
 
-        TopicQueue restored = container.get(new Topic("topic-a"));
+        TopicQueue restored = container.getOrCreate(new Topic("topic-a"));
         Offset restoredOffset = restored.subscribe("dispatcher-1");
 
         assertThat(restoredOffset.value()).isEqualTo(1L);
@@ -89,7 +89,7 @@ class TopicQueueBootstrapperTest {
 
         bootstrapper.afterSingletonsInstantiated();
 
-        assertThat(container.get(new Topic("anything"))).isNotNull();
+        assertThat(container.getOrCreate(new Topic("anything"))).isNotNull();
     }
 
     private void seedTopic(Path baseDir, String topicName, Message message) {

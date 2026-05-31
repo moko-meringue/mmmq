@@ -22,7 +22,7 @@ public class TopicQueueContainer {
         this.dispatcherContainer = dispatcherContainer;
     }
 
-    public TopicQueue get(Topic topic) {
+    public TopicQueue getOrCreate(Topic topic) {
         return queues.computeIfAbsent(topic, key -> {
             TopicQueue queue = factory.create(key);
             log.info("Topic queue created: {}", queue.getTopic().name());
