@@ -3,6 +3,7 @@ package org.mmmq.consumer.handler.execution.type;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 
@@ -18,7 +19,7 @@ class InterfaceExecutionTest {
         SampleListener sampleListener = new SampleListener();
         InterfaceExecution interfaceExecution = new InterfaceExecution(sampleListener, objectMapper);
 
-        assertThat(interfaceExecution.id()).isEqualTo("order-new");
+        assertThat(interfaceExecution.id()).isEqualTo(new ConsumerId("order-new"));
     }
 
     @Test

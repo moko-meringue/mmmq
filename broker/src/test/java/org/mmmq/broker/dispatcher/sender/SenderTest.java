@@ -10,6 +10,7 @@ import org.mmmq.broker.fixture.MockRestServiceServerFixture;
 import org.mmmq.core.Host;
 import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.acknowledgement.ConsumerAcknowledgement;
+import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.MessageDeliveryException;
 import org.mmmq.core.message.Topic;
@@ -32,7 +33,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 class SenderTest {
 
-    private static final String CONSUMER_ID = "handler-1";
+    private static final ConsumerId CONSUMER_ID = new ConsumerId("handler-1");
 
     RestClient restClient;
     MockRestServiceServer server;
@@ -84,7 +85,7 @@ class SenderTest {
 
         server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/mmmq/messages"))
                 .andExpect(method(HttpMethod.POST))
-                .andExpect(header("mmmq-consumer-id", CONSUMER_ID))
+                .andExpect(header("mmmq-consumer-id", CONSUMER_ID.value()))
                 .andRespond(withSuccess(
                         objectMapper.writeValueAsString(new ConsumerAcknowledgement(Acknowledgement.ACK)),
                         MediaType.APPLICATION_JSON

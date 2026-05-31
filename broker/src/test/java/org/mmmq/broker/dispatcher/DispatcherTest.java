@@ -10,6 +10,7 @@ import org.mmmq.broker.topicqueue.storage.CheckpointDirectory;
 import org.mmmq.broker.topicqueue.storage.SegmentFileChain;
 import org.mmmq.core.Host;
 import org.mmmq.core.WebProtocol;
+import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 import org.mmmq.core.message.TopicPattern;
@@ -37,28 +38,28 @@ class DispatcherTest {
 
     @BeforeEach
     void setUp() {
-        dispatcher = new Dispatcher(host, "test-dispatcher", new TopicPattern("**"));
+        dispatcher = new Dispatcher(host, new ConsumerId("test-dispatcher"), new TopicPattern("**"));
     }
 
     @Test
     @DisplayName("consumer id가 regex에 부합하지 않으면 예외를 던진다")
     void rejectInvalidConsumerId() {
-        assertThatThrownBy(() -> new Dispatcher(host, "invalid handler!", new TopicPattern("**")))
+        assertThatThrownBy(() -> new ConsumerId("invalid handler!"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("consumer id getter가 생성자 인자를 그대로 반환한다")
     void consumerIdGetter() {
-        Dispatcher dispatcher = new Dispatcher(host, "order-dispatcher", new TopicPattern("order.*"));
+        Dispatcher dispatcher = new Dispatcher(host, new ConsumerId("order-dispatcher"), new TopicPattern("order.*"));
 
-        assertThat(dispatcher.consumerId()).isEqualTo("order-dispatcher");
+        assertThat(dispatcher.consumerId()).isEqualTo(new ConsumerId("order-dispatcher"));
     }
 
     @Test
     @DisplayName("패턴 매칭이 true이면 matches()가 true를 반환한다")
     void matchesReturnsTrueWhenPatternMatches() {
-        Dispatcher dispatcher = new Dispatcher(host, "order-dispatcher", new TopicPattern("order.*"));
+        Dispatcher dispatcher = new Dispatcher(host, new ConsumerId("order-dispatcher"), new TopicPattern("order.*"));
 
         assertThat(dispatcher.matches(new Topic("order.new"))).isTrue();
         assertThat(dispatcher.matches(new Topic("payment.kakao"))).isFalse();
@@ -70,7 +71,7 @@ class DispatcherTest {
         CountDownLatch latch = new CountDownLatch(1);
         dispatcher.sender = new Sender(null) {
             @Override
-            public boolean send(Message message, String consumerId, int retryCount) {
+            public boolean send(Message message, ConsumerId consumerId, int retryCount) {
                 latch.countDown();
                 return true;
             }
@@ -91,7 +92,7 @@ class DispatcherTest {
         CountDownLatch latch = new CountDownLatch(2);
         dispatcher.sender = new Sender(null) {
             @Override
-            public boolean send(Message message, String consumerId, int retryCount) {
+            public boolean send(Message message, ConsumerId consumerId, int retryCount) {
                 latch.countDown();
                 return true;
             }
@@ -117,7 +118,7 @@ class DispatcherTest {
         CountDownLatch latch = new CountDownLatch(3);
         dispatcher.sender = new Sender(null) {
             @Override
-            public boolean send(Message message, String consumerId, int retryCount) {
+            public boolean send(Message message, ConsumerId consumerId, int retryCount) {
                 latch.countDown();
                 return true;
             }
@@ -141,10 +142,10 @@ class DispatcherTest {
     @Test
     @DisplayName("subscribe되지 않은 TopicQueue에 대한 drain은 무시된다")
     void drainIgnoresUnsubscribedQueue() {
-        Dispatcher dispatcher = new Dispatcher(host, "test-dispatcher", new TopicPattern("order.*"));
+        Dispatcher dispatcher = new Dispatcher(host, new ConsumerId("test-dispatcher"), new TopicPattern("order.*"));
         dispatcher.sender = new Sender(null) {
             @Override
-            public boolean send(Message message, String consumerId, int retryCount) {
+            public boolean send(Message message, ConsumerId consumerId, int retryCount) {
                 return true;
             }
         };
@@ -159,12 +160,12 @@ class DispatcherTest {
     @Test
     @DisplayName("send에는 dispatcher의 consumerId가 전달된다")
     void deliversConsumerIdToSender() throws InterruptedException {
-        Dispatcher dispatcher = new Dispatcher(host, "my-handler", new TopicPattern("**"));
+        Dispatcher dispatcher = new Dispatcher(host, new ConsumerId("my-handler"), new TopicPattern("**"));
         CountDownLatch latch = new CountDownLatch(1);
-        String[] receivedConsumerId = new String[1];
+        ConsumerId[] receivedConsumerId = new ConsumerId[1];
         dispatcher.sender = new Sender(null) {
             @Override
-            public boolean send(Message message, String consumerId, int retryCount) {
+            public boolean send(Message message, ConsumerId consumerId, int retryCount) {
                 receivedConsumerId[0] = consumerId;
                 latch.countDown();
                 return true;
@@ -177,7 +178,7 @@ class DispatcherTest {
         dispatcher.drain(queue);
 
         assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
-        assertThat(receivedConsumerId[0]).isEqualTo("my-handler");
+        assertThat(receivedConsumerId[0]).isEqualTo(new ConsumerId("my-handler"));
         dispatcher.destroy();
     }
 

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
 import org.mmmq.core.acknowledgement.Acknowledgement;
+import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.acknowledgement.ConsumerAcknowledgement;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
@@ -115,8 +116,8 @@ class ConsumerRoutingTest {
     void returnsNackWhenHandlerThrows() {
         handlerExecutionContainer.add(new HandlerExecution() {
             @Override
-            public String id() {
-                return "failing-handler";
+            public ConsumerId id() {
+                return new ConsumerId("failing-handler");
             }
 
             @Override
@@ -182,15 +183,15 @@ class ConsumerRoutingTest {
 
     static class FakeHandlerExecution implements HandlerExecution {
 
-        private final String id;
+        private final ConsumerId id;
         final AtomicInteger executionCount = new AtomicInteger();
 
         FakeHandlerExecution(String id) {
-            this.id = id;
+            this.id = new ConsumerId(id);
         }
 
         @Override
-        public String id() {
+        public ConsumerId id() {
             return id;
         }
 

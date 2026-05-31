@@ -3,6 +3,7 @@ package org.mmmq.core.metadata;
 import java.util.HashMap;
 import java.util.Map;
 import org.mmmq.core.annotation.Nullable;
+import org.mmmq.core.identifier.ConsumerId;
 
 public class Metadata {
 
@@ -19,12 +20,13 @@ public class Metadata {
     }
 
     @Nullable
-    public String getConsumerId() {
-        return headers.get(CONSUMER_ID);
+    public ConsumerId getConsumerId() {
+        String raw = headers.get(CONSUMER_ID);
+        return raw == null ? null : new ConsumerId(raw);
     }
 
-    public void setConsumerId(String consumerId) {
-        headers.put(CONSUMER_ID, consumerId);
+    public void setConsumerId(ConsumerId consumerId) {
+        headers.put(CONSUMER_ID, consumerId.value());
     }
 
     public Map<String, String> toMap() {

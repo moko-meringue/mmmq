@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
+import org.mmmq.core.identifier.ConsumerId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
@@ -24,18 +25,18 @@ class MethodExecutorRegistrationTest {
     @Test
     @DisplayName("메서드 실행 등록이 정상적으로 수행된다.")
     void methodExecutionRegistrationTest() {
-        assertThat(handlerExecutionContainer.find("topic1")).isNotNull();
-        assertThat(handlerExecutionContainer.find("topic2")).isNotNull();
-        assertThat(handlerExecutionContainer.find("topic3")).isNotNull();
+        assertThat(handlerExecutionContainer.find(new ConsumerId("topic1"))).isNotNull();
+        assertThat(handlerExecutionContainer.find(new ConsumerId("topic2"))).isNotNull();
+        assertThat(handlerExecutionContainer.find(new ConsumerId("topic3"))).isNotNull();
     }
 
     @Test
     @DisplayName("등록된 핸들러는 id로 조회된다.")
     void findsRegisteredHandlerById() {
-        HandlerExecution execution = handlerExecutionContainer.find("topic1");
+        HandlerExecution execution = handlerExecutionContainer.find(new ConsumerId("topic1"));
 
         assertThat(execution).isNotNull();
-        assertThat(execution.id()).isEqualTo("topic1");
+        assertThat(execution.id()).isEqualTo(new ConsumerId("topic1"));
     }
 
     @Configuration

@@ -2,6 +2,7 @@ package org.mmmq.broker.dispatcher.sender;
 
 import org.mmmq.core.Host;
 import org.mmmq.core.acknowledgement.ConsumerAcknowledgement;
+import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.MessageDeliveryException;
 import org.mmmq.core.metadata.Metadata;
@@ -29,7 +30,7 @@ public class Sender {
         return new Sender(restClient);
     }
 
-    public boolean send(Message message, String consumerId, int maxRetryCount) {
+    public boolean send(Message message, ConsumerId consumerId, int maxRetryCount) {
         for (int attempt = 1; attempt <= maxRetryCount; attempt++) {
             if (post(message, consumerId).isAck()) {
                 return true;
@@ -38,7 +39,7 @@ public class Sender {
         return false;
     }
 
-    ConsumerAcknowledgement post(Message message, String consumerId) {
+    ConsumerAcknowledgement post(Message message, ConsumerId consumerId) {
         Metadata metadata = new Metadata();
         metadata.setConsumerId(consumerId);
         return restClient.post()

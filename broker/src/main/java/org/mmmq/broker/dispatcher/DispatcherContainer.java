@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.mmmq.broker.topicqueue.TopicQueue;
+import org.mmmq.core.identifier.ConsumerId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -20,7 +21,7 @@ public class DispatcherContainer {
     private final Map<TopicQueue, List<Dispatcher>> subscriptions = new ConcurrentHashMap<>();
 
     public DispatcherContainer(Collection<Dispatcher> dispatchers) {
-        Set<String> seen = new HashSet<>();
+        Set<ConsumerId> seen = new HashSet<>();
         dispatchers.forEach(dispatcher -> {
             if (!seen.add(dispatcher.consumerId())) {
                 throw new IllegalStateException(

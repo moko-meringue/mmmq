@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mmmq.consumer.exception.HandlerExecutionException;
 import org.mmmq.consumer.exception.InvalidHandlerException;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
+import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.Message;
 
 import java.lang.reflect.InvocationTargetException;
@@ -12,13 +13,13 @@ import java.lang.reflect.Method;
 
 class MethodExecution implements HandlerExecution {
 
-    private final String id;
+    private final ConsumerId id;
     private final Object bean;
     private final Method method;
     private final JavaType parameterType;
     private final ObjectMapper objectMapper;
 
-    MethodExecution(String id, Object bean, Method method, ObjectMapper objectMapper) {
+    MethodExecution(ConsumerId id, Object bean, Method method, ObjectMapper objectMapper) {
         method.setAccessible(true);
         this.id = id;
         this.bean = bean;
@@ -35,7 +36,7 @@ class MethodExecution implements HandlerExecution {
     }
 
     @Override
-    public String id() {
+    public ConsumerId id() {
         return id;
     }
 

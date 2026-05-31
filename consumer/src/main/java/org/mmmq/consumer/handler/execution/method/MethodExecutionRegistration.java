@@ -3,6 +3,7 @@ package org.mmmq.consumer.handler.execution.method;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mmmq.consumer.exception.HandlerExecutionRegistrationException;
 import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
+import org.mmmq.core.identifier.ConsumerId;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +28,7 @@ public class MethodExecutionRegistration implements BeanPostProcessor {
                 continue;
             }
             try {
-                handlerExecutionContainer.add(new MethodExecution(annotation.id(), bean, method, objectMapper));
+                handlerExecutionContainer.add(new MethodExecution(new ConsumerId(annotation.id()), bean, method, objectMapper));
             } catch (Exception e) {
                 throw new HandlerExecutionRegistrationException(
                         "Failed to register MethodExecution on " + bean.getClass().getCanonicalName() + "#" + method.getName(),

@@ -4,6 +4,7 @@ import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
 import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.acknowledgement.ConsumerAcknowledgement;
+import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.metadata.Metadata;
 import org.slf4j.Logger;
@@ -33,7 +34,13 @@ public class Consumer {
             @RequestBody Message message
     ) {
         Metadata metadata = new Metadata(headers);
-        String handlerId = metadata.getConsumerId();
+        ConsumerId handlerId;
+        try {
+            handlerId = metadata.getConsumerId();
+        } catch (IllegalArgumentException e) {
+            log.warn("Received message with invalid consumer id header: {}", message, e);
+            return ResponseEntity.ok(new ConsumerAcknowledgement(Acknowledgement.NACK));
+        }
         if (handlerId == null) {
             log.warn("Received message without consumer id header: {}", message);
             return ResponseEntity.ok(new ConsumerAcknowledgement(Acknowledgement.NACK));

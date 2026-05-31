@@ -6,6 +6,7 @@ import org.mmmq.broker.topicqueue.Offset;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.broker.topicqueue.storage.CorruptionException;
 import org.mmmq.core.Host;
+import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 import org.mmmq.core.message.TopicPattern;
@@ -18,7 +19,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 
 public class Dispatcher {
 
@@ -28,26 +28,22 @@ public class Dispatcher {
     private static final int BACKOFF_MULTIPLIER = 2;
 
     private static final Logger log = LoggerFactory.getLogger(Dispatcher.class);
-    private static final Pattern CONSUMER_ID_PATTERN = Pattern.compile("[A-Za-z0-9._-]+");
 
     final Host host;
-    final String consumerId;
+    final ConsumerId consumerId;
     final TopicPattern pattern;
     final ConcurrentHashMap<TopicQueue, Offset> subscriptions = new ConcurrentHashMap<>();
     final WorkerPool workerPool = new WorkerPool();
     Sender sender;
 
-    public Dispatcher(Host host, String consumerId, TopicPattern pattern) {
-        if (!CONSUMER_ID_PATTERN.matcher(consumerId).matches()) {
-            throw new IllegalArgumentException("consumerId must match [A-Za-z0-9._-]+, but was: " + consumerId);
-        }
+    public Dispatcher(Host host, ConsumerId consumerId, TopicPattern pattern) {
         this.host = host;
         this.consumerId = consumerId;
         this.pattern = pattern;
         this.sender = Sender.from(host);
     }
 
-    public String consumerId() {
+    public ConsumerId consumerId() {
         return consumerId;
     }
 
@@ -56,7 +52,7 @@ public class Dispatcher {
     }
 
     void subscribe(TopicQueue topicQueue) {
-        subscriptions.computeIfAbsent(topicQueue, queue -> queue.subscribe(consumerId));
+        subscriptions.computeIfAbsent(topicQueue, queue -> queue.subscribe(consumerId.value()));
     }
 
     void drain(TopicQueue topicQueue) {
@@ -84,7 +80,7 @@ public class Dispatcher {
                             exception
                     );
                 }
-                offset = topicQueue.commit(consumerId, offset);
+                offset = topicQueue.commit(consumerId.value(), offset);
                 subscriptions.put(topicQueue, offset);
             }
         } catch (InterruptedException interrupted) {

@@ -4,20 +4,21 @@ import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mmmq.consumer.exception.HandlerExecutionException;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
+import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.Message;
 import org.springframework.core.GenericTypeResolver;
 import org.springframework.util.ClassUtils;
 
 class InterfaceExecution implements HandlerExecution {
 
-    private final String id;
+    private final ConsumerId id;
     private final MMMQListener<Object> mmmqListener;
     private final JavaType parameterType;
     private final ObjectMapper objectMapper;
 
     @SuppressWarnings("unchecked")
     InterfaceExecution(MMMQListener<?> mmmqListener, ObjectMapper objectMapper) {
-        this.id = mmmqListener.id();
+        this.id = new ConsumerId(mmmqListener.id());
         this.mmmqListener = (MMMQListener<Object>) mmmqListener;
         this.objectMapper = objectMapper;
         this.parameterType = resolveParameterType(mmmqListener, objectMapper);
@@ -31,7 +32,7 @@ class InterfaceExecution implements HandlerExecution {
     }
 
     @Override
-    public String id() {
+    public ConsumerId id() {
         return id;
     }
 
