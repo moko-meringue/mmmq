@@ -1,18 +1,17 @@
 package org.mmmq.consumer.handler.execution;
 
-import org.mmmq.core.annotation.Nullable;
-import org.springframework.stereotype.Component;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.lang.Nullable;
+import org.springframework.stereotype.Component;
 
 @Component
 public class HandlerExecutions {
 
-    private final Map<String, HandlerExecution> byId = new ConcurrentHashMap<>();
+    private final Map<String, HandlerExecution> byHandlerId = new ConcurrentHashMap<>();
 
     public void add(HandlerExecution handlerExecution) {
-        HandlerExecution previous = byId.putIfAbsent(handlerExecution.id(), handlerExecution);
+        HandlerExecution previous = byHandlerId.putIfAbsent(handlerExecution.id(), handlerExecution);
         if (previous != null) {
             throw new IllegalStateException(
                     "Duplicate HandlerExecution id '" + handlerExecution.id() + "'"
@@ -22,10 +21,10 @@ public class HandlerExecutions {
 
     @Nullable
     public HandlerExecution find(String id) {
-        return byId.get(id);
+        return byHandlerId.get(id);
     }
 
     public int size() {
-        return byId.size();
+        return byHandlerId.size();
     }
 }
