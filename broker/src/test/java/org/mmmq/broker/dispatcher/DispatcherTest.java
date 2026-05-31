@@ -57,12 +57,12 @@ class DispatcherTest {
     }
 
     @Test
-    @DisplayName("패턴 매칭이 true이면 matches()가 true를 반환한다")
-    void matchesReturnsTrueWhenPatternMatches() {
+    @DisplayName("패턴 매칭이 true이면 canDispatch()가 true를 반환한다")
+    void canDispatchReturnsTrueWhenPatternMatches() {
         Dispatcher dispatcher = new Dispatcher(host, new ConsumerId("order-dispatcher"), new TopicPattern("order.*"));
 
-        assertThat(dispatcher.matches(new Topic("order.new"))).isTrue();
-        assertThat(dispatcher.matches(new Topic("payment.kakao"))).isFalse();
+        assertThat(dispatcher.canDispatch(new Topic("order.new"))).isTrue();
+        assertThat(dispatcher.canDispatch(new Topic("payment.kakao"))).isFalse();
     }
 
     @Test

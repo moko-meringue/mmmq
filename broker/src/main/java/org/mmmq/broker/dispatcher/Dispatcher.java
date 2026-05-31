@@ -47,7 +47,7 @@ public class Dispatcher {
         return consumerId;
     }
 
-    boolean matches(Topic topic) {
+    boolean canDispatch(Topic topic) {
         return pattern.matches(topic);
     }
 

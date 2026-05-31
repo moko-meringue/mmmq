@@ -30,7 +30,7 @@ public class DispatcherContainer {
 
     public void register(TopicQueue topicQueue) {
         List<Dispatcher> matched = dispatchers.stream()
-                .filter(dispatcher -> dispatcher.matches(topicQueue.getTopic()))
+                .filter(dispatcher -> dispatcher.canDispatch(topicQueue.getTopic()))
                 .toList();
         matched.forEach(dispatcher -> dispatcher.subscribe(topicQueue));
         subscriptions.put(topicQueue, matched);
