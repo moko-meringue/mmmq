@@ -71,7 +71,6 @@ Producer.produce(message)
 - **DeadLetter:** `DeadLetter` holds only `Message` (no cause/exception). Created when Sender exhausts NACK retries.
 - **Handler types:** `HandlerExecution` is abstract — `MethodExecution` invokes annotated methods via reflection with JSON deserialization; `InterfaceExecution` invokes `MMMQListener<T>.handle()`.
 - **Producer Builder:** `Producer.builder(host).maxRetryCount(n).build()` for custom retry count.
-- **DLQ:** Multiple `DeadLetterQueue` beans can coexist; all receive failed messages. `DeadLetterHandler` is pluggable.
 
 ## Consumer Handler Registration
 
