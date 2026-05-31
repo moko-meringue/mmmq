@@ -36,7 +36,7 @@ public class DispatcherContainer {
         subscriptions.put(topicQueue, matched);
     }
 
-    public List<Dispatcher> subscribers(TopicQueue topicQueue) {
+    public List<Dispatcher> getSubscribers(TopicQueue topicQueue) {
         List<Dispatcher> result = subscriptions.get(topicQueue);
         return result == null ? List.of() : result;
     }

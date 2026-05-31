@@ -26,7 +26,7 @@ public class FrontDispatcher {
         if (!queue.offer(message)) {
             return Acknowledgement.NACK;
         }
-        dispatcherContainer.subscribers(queue).forEach(dispatcher -> {
+        dispatcherContainer.getSubscribers(queue).forEach(dispatcher -> {
             try {
                 dispatcher.dispatch(queue);
             } catch (Exception exception) {
