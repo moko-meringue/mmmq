@@ -1,18 +1,9 @@
 package org.mmmq.broker.dispatcher;
 
 import jakarta.annotation.PreDestroy;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
 import org.mmmq.broker.dispatcher.sender.Sender;
 import org.mmmq.broker.topicqueue.Offset;
 import org.mmmq.broker.topicqueue.TopicQueue;
-import org.mmmq.broker.topicqueue.TopicQueueInitializedEvent;
 import org.mmmq.broker.topicqueue.storage.CorruptionException;
 import org.mmmq.core.Host;
 import org.mmmq.core.message.Message;
@@ -20,8 +11,14 @@ import org.mmmq.core.message.Topic;
 import org.mmmq.core.message.TopicPattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
+
+import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 public class Dispatcher {
 
@@ -31,55 +28,45 @@ public class Dispatcher {
     private static final int BACKOFF_MULTIPLIER = 2;
 
     private static final Logger log = LoggerFactory.getLogger(Dispatcher.class);
-    private static final Pattern NAME_PATTERN = Pattern.compile("[A-Za-z0-9._-]+");
+    private static final Pattern HANDLER_ID_PATTERN = Pattern.compile("[A-Za-z0-9._-]+");
 
-    final String name;
     final Host host;
-    final List<TopicPattern> patterns;
+    final String handlerId;
+    final TopicPattern pattern;
     final ConcurrentHashMap<TopicQueue, Offset> subscriptions = new ConcurrentHashMap<>();
     final WorkerPool workerPool = new WorkerPool();
     Sender sender;
 
-    public Dispatcher(String name, Host host, List<TopicPattern> patterns) {
-        if (!NAME_PATTERN.matcher(name).matches()) {
-            throw new IllegalArgumentException("Dispatcher name must match [A-Za-z0-9._-]+, but was: " + name);
+    public Dispatcher(Host host, String handlerId, TopicPattern pattern) {
+        if (!HANDLER_ID_PATTERN.matcher(handlerId).matches()) {
+            throw new IllegalArgumentException("handlerId must match [A-Za-z0-9._-]+, but was: " + handlerId);
         }
-        this.name = name;
         this.host = host;
-        this.patterns = patterns;
+        this.handlerId = handlerId;
+        this.pattern = pattern;
         this.sender = Sender.from(host);
     }
 
-    @EventListener(ApplicationReadyEvent.class)
-    void onApplicationReady() {
-        subscriptions.keySet()
-                .forEach(topicQueue -> workerPool.submit(topicQueue, () -> drain(topicQueue)));
-    }
-
-    @EventListener
-    void onTopicQueueInitialized(TopicQueueInitializedEvent event) {
-        TopicQueue topicQueue = event.topicQueue();
-        if (!matches(topicQueue.getTopic())) {
-            return;
-        }
-        subscriptions.computeIfAbsent(topicQueue, queue -> queue.subscribe(name));
-    }
-
-    @EventListener
-    void onMessageArrived(MessageArrivedEvent event) {
-        TopicQueue topicQueue = event.topicQueue();
-        if (!subscriptions.containsKey(topicQueue)) {
-            return;
-        }
-        workerPool.submit(topicQueue, () -> drain(topicQueue));
+    public String handlerId() {
+        return handlerId;
     }
 
     boolean matches(Topic topic) {
-        return patterns.stream()
-                .anyMatch(pattern -> pattern.matches(topic));
+        return pattern.matches(topic);
     }
 
-    private void drain(TopicQueue topicQueue) {
+    void subscribe(TopicQueue topicQueue) {
+        subscriptions.computeIfAbsent(topicQueue, queue -> queue.subscribe(handlerId));
+    }
+
+    void drain(TopicQueue topicQueue) {
+        if (!subscriptions.containsKey(topicQueue)) {
+            return;
+        }
+        workerPool.submit(topicQueue, () -> drainLoop(topicQueue));
+    }
+
+    private void drainLoop(TopicQueue topicQueue) {
         try {
             Offset offset = subscriptions.get(topicQueue);
             while (true) {
@@ -91,20 +78,20 @@ public class Dispatcher {
                     deliver(message);
                 } catch (CorruptionException exception) {
                     log.error("Dispatcher {} skipped corrupted entry on topic {} at offset {}",
-                            name,
+                            handlerId,
                             topicQueue.getTopic(),
                             offset,
                             exception
                     );
                 }
-                offset = topicQueue.commit(name, offset);
+                offset = topicQueue.commit(handlerId, offset);
                 subscriptions.put(topicQueue, offset);
             }
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            log.info("Dispatcher {} drain interrupted on topic {}", name, topicQueue.getTopic());
+            log.info("Dispatcher {} drain interrupted on topic {}", handlerId, topicQueue.getTopic());
         } catch (Exception exception) {
-            log.error("Dispatcher {} aborted drain on topic {}", name, topicQueue.getTopic(), exception);
+            log.error("Dispatcher {} aborted drain on topic {}", handlerId, topicQueue.getTopic(), exception);
         }
     }
 
@@ -115,7 +102,7 @@ public class Dispatcher {
                 throw new InterruptedException();
             }
             try {
-                if (!sender.send(message, MAX_NACK_RETRY_COUNT)) {
+                if (!sender.send(message, handlerId, MAX_NACK_RETRY_COUNT)) {
                     log.warn("NACK exhausted. Dropping message: {}", message);
                 }
                 return;

@@ -28,8 +28,8 @@ public class TopicQueue implements Closeable {
         this.checkpointDirectory = checkpointDirectory;
     }
 
-    public Offset subscribe(String dispatcherName) {
-        return new Offset(checkpointDirectory.register(dispatcherName).read());
+    public Offset subscribe(String name) {
+        return new Offset(checkpointDirectory.register(name).read());
     }
 
     public boolean offer(Message message) {
@@ -50,11 +50,11 @@ public class TopicQueue implements Closeable {
         return segmentFileChain.readAt(offset.value());
     }
 
-    public Offset commit(String dispatcherName, Offset offset) {
-        CheckpointFile checkpointFile = checkpointDirectory.get(dispatcherName);
+    public Offset commit(String name, Offset offset) {
+        CheckpointFile checkpointFile = checkpointDirectory.get(name);
         if (checkpointFile == null) {
             throw new IllegalStateException(
-                    "Cannot commit: dispatcher '" + dispatcherName + "' has not subscribed topic '" + topic.name() + "'"
+                    "Cannot commit: '" + name + "' has not subscribed topic '" + topic.name() + "'"
             );
         }
         Offset next = offset.next();
