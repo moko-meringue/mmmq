@@ -31,7 +31,6 @@ public class TopicQueueContainer {
         });
     }
 
-    @SuppressWarnings("resource")
     void register(Topic topic) {
         getOrCreate(topic);
     }
