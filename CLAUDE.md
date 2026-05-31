@@ -79,7 +79,7 @@ Bootstrap: `TopicQueueBootstrapper` (SmartInitializingSingleton) restores persis
 - **Handler types:** `HandlerExecution` is an interface with `ConsumerId id()` and `void execute(Message)`. Two implementations:
   - `MethodExecution`: invokes an annotated method via reflection with JSON deserialization.
   - `InterfaceExecution`: invokes `MMMQListener<T>.handle()` on a bean implementing `MMMQListener<T>`.
-- **Producer Builder:** `Producer.builder(host).maxRetryCount(n).build()` for custom retry count.
+- **Producer constructors:** `new Producer(host)` (default retry count 3) or `new Producer(host, maxRetryCount)` for a custom value.
 
 ## Consumer Handler Registration
 
