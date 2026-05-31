@@ -32,7 +32,7 @@ public class DispatcherContainer {
         this.dispatchers = List.copyOf(dispatchers);
     }
 
-    public void onTopicQueueInitialized(TopicQueue topicQueue) {
+    public void register(TopicQueue topicQueue) {
         List<Dispatcher> matched = dispatchers.stream()
                 .filter(dispatcher -> dispatcher.matches(topicQueue.getTopic()))
                 .toList();
