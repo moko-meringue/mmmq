@@ -1,37 +1,38 @@
 package org.mmmq.broker.dispatcher;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class DispatcherContainer {
 
     private static final Logger log = LoggerFactory.getLogger(DispatcherContainer.class);
 
-    private final Map<String, Dispatcher> dispatchers = new HashMap<>();
+    private final List<Dispatcher> dispatchers;
     private final Map<TopicQueue, List<Dispatcher>> subscriptions = new ConcurrentHashMap<>();
 
     public DispatcherContainer(Collection<Dispatcher> dispatchers) {
+        Set<String> seen = new HashSet<>();
         dispatchers.forEach(dispatcher -> {
-            Dispatcher previous = this.dispatchers.putIfAbsent(dispatcher.handlerId(), dispatcher);
-            if (previous != null) {
+            if (!seen.add(dispatcher.handlerId())) {
                 throw new IllegalStateException(
                         "Duplicate handlerId '" + dispatcher.handlerId() + "' across multiple Dispatcher beans"
                 );
             }
         });
+        this.dispatchers = List.copyOf(dispatchers);
     }
 
     public void onTopicQueueInitialized(TopicQueue topicQueue) {
-        List<Dispatcher> matched = dispatchers.values().stream()
+        List<Dispatcher> matched = dispatchers.stream()
                 .filter(dispatcher -> dispatcher.matches(topicQueue.getTopic()))
                 .toList();
         matched.forEach(dispatcher -> dispatcher.subscribe(topicQueue));
