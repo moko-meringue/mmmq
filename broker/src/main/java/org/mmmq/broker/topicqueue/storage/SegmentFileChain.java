@@ -1,9 +1,9 @@
 package org.mmmq.broker.topicqueue.storage;
 
-import jakarta.annotation.Nullable;
 import java.io.Closeable;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentSkipListMap;
+import org.mmmq.core.annotation.Nullable;
 import org.mmmq.core.message.Message;
 
 public class SegmentFileChain implements Closeable {

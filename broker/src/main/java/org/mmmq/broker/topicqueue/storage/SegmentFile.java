@@ -2,7 +2,6 @@ package org.mmmq.broker.topicqueue.storage;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -13,6 +12,7 @@ import java.util.List;
 import java.util.stream.Stream;
 import java.util.zip.CRC32C;
 import org.mmmq.broker.topicqueue.storage.FileHandle.FlushMode;
+import org.mmmq.core.annotation.Nullable;
 import org.mmmq.core.message.Message;
 
 class SegmentFile implements Closeable {

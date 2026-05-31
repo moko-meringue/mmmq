@@ -1,6 +1,5 @@
 package org.mmmq.broker.topicqueue;
 
-import jakarta.annotation.Nullable;
 import java.io.Closeable;
 import java.util.concurrent.locks.ReentrantLock;
 import org.mmmq.broker.topicqueue.storage.CheckpointDirectory;
@@ -8,6 +7,7 @@ import org.mmmq.broker.topicqueue.storage.CheckpointFile;
 import org.mmmq.broker.topicqueue.storage.CorruptionException;
 import org.mmmq.broker.topicqueue.storage.SegmentFileChain;
 import org.mmmq.broker.topicqueue.storage.StorageException;
+import org.mmmq.core.annotation.Nullable;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 import org.slf4j.Logger;

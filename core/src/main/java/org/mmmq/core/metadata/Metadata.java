@@ -1,9 +1,8 @@
 package org.mmmq.core.metadata;
 
-import org.springframework.lang.Nullable;
-
 import java.util.HashMap;
 import java.util.Map;
+import org.mmmq.core.annotation.Nullable;
 
 public class Metadata {
 
@@ -19,13 +18,13 @@ public class Metadata {
         this.headers = new HashMap<>(source);
     }
 
-    public void setHandlerId(String handlerId) {
-        headers.put(HANDLER_ID, handlerId);
-    }
-
     @Nullable
     public String getHandlerId() {
         return headers.get(HANDLER_ID);
+    }
+
+    public void setHandlerId(String handlerId) {
+        headers.put(HANDLER_ID, handlerId);
     }
 
     public Map<String, String> toMap() {

@@ -1,6 +1,6 @@
 package org.mmmq.consumer.handler.execution;
 
-import org.springframework.lang.Nullable;
+import org.mmmq.core.annotation.Nullable;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
