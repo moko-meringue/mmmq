@@ -1,7 +1,7 @@
 package org.mmmq.consumer;
 
 import org.mmmq.consumer.handler.execution.HandlerExecution;
-import org.mmmq.consumer.handler.execution.HandlerExecutions;
+import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
 import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.acknowledgement.ConsumerAcknowledgement;
 import org.mmmq.core.message.Message;
@@ -21,10 +21,10 @@ public class Consumer {
 
     private static final Logger log = LoggerFactory.getLogger(Consumer.class);
 
-    private final HandlerExecutions handlerExecutions;
+    private final HandlerExecutionContainer handlerExecutionContainer;
 
-    public Consumer(HandlerExecutions handlerExecutions) {
-        this.handlerExecutions = handlerExecutions;
+    public Consumer(HandlerExecutionContainer handlerExecutionContainer) {
+        this.handlerExecutionContainer = handlerExecutionContainer;
     }
 
     @PostMapping("/mmmq/messages")
@@ -38,7 +38,7 @@ public class Consumer {
             log.warn("Received message without handler id header: {}", message);
             return ResponseEntity.ok(new ConsumerAcknowledgement(Acknowledgement.NACK));
         }
-        HandlerExecution execution = handlerExecutions.find(handlerId);
+        HandlerExecution execution = handlerExecutionContainer.find(handlerId);
         if (execution == null) {
             log.warn("No HandlerExecution found for id '{}', message: {}", handlerId, message);
             return ResponseEntity.ok(new ConsumerAcknowledgement(Acknowledgement.NACK));

@@ -2,18 +2,18 @@ package org.mmmq.consumer.handler.execution.type;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mmmq.consumer.exception.HandlerExecutionRegistrationException;
-import org.mmmq.consumer.handler.execution.HandlerExecutions;
+import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.stereotype.Component;
 
 @Component
 public class InterfaceExecutionRegistration implements BeanPostProcessor {
 
-    private final HandlerExecutions handlerExecutions;
+    private final HandlerExecutionContainer handlerExecutionContainer;
     private final ObjectMapper objectMapper;
 
-    public InterfaceExecutionRegistration(HandlerExecutions handlerExecutions, ObjectMapper objectMapper) {
-        this.handlerExecutions = handlerExecutions;
+    public InterfaceExecutionRegistration(HandlerExecutionContainer handlerExecutionContainer, ObjectMapper objectMapper) {
+        this.handlerExecutionContainer = handlerExecutionContainer;
         this.objectMapper = objectMapper;
     }
 
@@ -23,7 +23,7 @@ public class InterfaceExecutionRegistration implements BeanPostProcessor {
             return bean;
         }
         try {
-            handlerExecutions.add(new InterfaceExecution(mmmqListener, objectMapper));
+            handlerExecutionContainer.add(new InterfaceExecution(mmmqListener, objectMapper));
         } catch (Exception e) {
             throw new HandlerExecutionRegistrationException(
                     "Failed to register InterfaceExecution on " + bean.getClass().getCanonicalName(),

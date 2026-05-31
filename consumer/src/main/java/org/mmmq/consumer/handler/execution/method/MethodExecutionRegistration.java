@@ -2,7 +2,7 @@ package org.mmmq.consumer.handler.execution.method;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mmmq.consumer.exception.HandlerExecutionRegistrationException;
-import org.mmmq.consumer.handler.execution.HandlerExecutions;
+import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.stereotype.Component;
 
@@ -11,11 +11,11 @@ import java.lang.reflect.Method;
 @Component
 public class MethodExecutionRegistration implements BeanPostProcessor {
 
-    private final HandlerExecutions handlerExecutions;
+    private final HandlerExecutionContainer handlerExecutionContainer;
     private final ObjectMapper objectMapper;
 
-    public MethodExecutionRegistration(HandlerExecutions handlerExecutions, ObjectMapper objectMapper) {
-        this.handlerExecutions = handlerExecutions;
+    public MethodExecutionRegistration(HandlerExecutionContainer handlerExecutionContainer, ObjectMapper objectMapper) {
+        this.handlerExecutionContainer = handlerExecutionContainer;
         this.objectMapper = objectMapper;
     }
 
@@ -27,7 +27,7 @@ public class MethodExecutionRegistration implements BeanPostProcessor {
                 continue;
             }
             try {
-                handlerExecutions.add(new MethodExecution(annotation.id(), bean, method, objectMapper));
+                handlerExecutionContainer.add(new MethodExecution(annotation.id(), bean, method, objectMapper));
             } catch (Exception e) {
                 throw new HandlerExecutionRegistrationException(
                         "Failed to register MethodExecution on " + bean.getClass().getCanonicalName() + "#" + method.getName(),

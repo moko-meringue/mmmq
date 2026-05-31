@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
-import org.mmmq.consumer.handler.execution.HandlerExecutions;
+import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
@@ -19,18 +19,18 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 class MethodExecutorRegistrationTest {
 
     @Autowired
-    HandlerExecutions handlerExecutions;
+    HandlerExecutionContainer handlerExecutionContainer;
 
     @Test
     @DisplayName("메서드 실행 등록이 정상적으로 수행된다.")
     void methodExecutionRegistrationTest() {
-        assertThat(handlerExecutions.size()).isEqualTo(3);
+        assertThat(handlerExecutionContainer.size()).isEqualTo(3);
     }
 
     @Test
     @DisplayName("등록된 핸들러는 id로 조회된다.")
     void findsRegisteredHandlerById() {
-        HandlerExecution execution = handlerExecutions.find("topic1");
+        HandlerExecution execution = handlerExecutionContainer.find("topic1");
 
         assertThat(execution).isNotNull();
         assertThat(execution.id()).isEqualTo("topic1");
@@ -45,16 +45,16 @@ class MethodExecutorRegistrationTest {
         }
 
         @Bean
-        HandlerExecutions handlerExecutions() {
-            return new HandlerExecutions();
+        HandlerExecutionContainer handlerExecutionContainer() {
+            return new HandlerExecutionContainer();
         }
 
         @Bean
         MethodExecutionRegistration methodExecutionRegistration(
-                HandlerExecutions handlerExecutions,
+                HandlerExecutionContainer handlerExecutionContainer,
                 ObjectMapper objectMapper
         ) {
-            return new MethodExecutionRegistration(handlerExecutions, objectMapper);
+            return new MethodExecutionRegistration(handlerExecutionContainer, objectMapper);
         }
 
         @Bean

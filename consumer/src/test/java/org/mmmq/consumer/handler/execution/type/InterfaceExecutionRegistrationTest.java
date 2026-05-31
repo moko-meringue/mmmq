@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
-import org.mmmq.consumer.handler.execution.HandlerExecutions;
+import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
@@ -19,12 +19,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class InterfaceExecutionRegistrationTest {
 
     @Autowired
-    HandlerExecutions handlerExecutions;
+    HandlerExecutionContainer handlerExecutionContainer;
 
     @Test
-    @DisplayName("MMMQListener 인터페이스를 구현한 빈이 있으면 자동으로 HandlerExecutions에 등록되어야 한다")
+    @DisplayName("MMMQListener 인터페이스를 구현한 빈이 있으면 자동으로 HandlerExecutionContainer에 등록되어야 한다")
     void interfaceExecutionRegistrationTest() {
-        HandlerExecution execution = handlerExecutions.find("order-new");
+        HandlerExecution execution = handlerExecutionContainer.find("order-new");
 
         assertThat(execution).isNotNull();
         assertThat(execution.id()).isEqualTo("order-new");
@@ -39,16 +39,16 @@ class InterfaceExecutionRegistrationTest {
         }
 
         @Bean
-        HandlerExecutions handlerExecutions() {
-            return new HandlerExecutions();
+        HandlerExecutionContainer handlerExecutionContainer() {
+            return new HandlerExecutionContainer();
         }
 
         @Bean
         InterfaceExecutionRegistration interfaceExecutionRegistration(
-                HandlerExecutions handlerExecutions,
+                HandlerExecutionContainer handlerExecutionContainer,
                 ObjectMapper objectMapper
         ) {
-            return new InterfaceExecutionRegistration(handlerExecutions, objectMapper);
+            return new InterfaceExecutionRegistration(handlerExecutionContainer, objectMapper);
         }
 
         @Bean

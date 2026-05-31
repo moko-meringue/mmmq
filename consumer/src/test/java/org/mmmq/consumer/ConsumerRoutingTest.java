@@ -4,7 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
-import org.mmmq.consumer.handler.execution.HandlerExecutions;
+import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
 import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.acknowledgement.ConsumerAcknowledgement;
 import org.mmmq.core.message.Message;
@@ -24,17 +24,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * id 기반 라우팅 모델로 전환되면서 FrontHandler가 제거되었다.
  * FrontHandlerTest가 검증하던 "메시지가 적절한 핸들러로 라우팅된다"는 의도를
- * Consumer Controller + HandlerExecutions 조합으로 재작성한다.
+ * Consumer Controller + HandlerExecutionContainer 조합으로 재작성한다.
  */
 class ConsumerRoutingTest {
 
-    HandlerExecutions handlerExecutions;
+    HandlerExecutionContainer handlerExecutionContainer;
     Consumer consumer;
 
     @BeforeEach
     void setUp() {
-        handlerExecutions = new HandlerExecutions();
-        consumer = new Consumer(handlerExecutions);
+        handlerExecutionContainer = new HandlerExecutionContainer();
+        consumer = new Consumer(handlerExecutionContainer);
     }
 
     @Test
@@ -48,7 +48,7 @@ class ConsumerRoutingTest {
                 latch.countDown();
             }
         };
-        handlerExecutions.add(handler);
+        handlerExecutionContainer.add(handler);
 
         Message message = new Message(new Topic("topic"), Map.of("key", "value"));
         ResponseEntity<ConsumerAcknowledgement> response = consumer.receiveMessage(
@@ -67,8 +67,8 @@ class ConsumerRoutingTest {
     void deliversOnlyToTargetedHandler() {
         FakeHandlerExecution handlerA = new FakeHandlerExecution("handler-A");
         FakeHandlerExecution handlerB = new FakeHandlerExecution("handler-B");
-        handlerExecutions.add(handlerA);
-        handlerExecutions.add(handlerB);
+        handlerExecutionContainer.add(handlerA);
+        handlerExecutionContainer.add(handlerB);
 
         Message messageA = new Message(new Topic("topicA"), Map.of("key", "value A"));
         Message messageB1 = new Message(new Topic("topicB"), Map.of("key", "value B1"));
@@ -86,7 +86,7 @@ class ConsumerRoutingTest {
     @DisplayName("handler id 헤더가 없으면 NACK를 반환한다")
     void returnsNackWhenHandlerIdMissing() {
         FakeHandlerExecution handler = new FakeHandlerExecution("handler-A");
-        handlerExecutions.add(handler);
+        handlerExecutionContainer.add(handler);
 
         ResponseEntity<ConsumerAcknowledgement> response = consumer.receiveMessage(
                 new HashMap<>(),
@@ -113,7 +113,7 @@ class ConsumerRoutingTest {
     @Test
     @DisplayName("핸들러가 예외를 던지면 NACK를 반환한다")
     void returnsNackWhenHandlerThrows() {
-        handlerExecutions.add(new HandlerExecution() {
+        handlerExecutionContainer.add(new HandlerExecution() {
             @Override
             public String id() {
                 return "failing-handler";
@@ -140,7 +140,7 @@ class ConsumerRoutingTest {
         int threadCount = 50;
         int messagesPerThread = 20;
         FakeHandlerExecution handler = new FakeHandlerExecution("handler-A");
-        handlerExecutions.add(handler);
+        handlerExecutionContainer.add(handler);
 
         CountDownLatch startLatch = new CountDownLatch(1);
         CountDownLatch endLatch = new CountDownLatch(threadCount);
