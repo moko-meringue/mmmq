@@ -134,7 +134,8 @@ producer.<span class="tk-fn">produce</span>(message);</pre>
                         </div>
                         <p class="flow-diagram__panel-desc">
                             broker는 수신한 메시지를 디스크에 기록한 뒤 producer에게 응답합니다.
-                            이후 토픽 패턴이 매칭되는 모든 consumer로 메시지를 전달합니다.
+                            이후 토픽 패턴이 매칭되는 모든 <code>Dispatcher</code>가 각자의 <code>ConsumerId</code>를 실어 consumer에게 메시지를
+                            전송합니다.
                         </p>
                         <div class="code-block">
                             <div class="code-block__head">
@@ -142,9 +143,9 @@ producer.<span class="tk-fn">produce</span>(message);</pre>
                                 <button class="code-block__copy" type="button">복사</button>
                             </div>
                             <pre><span class="tk-key">new</span> Dispatcher(
-    <span class="tk-str">"order-dispatcher"</span>,
     consumerHost,
-    List.<span class="tk-fn">of</span>(<span class="tk-key">new</span> Pattern(<span class="tk-str">"order.*"</span>))
+    <span class="tk-key">new</span> ConsumerId(<span class="tk-str">"order-created"</span>),
+    <span class="tk-key">new</span> TopicPattern(<span class="tk-str">"order.created"</span>)
 );</pre>
                         </div>
                     </article>
@@ -155,15 +156,14 @@ producer.<span class="tk-fn">produce</span>(message);</pre>
                             <h3 class="flow-diagram__panel-title">수신과 처리</h3>
                         </div>
                         <p class="flow-diagram__panel-desc">
-                            consumer는 구독하는 패턴에 매칭된 메시지를 핸들러로 받아 처리합니다.
-                            처리 속도는 consumer의 상황에 맞춰 진행됩니다.
+                            consumer는 메시지에 실린 <code>ConsumerId</code>로 해당 핸들러를 찾아 호출하고, 처리 결과를 즉시 broker에 응답합니다.
                         </p>
                         <div class="code-block">
                             <div class="code-block__head">
                                 <span class="code-block__lang">Consumer</span>
                                 <button class="code-block__copy" type="button">복사</button>
                             </div>
-                            <pre><span class="tk-key">@MMMQListener</span>(<span class="tk-str">"order.*"</span>)
+                            <pre><span class="tk-key">@MMMQListener</span>(id = <span class="tk-str">"order-created"</span>)
 <span class="tk-key">public void</span> <span class="tk-fn">handle</span>(Order order) {
     <span class="tk-com">// 처리 로직</span>
 }</pre>
@@ -222,7 +222,7 @@ producer.<span class="tk-fn">produce</span>(message);</pre>
                 <hr class="feature-card__divider"/>
                 <div class="feature-card__desc">
                     <code>@MMMQListener</code> 어노테이션만 사용하면 메시지를 처리할 수 있습니다. <br>
-                    토픽 패턴에 매칭되는 메시지가 인자 타입에 맞춰 핸들러로 전달됩니다.
+                    핸들러에 부여한 <code>id</code>로 라우팅된 메시지가 인자 타입에 맞춰 전달됩니다.
                 </div>
             </article>
 
@@ -285,7 +285,7 @@ producer.<span class="tk-fn">produce</span>(message);</pre>
                 <hr class="feature-card__divider"/>
                 <div class="feature-card__desc">
                     <code>order.*</code>, <code>alert.**</code> 같은 토픽 패턴으로 메시지를 분배합니다. <br>
-                    메시지는 토픽을 기준으로 fan-out 방식으로 분배되며, 매칭되는 모든 consumer가 동일한 메시지를 수신합니다.
+                    메시지는 토픽을 기준으로 fan-out 방식으로 분배되며, 매칭되는 모든 핸들러가 동일한 메시지를 수신합니다.
                 </div>
             </article>
         </div>

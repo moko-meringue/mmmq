@@ -29,7 +29,7 @@ public class TopicQueueBootstrapper implements SmartInitializingSingleton {
         try (Stream<Path> entries = Files.list(root)) {
             entries.filter(Files::isDirectory)
                     .map(path -> new Topic(path.getFileName().toString()))
-                    .forEach(container::register);
+                    .forEach(container::getOrCreate);
         } catch (IOException exception) {
             throw new StorageException("Failed to scan data directory: " + root, exception);
         }

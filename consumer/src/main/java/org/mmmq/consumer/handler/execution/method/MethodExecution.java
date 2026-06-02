@@ -5,22 +5,23 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mmmq.consumer.exception.HandlerExecutionException;
 import org.mmmq.consumer.exception.InvalidHandlerException;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
+import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.Message;
-import org.mmmq.core.message.TopicPattern;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-class MethodExecution extends HandlerExecution {
+class MethodExecution implements HandlerExecution {
 
-    final Object bean;
-    final Method method;
-    final JavaType parameterType;
-    final ObjectMapper objectMapper;
+    private final ConsumerId id;
+    private final Object bean;
+    private final Method method;
+    private final JavaType parameterType;
+    private final ObjectMapper objectMapper;
 
-    MethodExecution(TopicPattern pattern, Object bean, Method method, ObjectMapper objectMapper) {
-        super(bean.getClass().getCanonicalName() + "#" + method.getName(), pattern);
+    MethodExecution(ConsumerId id, Object bean, Method method, ObjectMapper objectMapper) {
         method.setAccessible(true);
+        this.id = id;
         this.bean = bean;
         this.method = method;
         this.objectMapper = objectMapper;
@@ -29,9 +30,14 @@ class MethodExecution extends HandlerExecution {
 
     private JavaType getParameterType(Method method, ObjectMapper objectMapper) {
         if (method.getParameterCount() != 1) {
-            throw new InvalidHandlerException("MethodExecution must have exactly one parameter: " + name);
+            throw new InvalidHandlerException("MethodExecution must have exactly one parameter: " + id);
         }
         return objectMapper.constructType(method.getGenericParameterTypes()[0]);
+    }
+
+    @Override
+    public ConsumerId id() {
+        return id;
     }
 
     @Override
@@ -42,12 +48,12 @@ class MethodExecution extends HandlerExecution {
             method.invoke(bean, parameter);
         } catch (InvocationTargetException e) {
             throw new HandlerExecutionException(
-                    "MethodExecution " + name + "threw an exception while processing.",
+                    "MethodExecution " + id + " threw an exception while processing.",
                     e.getCause()
             );
         } catch (Exception e) {
             throw new HandlerExecutionException(
-                    String.format("Unexpected error occurred during execute handler execution %s: %s", name, e),
+                    String.format("Unexpected error occurred during execute handler execution %s: %s", id, e),
                     e
             );
         }
@@ -61,7 +67,7 @@ class MethodExecution extends HandlerExecution {
             return objectMapper.convertValue(message.content(), parameterType);
         } catch (IllegalArgumentException e) {
             throw new HandlerExecutionException(
-                    String.format("Failed to convert parameter for handler execution '%s': %s", name, e.getMessage()),
+                    String.format("Failed to convert parameter for handler execution '%s': %s", id, e.getMessage()),
                     e
             );
         }

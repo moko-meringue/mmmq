@@ -1,11 +1,11 @@
 package org.mmmq.consumer.handler.execution.method;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mmmq.consumer.handler.FrontHandler;
-import org.mmmq.consumer.handler.FrontHandlerUtil;
-import org.mmmq.consumer.handler.execution.HandlerExecutions;
-import org.springframework.beans.factory.ObjectProvider;
+import org.mmmq.consumer.handler.execution.HandlerExecution;
+import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
+import org.mmmq.core.identifier.ConsumerId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
@@ -20,28 +20,44 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 class MethodExecutorRegistrationTest {
 
     @Autowired
-    FrontHandler frontHandler;
+    HandlerExecutionContainer handlerExecutionContainer;
 
     @Test
     @DisplayName("메서드 실행 등록이 정상적으로 수행된다.")
     void methodExecutionRegistrationTest() {
-        HandlerExecutions handlerExecutions = FrontHandlerUtil.getHandlerExecutions(frontHandler);
-        assertThat(handlerExecutions.size()).isEqualTo(3);
+        assertThat(handlerExecutionContainer.find(new ConsumerId("topic1"))).isNotNull();
+        assertThat(handlerExecutionContainer.find(new ConsumerId("topic2"))).isNotNull();
+        assertThat(handlerExecutionContainer.find(new ConsumerId("topic3"))).isNotNull();
+    }
+
+    @Test
+    @DisplayName("등록된 핸들러는 id로 조회된다.")
+    void findsRegisteredHandlerById() {
+        HandlerExecution execution = handlerExecutionContainer.find(new ConsumerId("topic1"));
+
+        assertThat(execution).isNotNull();
+        assertThat(execution.id()).isEqualTo(new ConsumerId("topic1"));
     }
 
     @Configuration
     static class MethodExecutionRegistrationConfiguration {
 
         @Bean
-        FrontHandler frontHandler() {
-            return new FrontHandler();
+        ObjectMapper objectMapper() {
+            return new ObjectMapper();
+        }
+
+        @Bean
+        HandlerExecutionContainer handlerExecutionContainer() {
+            return new HandlerExecutionContainer();
         }
 
         @Bean
         MethodExecutionRegistration methodExecutionRegistration(
-                ObjectProvider<FrontHandler> frontHandlerObjectProvider
+                HandlerExecutionContainer handlerExecutionContainer,
+                ObjectMapper objectMapper
         ) {
-            return new MethodExecutionRegistration(frontHandlerObjectProvider);
+            return new MethodExecutionRegistration(handlerExecutionContainer, objectMapper);
         }
 
         @Bean
@@ -62,21 +78,21 @@ class MethodExecutorRegistrationTest {
 
     static class Bean1 {
 
-        @MMMQListener(pattern = "topic1")
+        @MMMQListener(id = "topic1")
         void handle1(String content) {
         }
     }
 
     static class Bean2 {
 
-        @MMMQListener(pattern = "topic2")
+        @MMMQListener(id = "topic2")
         void handle2(String content) {
         }
     }
 
     static class Bean3 {
 
-        @MMMQListener(pattern = "topic3")
+        @MMMQListener(id = "topic3")
         void handle3(String content) {
         }
     }

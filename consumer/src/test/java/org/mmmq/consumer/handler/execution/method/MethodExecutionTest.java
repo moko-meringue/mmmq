@@ -3,8 +3,8 @@ package org.mmmq.consumer.handler.execution.method;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.Message;
-import org.mmmq.core.message.TopicPattern;
 import org.mmmq.core.message.Topic;
 
 import java.lang.reflect.Method;
@@ -18,10 +18,10 @@ class MethodExecutionTest {
     @Test
     @DisplayName("메시지를 핸들링한다.")
     void executeTest() throws NoSuchMethodException {
-        TopicPattern pattern = new TopicPattern("topic");
         Target target = new Target();
         Method targetMethod = Target.class.getMethod("method", Dto.class);
-        MethodExecution methodExecution = new MethodExecution(pattern, target, targetMethod, objectMapper);
+        MethodExecution methodExecution = new MethodExecution(new ConsumerId("handler-1"), target, targetMethod, objectMapper);
+
         methodExecution.execute(
                 new Message(
                         new Topic("topic"),
@@ -32,12 +32,21 @@ class MethodExecutionTest {
     }
 
     @Test
-    @DisplayName("content가 null이면 핸들러에 null을 전달한다")
-    void executeWithNullContent() throws NoSuchMethodException {
-        TopicPattern pattern = new TopicPattern("topic");
+    @DisplayName("id는 생성자 인자로 받은 값을 그대로 반환한다.")
+    void idReturnsConstructorArgument() throws NoSuchMethodException {
         Target target = new Target();
         Method targetMethod = Target.class.getMethod("method", Dto.class);
-        MethodExecution methodExecution = new MethodExecution(pattern, target, targetMethod, objectMapper);
+        MethodExecution methodExecution = new MethodExecution(new ConsumerId("handler-1"), target, targetMethod, objectMapper);
+
+        assertThat(methodExecution.id()).isEqualTo(new ConsumerId("handler-1"));
+    }
+
+    @Test
+    @DisplayName("content가 null이면 핸들러에 null을 전달한다")
+    void executeWithNullContent() throws NoSuchMethodException {
+        Target target = new Target();
+        Method targetMethod = Target.class.getMethod("method", Dto.class);
+        MethodExecution methodExecution = new MethodExecution(new ConsumerId("handler-1"), target, targetMethod, objectMapper);
 
         methodExecution.execute(new Message(new Topic("topic"), null));
 
@@ -46,6 +55,7 @@ class MethodExecutionTest {
     }
 
     static class Target {
+
         int calledCount = 0;
         Dto receivedDto;
 

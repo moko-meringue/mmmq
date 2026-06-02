@@ -1,27 +1,24 @@
 package org.mmmq.broker.dispatcher;
 
 import jakarta.annotation.PreDestroy;
-import java.util.List;
+import org.mmmq.broker.dispatcher.sender.Sender;
+import org.mmmq.broker.topicqueue.Offset;
+import org.mmmq.broker.topicqueue.TopicQueue;
+import org.mmmq.broker.topicqueue.storage.CorruptionException;
+import org.mmmq.core.Host;
+import org.mmmq.core.identifier.ConsumerId;
+import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Topic;
+import org.mmmq.core.message.TopicPattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
-import org.mmmq.broker.dispatcher.sender.Sender;
-import org.mmmq.broker.topicqueue.Offset;
-import org.mmmq.broker.topicqueue.TopicQueue;
-import org.mmmq.broker.topicqueue.TopicQueueInitializedEvent;
-import org.mmmq.broker.topicqueue.storage.CorruptionException;
-import org.mmmq.core.Host;
-import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Topic;
-import org.mmmq.core.message.TopicPattern;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 
 public class Dispatcher {
 
@@ -31,52 +28,38 @@ public class Dispatcher {
     private static final int BACKOFF_MULTIPLIER = 2;
 
     private static final Logger log = LoggerFactory.getLogger(Dispatcher.class);
-    private static final Pattern NAME_PATTERN = Pattern.compile("[A-Za-z0-9._-]+");
 
-    final String name;
     final Host host;
-    final List<TopicPattern> patterns;
+    final ConsumerId consumerId;
+    final TopicPattern pattern;
     final ConcurrentHashMap<TopicQueue, Offset> subscriptions = new ConcurrentHashMap<>();
     final WorkerPool workerPool = new WorkerPool();
     Sender sender;
 
-    public Dispatcher(String name, Host host, List<TopicPattern> patterns) {
-        if (!NAME_PATTERN.matcher(name).matches()) {
-            throw new IllegalArgumentException("Dispatcher name must match [A-Za-z0-9._-]+, but was: " + name);
-        }
-        this.name = name;
+    public Dispatcher(Host host, ConsumerId consumerId, TopicPattern pattern) {
         this.host = host;
-        this.patterns = patterns;
+        this.consumerId = consumerId;
+        this.pattern = pattern;
         this.sender = Sender.from(host);
     }
 
-    @EventListener(ApplicationReadyEvent.class)
-    void onApplicationReady() {
-        subscriptions.keySet()
-                .forEach(topicQueue -> workerPool.submit(topicQueue, () -> drain(topicQueue)));
+    public ConsumerId consumerId() {
+        return consumerId;
     }
 
-    @EventListener
-    void onTopicQueueInitialized(TopicQueueInitializedEvent event) {
-        TopicQueue topicQueue = event.topicQueue();
-        if (!matches(topicQueue.getTopic())) {
-            return;
-        }
-        subscriptions.computeIfAbsent(topicQueue, queue -> queue.subscribe(name));
+    boolean canDispatch(Topic topic) {
+        return pattern.matches(topic);
     }
 
-    @EventListener
-    void onMessageArrived(MessageArrivedEvent event) {
-        TopicQueue topicQueue = event.topicQueue();
+    void subscribe(TopicQueue topicQueue) {
+        subscriptions.computeIfAbsent(topicQueue, queue -> queue.subscribe(consumerId.value()));
+    }
+
+    void dispatch(TopicQueue topicQueue) {
         if (!subscriptions.containsKey(topicQueue)) {
             return;
         }
         workerPool.submit(topicQueue, () -> drain(topicQueue));
-    }
-
-    boolean matches(Topic topic) {
-        return patterns.stream()
-                .anyMatch(pattern -> pattern.matches(topic));
     }
 
     private void drain(TopicQueue topicQueue) {
@@ -91,20 +74,20 @@ public class Dispatcher {
                     deliver(message);
                 } catch (CorruptionException exception) {
                     log.error("Dispatcher {} skipped corrupted entry on topic {} at offset {}",
-                            name,
+                            consumerId,
                             topicQueue.getTopic(),
                             offset,
                             exception
                     );
                 }
-                offset = topicQueue.commit(name, offset);
+                offset = topicQueue.commit(consumerId.value(), offset);
                 subscriptions.put(topicQueue, offset);
             }
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            log.info("Dispatcher {} drain interrupted on topic {}", name, topicQueue.getTopic());
+            log.info("Dispatcher {} drain interrupted on topic {}", consumerId, topicQueue.getTopic());
         } catch (Exception exception) {
-            log.error("Dispatcher {} aborted drain on topic {}", name, topicQueue.getTopic(), exception);
+            log.error("Dispatcher {} aborted drain on topic {}", consumerId, topicQueue.getTopic(), exception);
         }
     }
 
@@ -115,7 +98,7 @@ public class Dispatcher {
                 throw new InterruptedException();
             }
             try {
-                if (!sender.send(message, MAX_NACK_RETRY_COUNT)) {
+                if (!sender.send(message, consumerId, MAX_NACK_RETRY_COUNT)) {
                     log.warn("NACK exhausted. Dropping message: {}", message);
                 }
                 return;

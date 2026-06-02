@@ -4,19 +4,21 @@ import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mmmq.consumer.exception.HandlerExecutionException;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
+import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.Message;
 import org.springframework.core.GenericTypeResolver;
 import org.springframework.util.ClassUtils;
 
-class InterfaceExecution extends HandlerExecution {
+class InterfaceExecution implements HandlerExecution {
 
-    final MMMQListener<Object> mmmqListener;
-    final JavaType parameterType;
-    final ObjectMapper objectMapper;
+    private final ConsumerId id;
+    private final MMMQListener<Object> mmmqListener;
+    private final JavaType parameterType;
+    private final ObjectMapper objectMapper;
 
     @SuppressWarnings("unchecked")
     InterfaceExecution(MMMQListener<?> mmmqListener, ObjectMapper objectMapper) {
-        super(ClassUtils.getUserClass(mmmqListener).getCanonicalName(), mmmqListener.listens());
+        this.id = new ConsumerId(mmmqListener.id());
         this.mmmqListener = (MMMQListener<Object>) mmmqListener;
         this.objectMapper = objectMapper;
         this.parameterType = resolveParameterType(mmmqListener, objectMapper);
@@ -30,13 +32,18 @@ class InterfaceExecution extends HandlerExecution {
     }
 
     @Override
+    public ConsumerId id() {
+        return id;
+    }
+
+    @Override
     public void execute(Message message) {
         Object content = getParameter(message);
         try {
             mmmqListener.handle(content);
         } catch (Exception e) {
             throw new HandlerExecutionException(
-                    String.format("Unexpected error during interface execution %s: %s", name, e),
+                    String.format("Unexpected error during interface execution %s: %s", id, e),
                     e
             );
         }
@@ -50,7 +57,7 @@ class InterfaceExecution extends HandlerExecution {
             return objectMapper.convertValue(message.content(), parameterType);
         } catch (IllegalArgumentException e) {
             throw new HandlerExecutionException(
-                    String.format("Failed to convert parameter for interface execution '%s': %s", name, e.getMessage()),
+                    String.format("Failed to convert parameter for interface execution '%s': %s", id, e.getMessage()),
                     e
             );
         }

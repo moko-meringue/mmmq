@@ -4,26 +4,40 @@ import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.broker.topicqueue.TopicQueueContainer;
 import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.message.Message;
-import org.springframework.context.ApplicationEventPublisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
 public class FrontDispatcher {
 
-    private final TopicQueueContainer container;
-    private final ApplicationEventPublisher publisher;
+    private static final Logger log = LoggerFactory.getLogger(FrontDispatcher.class);
 
-    public FrontDispatcher(TopicQueueContainer container, ApplicationEventPublisher publisher) {
+    private final TopicQueueContainer container;
+    private final DispatcherContainer dispatcherContainer;
+
+    public FrontDispatcher(TopicQueueContainer container, DispatcherContainer dispatcherContainer) {
         this.container = container;
-        this.publisher = publisher;
+        this.dispatcherContainer = dispatcherContainer;
     }
 
     public Acknowledgement dispatch(Message message) {
-        TopicQueue queue = container.get(message.topic());
-        if (queue.offer(message)) {
-            publisher.publishEvent(new MessageArrivedEvent(queue));
-            return Acknowledgement.ACK;
+        TopicQueue queue = container.getOrCreate(message.topic());
+        if (!queue.offer(message)) {
+            return Acknowledgement.NACK;
         }
-        return Acknowledgement.NACK;
+        dispatcherContainer.getSubscribers(queue).forEach(dispatcher -> {
+            try {
+                dispatcher.dispatch(queue);
+            } catch (Exception exception) {
+                log.warn(
+                        "Dispatcher '{}' failed during drain on topic '{}'",
+                        dispatcher.consumerId(),
+                        queue.getTopic(),
+                        exception
+                );
+            }
+        });
+        return Acknowledgement.ACK;
     }
 }

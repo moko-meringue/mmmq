@@ -116,7 +116,7 @@
                         <div class="feature-card__title">core</div>
                         <hr class="feature-card__divider"/>
                         <div class="feature-card__desc">
-                            모든 모듈이 공유하는 핵심 타입을 정의합니다. 메시지, 토픽, 응답 등 도메인 원시 타입을 모아둡니다.
+                            모든 모듈이 공유하는 핵심 타입을 정의합니다. 메시지, 토픽, <code>ConsumerId</code>, 응답 등 도메인 원시 타입을 모아둡니다.
                         </div>
                     </a>
 
@@ -138,7 +138,8 @@
                         <div class="feature-card__title">broker</div>
                         <hr class="feature-card__divider"/>
                         <div class="feature-card__desc">
-                            메시지를 디스크에 보관하고 consumer에게 전달하는 모듈입니다. 토픽 패턴에 따라 분배합니다.
+                            메시지를 디스크에 보관하고 consumer에게 전송하는 모듈입니다. 토픽 패턴이 매칭되는 <code>Dispatcher</code>마다 독립된 송신 경로를
+                            만듭니다.
                         </div>
                     </a>
 
@@ -149,7 +150,7 @@
                         <div class="feature-card__title">consumer</div>
                         <hr class="feature-card__divider"/>
                         <div class="feature-card__desc">
-                            broker가 보낸 메시지를 토픽 패턴이 맞는 핸들러로 라우팅하는 모듈입니다.
+                            broker가 보낸 메시지를 <code>ConsumerId</code>로 등록된 핸들러에 라우팅하는 모듈입니다.
                         </div>
                     </a>
                 </div>

@@ -1,0 +1,42 @@
+package org.mmmq.broker.dispatcher;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import org.mmmq.broker.topicqueue.TopicQueue;
+import org.mmmq.core.identifier.ConsumerId;
+import org.springframework.stereotype.Component;
+
+@Component
+public class DispatcherContainer {
+
+    private final List<Dispatcher> dispatchers;
+    private final Map<TopicQueue, List<Dispatcher>> subscriptions = new ConcurrentHashMap<>();
+
+    public DispatcherContainer(Collection<Dispatcher> dispatchers) {
+        Set<ConsumerId> seen = new HashSet<>();
+        dispatchers.forEach(dispatcher -> {
+            if (!seen.add(dispatcher.consumerId())) {
+                throw new IllegalStateException(
+                        "Duplicate consumerId '" + dispatcher.consumerId() + "' across multiple Dispatcher beans"
+                );
+            }
+        });
+        this.dispatchers = List.copyOf(dispatchers);
+    }
+
+    public void register(TopicQueue topicQueue) {
+        List<Dispatcher> matched = dispatchers.stream()
+                .filter(dispatcher -> dispatcher.canDispatch(topicQueue.getTopic()))
+                .toList();
+        matched.forEach(dispatcher -> dispatcher.subscribe(topicQueue));
+        subscriptions.put(topicQueue, matched);
+    }
+
+    public List<Dispatcher> getSubscribers(TopicQueue topicQueue) {
+        return subscriptions.getOrDefault(topicQueue, List.of());
+    }
+}

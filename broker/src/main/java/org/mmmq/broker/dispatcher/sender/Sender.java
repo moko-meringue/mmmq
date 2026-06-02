@@ -2,8 +2,10 @@ package org.mmmq.broker.dispatcher.sender;
 
 import org.mmmq.core.Host;
 import org.mmmq.core.acknowledgement.ConsumerAcknowledgement;
+import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.MessageDeliveryException;
+import org.mmmq.core.metadata.Metadata;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 
@@ -28,19 +30,22 @@ public class Sender {
         return new Sender(restClient);
     }
 
-    public boolean send(Message message, int maxRetryCount) {
-        for (int attempt = 1; attempt <= maxRetryCount; attempt++) {
-            if (post(message).isAck()) {
+    public boolean send(Message message, ConsumerId consumerId, int maxRetryCount) {
+        for (int retry = 0; retry <= maxRetryCount; retry++) {
+            if (post(message, consumerId).isAck()) {
                 return true;
             }
         }
         return false;
     }
 
-    ConsumerAcknowledgement post(Message message) {
+    ConsumerAcknowledgement post(Message message, ConsumerId consumerId) {
+        Metadata metadata = new Metadata();
+        metadata.setConsumerId(consumerId);
         return restClient.post()
                 .uri("/mmmq/messages")
                 .contentType(MediaType.APPLICATION_JSON)
+                .headers(httpHeaders -> metadata.toMap().forEach(httpHeaders::set))
                 .body(message)
                 .retrieve()
                 .toEntity(ConsumerAcknowledgement.class)

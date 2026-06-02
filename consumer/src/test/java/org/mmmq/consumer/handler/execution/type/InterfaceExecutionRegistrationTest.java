@@ -1,21 +1,15 @@
 package org.mmmq.consumer.handler.execution.type;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mmmq.consumer.handler.FrontHandler;
-import org.mmmq.consumer.handler.FrontHandlerUtil;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
-import org.mmmq.consumer.handler.execution.HandlerExecutions;
-import org.mmmq.core.message.Message;
-import org.mmmq.core.message.TopicPattern;
-import org.mmmq.core.message.Topic;
-import org.springframework.beans.factory.ObjectProvider;
+import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
+import org.mmmq.core.identifier.ConsumerId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,34 +20,36 @@ import static org.assertj.core.api.Assertions.assertThat;
 class InterfaceExecutionRegistrationTest {
 
     @Autowired
-    FrontHandler frontHandler;
+    HandlerExecutionContainer handlerExecutionContainer;
 
     @Test
-    @DisplayName("MMMQListener 인터페이스를 구현한 빈이 있으면 자동으로 FrontHandler에 등록되어야 한다")
+    @DisplayName("MMMQListener 인터페이스를 구현한 빈이 있으면 자동으로 HandlerExecutionContainer에 등록되어야 한다")
     void interfaceExecutionRegistrationTest() {
-        HandlerExecutions handlerExecutions = FrontHandlerUtil.getHandlerExecutions(frontHandler);
+        HandlerExecution execution = handlerExecutionContainer.find(new ConsumerId("order-new"));
 
-        List<HandlerExecution> executions = handlerExecutions.getExecutions(
-                new Message(new Topic("order.new"), java.util.Map.of())
-        );
-        assertThat(executions.size()).isEqualTo(1);
-        HandlerExecution execution = executions.get(0);
-        assertThat(execution.getPattern().value()).isEqualTo("order.new");
+        assertThat(execution).isNotNull();
+        assertThat(execution.id()).isEqualTo(new ConsumerId("order-new"));
     }
 
     @Configuration
     static class InterfaceExecutionRegistrationConfiguration {
 
         @Bean
-        FrontHandler frontHandler() {
-            return new FrontHandler();
+        ObjectMapper objectMapper() {
+            return new ObjectMapper();
+        }
+
+        @Bean
+        HandlerExecutionContainer handlerExecutionContainer() {
+            return new HandlerExecutionContainer();
         }
 
         @Bean
         InterfaceExecutionRegistration interfaceExecutionRegistration(
-                ObjectProvider<FrontHandler> frontHandlerObjectProvider
+                HandlerExecutionContainer handlerExecutionContainer,
+                ObjectMapper objectMapper
         ) {
-            return new InterfaceExecutionRegistration(frontHandlerObjectProvider);
+            return new InterfaceExecutionRegistration(handlerExecutionContainer, objectMapper);
         }
 
         @Bean
@@ -63,14 +59,15 @@ class InterfaceExecutionRegistrationTest {
     }
 
     static class SampleDto {
+
         String name;
     }
 
     static class SampleListener implements MMMQListener<SampleDto> {
 
         @Override
-        public TopicPattern listens() {
-            return new TopicPattern("order.new");
+        public String id() {
+            return "order-new";
         }
 
         @Override

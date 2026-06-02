@@ -10,6 +10,7 @@ import org.mmmq.broker.fixture.MockRestServiceServerFixture;
 import org.mmmq.core.Host;
 import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.acknowledgement.ConsumerAcknowledgement;
+import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.MessageDeliveryException;
 import org.mmmq.core.message.Topic;
@@ -24,12 +25,15 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class SenderTest {
+
+    private static final ConsumerId CONSUMER_ID = new ConsumerId("handler-1");
 
     RestClient restClient;
     MockRestServiceServer server;
@@ -68,7 +72,26 @@ class SenderTest {
                         MediaType.APPLICATION_JSON
                 ));
 
-        boolean result = sender.send(new Message(new Topic("topic"), Map.of("key", "value")), 1);
+        boolean result = sender.send(new Message(new Topic("topic"), Map.of("key", "value")), CONSUMER_ID, 1);
+
+        assertThat(result).isTrue();
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("메시지 전송 시 consumer id를 헤더에 실어 보낸다.")
+    void sendIncludesConsumerIdHeader() throws JsonProcessingException {
+        Sender sender = new Sender(restClient);
+
+        server.expect(ExpectedCount.once(), requestTo(host.toUri() + "/mmmq/messages"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(header("mmmq-consumer-id", CONSUMER_ID.value()))
+                .andRespond(withSuccess(
+                        objectMapper.writeValueAsString(new ConsumerAcknowledgement(Acknowledgement.ACK)),
+                        MediaType.APPLICATION_JSON
+                ));
+
+        boolean result = sender.send(new Message(new Topic("topic"), Map.of("key", "value")), CONSUMER_ID, 1);
 
         assertThat(result).isTrue();
         server.verify();
@@ -79,14 +102,14 @@ class SenderTest {
     void sendNackReturnFalseAfterRetriesTest() throws JsonProcessingException {
         Sender sender = new Sender(restClient);
 
-        server.expect(ExpectedCount.twice(), requestTo(host.toUri() + "/mmmq/messages"))
+        server.expect(ExpectedCount.times(3), requestTo(host.toUri() + "/mmmq/messages"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess(
                         objectMapper.writeValueAsString(new ConsumerAcknowledgement(Acknowledgement.NACK)),
                         MediaType.APPLICATION_JSON
                 ));
 
-        boolean result = sender.send(new Message(new Topic("topic"), Map.of("key", "value")), 2);
+        boolean result = sender.send(new Message(new Topic("topic"), Map.of("key", "value")), CONSUMER_ID, 2);
 
         assertThat(result).isFalse();
         server.verify();
@@ -110,7 +133,7 @@ class SenderTest {
                         MediaType.APPLICATION_JSON
                 ));
 
-        boolean result = sender.send(new Message(new Topic("topic"), Map.of("key", "value")), 3);
+        boolean result = sender.send(new Message(new Topic("topic"), Map.of("key", "value")), CONSUMER_ID, 3);
 
         assertThat(result).isTrue();
         server.verify();
@@ -125,7 +148,7 @@ class SenderTest {
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
 
-        assertThatThrownBy(() -> sender.send(new Message(new Topic("topic"), Map.of("key", "value")), 3))
+        assertThatThrownBy(() -> sender.send(new Message(new Topic("topic"), Map.of("key", "value")), CONSUMER_ID, 3))
                 .isInstanceOf(MessageDeliveryException.class);
     }
 }
