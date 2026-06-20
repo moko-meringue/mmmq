@@ -13,7 +13,6 @@ import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.TopicPattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionReaderUtils;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
@@ -59,13 +58,13 @@ class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, Environm
     }
 
     private void register(DispatcherDefinition definition, BeanDefinitionRegistry registry) {
-        AbstractBeanDefinition beanDefinition = BeanDefinitionBuilder
-                .genericBeanDefinition(Dispatcher.class)
-                .addConstructorArgValue(definition.host().toHost())
-                .addConstructorArgValue(new ConsumerId(definition.consumerId()))
-                .addConstructorArgValue(new TopicPattern(definition.pattern()))
-                .getBeanDefinition();
-        BeanDefinitionReaderUtils.registerWithGeneratedName(beanDefinition, registry);
+        BeanDefinitionReaderUtils.registerWithGeneratedName(
+                BeanDefinitionBuilder.genericBeanDefinition(Dispatcher.class)
+                        .addConstructorArgValue(definition.host().toHost())
+                        .addConstructorArgValue(new ConsumerId(definition.consumerId()))
+                        .addConstructorArgValue(new TopicPattern(definition.pattern()))
+                        .getBeanDefinition(),
+                registry);
     }
 
     private List<DispatcherDefinition> readDefinitions(Path path) {
