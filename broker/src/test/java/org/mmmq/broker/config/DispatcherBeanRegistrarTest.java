@@ -1,22 +1,22 @@
 package org.mmmq.broker.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collection;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mmmq.broker.dispatcher.Dispatcher;
+import org.mmmq.broker.dispatcher.DispatcherBeanRegistrar;
 import org.mmmq.broker.dispatcher.DispatcherContainer;
 import org.mmmq.core.identifier.ConsumerId;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Collection;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class DispatcherBeanRegistrarTest {
 

@@ -1,23 +1,22 @@
 package org.mmmq.broker.topicqueue;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.mmmq.broker.config.SegmentProperties;
-import org.mmmq.broker.config.StorageProperties;
-import org.mmmq.broker.dispatcher.DispatcherContainer;
-import org.mmmq.broker.topicqueue.storage.CheckpointDirectory;
-import org.mmmq.broker.topicqueue.storage.SegmentFileChain;
-import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Topic;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.mmmq.broker.dispatcher.DispatcherContainer;
+import org.mmmq.broker.topicqueue.storage.CheckpointDirectory;
+import org.mmmq.broker.topicqueue.storage.SegmentFileChain;
+import org.mmmq.broker.topicqueue.storage.SegmentProperties;
+import org.mmmq.broker.topicqueue.storage.StorageProperties;
+import org.mmmq.core.message.Message;
+import org.mmmq.core.message.Topic;
 
 class TopicQueueBootstrapperTest {
 

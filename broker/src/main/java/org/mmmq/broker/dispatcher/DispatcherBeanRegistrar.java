@@ -1,4 +1,4 @@
-package org.mmmq.broker.config;
+package org.mmmq.broker.dispatcher;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -7,8 +7,6 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.mmmq.broker.dispatcher.Dispatcher;
-import org.mmmq.broker.dispatcher.DispatcherDefinition;
 import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.TopicPattern;
 import org.slf4j.Logger;
@@ -22,7 +20,7 @@ import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotationMetadata;
 
-class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware {
+public class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware {
 
     private static final Logger log = LoggerFactory.getLogger(DispatcherBeanRegistrar.class);
 

@@ -3,11 +3,11 @@ package org.mmmq.broker.topicqueue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.mmmq.broker.config.SegmentProperties;
-import org.mmmq.broker.config.StorageProperties;
 import org.mmmq.broker.topicqueue.storage.CheckpointDirectory;
 import org.mmmq.broker.topicqueue.storage.SegmentFileChain;
+import org.mmmq.broker.topicqueue.storage.SegmentProperties;
 import org.mmmq.broker.topicqueue.storage.StorageException;
+import org.mmmq.broker.topicqueue.storage.StorageProperties;
 import org.mmmq.core.message.Topic;
 import org.springframework.stereotype.Component;
 
