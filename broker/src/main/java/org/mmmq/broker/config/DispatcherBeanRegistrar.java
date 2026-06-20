@@ -51,9 +51,9 @@ class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, Environm
 
         List<DispatcherDefinition> definitions = readDefinitions(path);
 
-        Set<String> consumerIds = new HashSet<>();
+        Set<String> seen = new HashSet<>();
         definitions.forEach(definition -> {
-            if (!consumerIds.add(definition.consumerId())) {
+            if (!seen.add(definition.consumerId())) {
                 throw new IllegalStateException(
                         "Duplicate consumerId '" + definition.consumerId() + "' in dispatcher file: " + path);
             }
