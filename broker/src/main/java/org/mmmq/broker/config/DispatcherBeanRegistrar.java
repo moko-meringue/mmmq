@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.mmmq.broker.dispatcher.Dispatcher;
 import org.mmmq.broker.dispatcher.DispatcherDefinition;
 import org.mmmq.core.identifier.ConsumerId;
@@ -43,7 +45,17 @@ class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, Environm
             return;
         }
 
-        readDefinitions(path).forEach(definition -> register(definition, registry));
+        List<DispatcherDefinition> definitions = readDefinitions(path);
+
+        Set<String> consumerIds = new HashSet<>();
+        definitions.forEach(definition -> {
+            if (!consumerIds.add(definition.consumerId())) {
+                throw new IllegalStateException(
+                        "Duplicate consumerId '" + definition.consumerId() + "' in dispatcher file: " + path);
+            }
+        });
+
+        definitions.forEach(definition -> register(definition, registry));
     }
 
     private void register(DispatcherDefinition definition, BeanDefinitionRegistry registry) {

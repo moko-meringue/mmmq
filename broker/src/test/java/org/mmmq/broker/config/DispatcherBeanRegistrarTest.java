@@ -69,7 +69,10 @@ class DispatcherBeanRegistrarTest {
                 """);
 
         runner.withPropertyValues("mmmq.broker.dispatchers.file=" + file)
-                .run(context -> assertThat(context).hasFailed());
+                .run(context -> assertThat(context)
+                        .hasFailed()
+                        .getFailure()
+                        .hasStackTraceContaining("Duplicate consumerId 'dup' in dispatcher file"));
     }
 
     @Test
