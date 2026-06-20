@@ -63,7 +63,7 @@ public class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, E
     private void register(DispatcherDefinition definition, BeanDefinitionRegistry registry) {
         AbstractBeanDefinition beanDefinition = BeanDefinitionBuilder
                 .genericBeanDefinition(Dispatcher.class)
-                .addConstructorArgValue(definition.host().toHost())
+                .addConstructorArgValue(definition.toHost())
                 .addConstructorArgValue(new ConsumerId(definition.consumerId()))
                 .addConstructorArgValue(new TopicPattern(definition.pattern()))
                 .getBeanDefinition();

@@ -9,6 +9,10 @@ public record DispatcherDefinition(
         String pattern
 ) {
 
+    public Host toHost() {
+        return host.toHost();
+    }
+
     public record HostDefinition(
             String protocol,
             String address,
