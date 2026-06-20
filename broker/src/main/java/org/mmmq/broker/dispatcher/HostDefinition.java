@@ -5,7 +5,6 @@ import org.mmmq.core.Host;
 import org.mmmq.core.WebProtocol;
 
 public record HostDefinition(
-
         String protocol,
         String address,
         int port

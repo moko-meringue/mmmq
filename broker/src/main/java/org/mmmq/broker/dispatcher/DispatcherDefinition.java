@@ -4,7 +4,6 @@ import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.TopicPattern;
 
 public record DispatcherDefinition(
-
         String consumerId,
         HostDefinition host,
         String pattern
