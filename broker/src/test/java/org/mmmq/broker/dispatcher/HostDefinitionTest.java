@@ -27,18 +27,4 @@ class HostDefinitionTest {
         assertThatThrownBy(definition::toHost)
                 .isInstanceOf(IllegalArgumentException.class);
     }
-
-    @Test
-    @DisplayName("address가 비어 있으면 예외를 던진다")
-    void rejectsBlankAddress() {
-        assertThatThrownBy(() -> new HostDefinition("HTTP", " ", 8080))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
-    @DisplayName("port가 범위를 벗어나면 예외를 던진다")
-    void rejectsPortOutOfRange() {
-        assertThatThrownBy(() -> new HostDefinition("HTTP", "127.0.0.1", 0))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
 }

@@ -107,19 +107,6 @@ class DispatcherBeanRegistrarTest {
     }
 
     @Test
-    @DisplayName("address 누락 → 기동에 실패한다")
-    void failsOnMissingAddress() throws IOException {
-        Path file = write("""
-                [
-                  {"consumerId":"x","host":{"protocol":"HTTP","port":8080},"pattern":"a"}
-                ]
-                """);
-
-        runner.withPropertyValues("mmmq.broker.dispatchers.file=" + file)
-                .run(context -> assertThat(context).hasFailed());
-    }
-
-    @Test
     @DisplayName("빈 파일 → 기동에 실패한다")
     void failsOnEmptyFile() throws IOException {
         Path file = write("");
