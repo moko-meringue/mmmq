@@ -2,6 +2,7 @@ package org.mmmq.broker.dispatcher;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mmmq.broker.dispatcher.DispatcherDefinition.HostDefinition;
 import org.mmmq.core.Host;
 
 import static org.assertj.core.api.Assertions.assertThat;
