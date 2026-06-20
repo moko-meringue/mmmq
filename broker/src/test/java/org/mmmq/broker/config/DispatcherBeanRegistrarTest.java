@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mmmq.broker.dispatcher.Dispatcher;
 import org.mmmq.broker.dispatcher.DispatcherContainer;
+import org.mmmq.core.identifier.ConsumerId;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,7 +39,12 @@ class DispatcherBeanRegistrarTest {
         runner.withPropertyValues("mmmq.broker.dispatchers.file=" + file)
                 .run(context -> {
                     assertThat(context).hasNotFailed();
-                    assertThat(context.getBeansOfType(Dispatcher.class)).hasSize(2);
+                    assertThat(context.getBeansOfType(Dispatcher.class).values())
+                            .extracting(Dispatcher::consumerId)
+                            .containsExactlyInAnyOrder(
+                                    new ConsumerId("order-created"),
+                                    new ConsumerId("order-shipped")
+                            );
                 });
     }
 
@@ -59,6 +65,19 @@ class DispatcherBeanRegistrarTest {
                 [
                   {"consumerId":"dup","host":{"protocol":"HTTP","address":"127.0.0.1","port":8080},"pattern":"a"},
                   {"consumerId":"dup","host":{"protocol":"HTTP","address":"127.0.0.1","port":8080},"pattern":"b"}
+                ]
+                """);
+
+        runner.withPropertyValues("mmmq.broker.dispatchers.file=" + file)
+                .run(context -> assertThat(context).hasFailed());
+    }
+
+    @Test
+    @DisplayName("consumerId가 regex에 어긋나면 → 기동에 실패한다")
+    void failsOnInvalidConsumerId() throws IOException {
+        Path file = write("""
+                [
+                  {"consumerId":"invalid id!","host":{"protocol":"HTTP","address":"127.0.0.1","port":8080},"pattern":"a"}
                 ]
                 """);
 
