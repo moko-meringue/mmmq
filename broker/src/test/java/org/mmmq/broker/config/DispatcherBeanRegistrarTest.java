@@ -49,13 +49,18 @@ class DispatcherBeanRegistrarTest {
     }
 
     @Test
-    @DisplayName("파일이 없으면 → 0개로 정상 기동한다")
-    void bootsWithNoDispatchersWhenFileMissing() {
-        runner.withPropertyValues("mmmq.broker.dispatchers.file=" + tempDir.resolve("absent.json"))
+    @DisplayName("파일이 없으면 → 빈 파일을 만들고 0개로 기동한다")
+    void createsEmptyFileWhenMissing() throws IOException {
+        Path file = tempDir.resolve("absent.json");
+
+        runner.withPropertyValues("mmmq.broker.dispatchers.file=" + file)
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context.getBeansOfType(Dispatcher.class)).isEmpty();
                 });
+
+        assertThat(file).exists();
+        assertThat(Files.readString(file)).isEqualTo("[]");
     }
 
     @Test

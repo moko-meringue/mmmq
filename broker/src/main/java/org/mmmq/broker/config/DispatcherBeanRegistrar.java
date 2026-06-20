@@ -39,10 +39,7 @@ class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, Environm
     public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
         Path path = Path.of(environment.getProperty(FILE_PROPERTY, DEFAULT_FILE));
 
-        if (!Files.exists(path)) {
-            log.warn("Dispatcher file not found at {}. No dispatchers registered.", path);
-            return;
-        }
+        ensureExists(path);
 
         List<DispatcherDefinition> definitions = readDefinitions(path);
 
@@ -65,6 +62,18 @@ class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, Environm
                         .addConstructorArgValue(new TopicPattern(definition.pattern()))
                         .getBeanDefinition(),
                 registry);
+    }
+
+    private void ensureExists(Path path) {
+        if (Files.exists(path)) {
+            return;
+        }
+        try {
+            Files.writeString(path, "[]");
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to create dispatcher file: " + path, exception);
+        }
+        log.info("Dispatcher file not found. Created empty file at {}.", path);
     }
 
     private List<DispatcherDefinition> readDefinitions(Path path) {
