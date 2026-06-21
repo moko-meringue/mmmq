@@ -290,16 +290,17 @@
                     가리킵니다.
                 </p>
                 <p>
-                    여러 <code>Dispatcher</code>를 동시에 빈으로 등록할 수 있습니다. <br>
+                    여러 <code>Dispatcher</code>를 동시에 정의할 수 있습니다. <br>
                     같은 <code>Host</code>를 공유하는 <code>Dispatcher</code>들은 같은 consumer로 향하지만, 각자 다른 <code>ConsumerId</code>를
                     메시지에 실어 보내므로 서로 독립된 메시지 흐름이 됩니다.
                 </p>
 
-                <h3 id="dispatcher-create">생성</h3>
+                <h3 id="dispatcher-definition">정의</h3>
                 <p>
-                    <code>Dispatcher</code>는 Spring Bean으로 등록해 생성합니다. <br>
+                    <code>Dispatcher</code>는 설정 파일에 선언합니다. <br>
                     하나의 <code>Dispatcher</code>는 메시지를 전송할 consumer의 <code>Host</code>, 자신의 <code>ConsumerId</code>,
-                    구독할 <code>TopicPattern</code>을 생성자 인자로 받습니다.
+                    구독할 <code>TopicPattern</code>으로 정의되며, broker는 시작할 때 설정 파일을 읽어 각 항목을 <code>Dispatcher</code> 빈으로
+                    등록합니다.
                 </p>
                 <div class="callout callout--info">
                     <div class="callout__bar"></div>
@@ -313,35 +314,29 @@
                     </div>
                 </div>
 
-                <p><strong>Spring Bean 등록</strong></p>
+                <p><strong>Dispatcher 설정 파일</strong></p>
+                <p>
+                    설정 파일의 경로는 <code>mmmq.broker.dispatchers.file</code> 속성으로 지정하며, 기본값은
+                    <code>./dispatchers.json</code>입니다. <br>
+                    최상위는 배열이고, 항목 하나가 <code>Dispatcher</code> 하나가 됩니다.
+                </p>
                 <div class="code-block">
                     <div class="code-block__head">
-                        <span class="code-block__lang">DispatcherConfig.Java</span>
+                        <span class="code-block__lang">dispatchers.json</span>
                         <button class="code-block__copy">복사</button>
                     </div>
-                    <pre><span class="tk-key">@Configuration</span>
-<span class="tk-key">public class</span> <span class="tk-fn">DispatcherConfig</span> {
-
-    <span class="tk-key">@Bean</span>
-    <span class="tk-key">public</span> Dispatcher <span class="tk-fn">orderCreatedDispatcher</span>() {
-        <span class="tk-key">return new</span> Dispatcher(
-                <span class="tk-key">new</span> Host(WebProtocol.HTTP, <span class="tk-str">"localhost"</span>, <span
-                                class="tk-str">8081</span>),
-                <span class="tk-key">new</span> ConsumerId(<span class="tk-str">"order-created"</span>),
-                <span class="tk-key">new</span> TopicPattern(<span class="tk-str">"order.created"</span>)
-        );
-    }
-
-    <span class="tk-key">@Bean</span>
-    <span class="tk-key">public</span> Dispatcher <span class="tk-fn">orderShippedDispatcher</span>() {
-        <span class="tk-key">return new</span> Dispatcher(
-                <span class="tk-key">new</span> Host(WebProtocol.HTTP, <span class="tk-str">"localhost"</span>, <span
-                                class="tk-str">8081</span>),
-                <span class="tk-key">new</span> ConsumerId(<span class="tk-str">"order-shipped"</span>),
-                <span class="tk-key">new</span> TopicPattern(<span class="tk-str">"order.shipped"</span>)
-        );
-    }
-}</pre>
+                    <pre>[
+  {
+    <span class="tk-str">"consumerId"</span>: <span class="tk-str">"order-created"</span>,
+    <span class="tk-str">"host"</span>: { <span class="tk-str">"protocol"</span>: <span class="tk-str">"HTTP"</span>, <span class="tk-str">"address"</span>: <span class="tk-str">"localhost"</span>, <span class="tk-str">"port"</span>: <span class="tk-str">8081</span> },
+    <span class="tk-str">"pattern"</span>: <span class="tk-str">"order.created"</span>
+  },
+  {
+    <span class="tk-str">"consumerId"</span>: <span class="tk-str">"order-shipped"</span>,
+    <span class="tk-str">"host"</span>: { <span class="tk-str">"protocol"</span>: <span class="tk-str">"HTTP"</span>, <span class="tk-str">"address"</span>: <span class="tk-str">"localhost"</span>, <span class="tk-str">"port"</span>: <span class="tk-str">8081</span> },
+    <span class="tk-str">"pattern"</span>: <span class="tk-str">"order.shipped"</span>
+  }
+]</pre>
                 </div>
                 <p>
                     위 예시는 같은 consumer 호스트(<code>localhost:8081</code>)로 향하는 두 <code>Dispatcher</code>를 보여줍니다. <br>
@@ -349,35 +344,40 @@
                     <code>order-shipped</code>)가 다르므로, consumer 안에서는 서로 다른 메시지로 구분됩니다.
                 </p>
 
-                <p><strong>생성자 매개변수</strong></p>
+                <p><strong>설정 필드</strong></p>
                 <table class="tbl">
                     <thead>
                     <tr>
-                        <th>매개변수</th>
+                        <th>필드</th>
                         <th>타입</th>
                         <th>설명</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr>
-                        <td><code>host</code></td>
-                        <td><code>Host</code></td>
-                        <td>메시지를 전송할 consumer의 <code>Host</code></td>
-                    </tr>
-                    <tr>
                         <td><code>consumerId</code></td>
-                        <td><code>ConsumerId</code></td>
+                        <td>문자열</td>
                         <td>이 <code>Dispatcher</code>의 식별자이자 consumer에 전달되는 라우팅 키.
                             <code>mmmq-consumer-id</code> 헤더로 함께 전송됩니다.
                         </td>
                     </tr>
                     <tr>
+                        <td><code>host</code></td>
+                        <td>객체</td>
+                        <td>메시지를 전송할 consumer의 <code>Host</code>. <code>protocol</code>, <code>address</code>,
+                            <code>port</code>로 구성됩니다.
+                        </td>
+                    </tr>
+                    <tr>
                         <td><code>pattern</code></td>
-                        <td><code>TopicPattern</code></td>
+                        <td>문자열</td>
                         <td>구독할 단일 <code>TopicPattern</code></td>
                     </tr>
                     </tbody>
                 </table>
+                <p>
+                    <code>host</code>의 <code>protocol</code>은 <code>HTTP</code> 또는 <code>HTTPS</code>이며 대소문자를 가리지 않습니다.
+                </p>
 
                 <h3 id="subscription-model">TopicQueue 구독 모델</h3>
                 <p>
@@ -401,8 +401,12 @@
 
                 <h3 id="boot">broker 구동 시</h3>
                 <p>
-                    broker가 시작되면 빈으로 등록된 모든 <code>Dispatcher</code>의 <code>ConsumerId</code>가 서로 다른지 검사합니다. <br>
-                    같은 <code>ConsumerId</code>를 가진 <code>Dispatcher</code> 빈이 둘 이상 발견되면 broker 시작이 거부됩니다.
+                    broker가 시작되면 설정 파일을 읽어 각 항목을 <code>Dispatcher</code> 빈으로 등록합니다. <br>
+                    설정 파일이 없으면 빈 배열(<code>[]</code>) 파일을 만들고, <code>Dispatcher</code> 없이 정상적으로 기동합니다.
+                </p>
+                <p>
+                    이때 모든 <code>Dispatcher</code>의 <code>ConsumerId</code>가 서로 다른지 검사합니다. <br>
+                    중복된 <code>ConsumerId</code>, 알 수 없는 <code>protocol</code>, 잘못된 JSON처럼 정의가 올바르지 않으면 broker 시작이 거부됩니다.
                 </p>
                 <p>
                     검사가 끝나면 각 <code>Dispatcher</code>는 자신의 <code>TopicPattern</code>과 매칭되는 모든 <code>TopicQueue</code>를

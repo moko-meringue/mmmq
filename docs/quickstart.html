@@ -53,7 +53,7 @@
                     <span class="t-eyebrow">STEP 1 · BROKER</span>
                     <h2 class="t-h2">Broker 애플리케이션</h2>
                     <p>메시지를 받아 디스크에 영속화하고 consumer에게 전송하는 중앙 서버입니다. <br>
-                        broker 모듈을 추가한 Spring Boot 애플리케이션을 준비하고, <code>MMMQConfiguration</code>에 Dispatcher 빈을 등록합니다.
+                        broker 모듈을 추가한 Spring Boot 애플리케이션을 준비하고, <code>dispatchers.json</code>에 Dispatcher를 정의합니다.
                     </p>
                 </div>
 
@@ -83,22 +83,16 @@
 
                     <div class="code-block">
                         <div class="code-block__head">
-                            <span class="code-block__lang">MMMQConfiguration.java</span>
+                            <span class="code-block__lang">dispatchers.json</span>
                             <button class="code-block__copy">복사</button>
                         </div>
-                        <pre><span class="tk-key">@Configuration</span>
-<span class="tk-key">public class</span> <span class="tk-fn">MMMQConfiguration</span> {
-
-    <span class="tk-key">@Bean</span>
-    <span class="tk-key">public</span> <span class="tk-fn">Dispatcher</span> helloDispatcher() {
-        <span class="tk-key">return</span> <span class="tk-key">new</span> Dispatcher(
-                <span class="tk-key">new</span> Host(WebProtocol.HTTP, <span class="tk-str">"localhost"</span>, <span
-                                    class="tk-str">8082</span>),
-                <span class="tk-key">new</span> ConsumerId(<span class="tk-str">"hello-handler"</span>),
-                <span class="tk-key">new</span> TopicPattern(<span class="tk-str">"hello.mmmq"</span>)
-        );
-    }
-}</pre>
+                        <pre>[
+  {
+    <span class="tk-str">"consumerId"</span>: <span class="tk-str">"hello-handler"</span>,
+    <span class="tk-str">"host"</span>: { <span class="tk-str">"protocol"</span>: <span class="tk-str">"HTTP"</span>, <span class="tk-str">"address"</span>: <span class="tk-str">"localhost"</span>, <span class="tk-str">"port"</span>: <span class="tk-str">8082</span> },
+    <span class="tk-str">"pattern"</span>: <span class="tk-str">"hello.mmmq"</span>
+  }
+]</pre>
                     </div>
                 </div>
             </section>
