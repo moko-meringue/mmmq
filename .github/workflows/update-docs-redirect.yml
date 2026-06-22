@@ -1,0 +1,41 @@
+name: Update docs redirect
+
+on:
+  push:
+    paths:
+      - 'docs/docs/[0-9]*/**'
+    branches:
+      - main
+
+jobs:
+  update-redirect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find latest version and update redirect
+        run: |
+          latest=$(ls docs/docs/ | grep -E '^[0-9]' | sort -V | tail -1)
+          cat > docs/docs/index.html << EOF
+          <!DOCTYPE html>
+          <html lang="ko">
+          <head>
+              <meta charset="UTF-8"/>
+              <meta http-equiv="refresh" content="0; url=./${latest}/"/>
+              <title>mmmq 문서</title>
+          </head>
+          <body>
+          <a href="./${latest}/">최신 문서로 이동 중...</a>
+          </body>
+          </html>
+          EOF
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/docs/index.html
+          git diff --staged --quiet || git commit -m "docs: 최신 버전 리다이렉트 자동 업데이트 (${latest})"
+          git push
