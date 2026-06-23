@@ -456,36 +456,30 @@ mmmq:
     └── ...
 ```
 
-세그먼트와 인덱스 파일명은 19자리 zero-padded startOffset(`Long.MAX_VALUE`의 자릿수)을 사용합니다. startOffset은 해당 세그먼트의 첫 번째 메시지에 부여되는 절대 오프셋(메시지 개수 기준)입니다. 체크포인트 파일명은 Dispatcher 이름이 그대로 사용됩니다.
+세그먼트와 인덱스 파일명은 19자리 zero-padded startOffset(`Long.MAX_VALUE`의 자릿수)을 사용합니다. startOffset은 해당 세그먼트의 첫 번째 메시지에 부여되는 절대 오프셋(메시지 개수 기준)입니다. 체크포인트 파일명은 `consumerId`가 그대로 사용됩니다.
 
 #### Dispatcher 등록
 
-`Dispatcher`는 하나 이상의 `TopicPattern`을 바인딩할 수 있습니다. Dispatcher 이름은 체크포인트 파일명으로 사용되므로 `[A-Za-z0-9._-]+` 패턴을 따라야 합니다.
+`Dispatcher`는 JSON 파일에 정의하며, 부팅 시 각 정의가 스프링 빈으로 등록됩니다. 파일 경로는 `mmmq.broker.dispatchers.file`로 지정하고 기본값은 `./dispatchers.json`입니다. 파일이 없으면 빈 배열(`[]`) 파일을 생성하고 Dispatcher 없이 기동합니다.
 
-```java
-@Configuration
-public class DispatcherConfig {
+최상위는 정의 배열이며, 한 항목은 하나의 `consumerId`·하나의 패턴에 대응합니다. `consumerId`는 체크포인트 파일명으로 사용되므로 `[A-Za-z0-9._-]+` 패턴을 따라야 합니다.
 
-    @Bean
-    public Dispatcher orderDispatcher() {
-        return new Dispatcher(
-                "order-dispatcher",
-                new Host(WebProtocol.HTTP, "ip", 8080),       // Consumer 호스트
-                List.of(new TopicPattern("order.*"))          // 바인딩할 패턴 목록
-        );
-    }
-
-    @Bean
-    public Dispatcher paymentDispatcher() {
-        return new Dispatcher(
-                "payment-dispatcher",
-                new Host(WebProtocol.HTTP, "ip", 8081),
-                List.of(new TopicPattern("payment.*"))
-        );
-    }
-
-}
+```json
+[
+  {
+    "consumerId": "order-created",
+    "host": { "protocol": "HTTP", "address": "consumer-host", "port": 8080 },
+    "pattern": "order.created"
+  },
+  {
+    "consumerId": "payment-success",
+    "host": { "protocol": "HTTP", "address": "consumer-host", "port": 8081 },
+    "pattern": "payment.kakao.success"
+  }
+]
 ```
+
+`protocol`은 `HTTP` 또는 `HTTPS`이며 대소문자를 가리지 않습니다. 파일 내 `consumerId`가 중복되거나 알 수 없는 `protocol`·깨진 JSON 등 잘못된 정의가 있으면 컨텍스트 기동을 실패시킵니다.
 
 ---
 

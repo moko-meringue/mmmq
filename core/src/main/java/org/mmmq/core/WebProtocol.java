@@ -11,6 +11,15 @@ public enum WebProtocol {
         this.scheme = scheme;
     }
 
+    public static WebProtocol from(String scheme) {
+        for (WebProtocol protocol : values()) {
+            if (protocol.scheme.equalsIgnoreCase(scheme)) {
+                return protocol;
+            }
+        }
+        throw new IllegalArgumentException("Unknown scheme: " + scheme);
+    }
+
     public String getScheme() {
         return scheme;
     }

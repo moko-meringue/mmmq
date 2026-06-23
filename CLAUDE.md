@@ -106,19 +106,19 @@ Both forms require an explicit string `id` matching the regex `[A-Za-z0-9._-]+`.
 
 ## Broker Dispatcher Registration
 
-```java
-// Each Dispatcher proxies exactly one HandlerExecution (matched by consumerId).
-@Bean
-public Dispatcher orderCreatedDispatcher() {
-    return new Dispatcher(
-        new Host("http", "consumer-host", 8080),
-        new ConsumerId("order-created"),
-        new TopicPattern("order.created")
-    );
-}
+Dispatchers are defined in a JSON file read at startup; `DispatcherBeanRegistrar` (an `ImportBeanDefinitionRegistrar`) registers each entry as a Spring `Dispatcher` bean. The file path is set by `mmmq.broker.dispatchers.file` (default `./dispatchers.json`). The top level is an array; one entry maps to exactly one `consumerId` and one pattern (1 id = 1 Dispatcher = 1 HE).
+
+```json
+[
+  {
+    "consumerId": "order-created",
+    "host": { "protocol": "HTTP", "address": "consumer-host", "port": 8080 },
+    "pattern": "order.created"
+  }
+]
 ```
 
-Broker rejects duplicate consumerIds across all `Dispatcher` beans at startup via `DispatcherContainer`. Each Dispatcher gets its own `<consumerId>.checkpoint` file under the per-topic storage directory.
+`protocol` is `HTTP`/`HTTPS` (case-insensitive). When the file is absent, an empty `[]` file is created and the broker boots with no dispatchers. Invalid definitions — duplicate `consumerId`, unknown `protocol`, malformed JSON — fail context startup (fail-fast). Each Dispatcher gets its own `<consumerId>.checkpoint` file under the per-topic storage directory.
 
 ## Code Style Guide
 

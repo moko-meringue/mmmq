@@ -1,4 +1,4 @@
-package org.mmmq.broker.config;
+package org.mmmq.broker.topicqueue.storage;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
