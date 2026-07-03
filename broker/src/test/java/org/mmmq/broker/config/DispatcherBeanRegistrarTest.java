@@ -29,14 +29,14 @@ class DispatcherBeanRegistrarTest {
     @Test
     @DisplayName("유효한 2개 정의 → Dispatcher 빈 2개가 등록된다")
     void registersDispatchersFromFile() throws IOException {
-        Path file = write("""
+        write("""
                 [
                   {"consumerId":"order-created","host":{"protocol":"HTTP","address":"127.0.0.1","port":8080},"pattern":"order.created"},
                   {"consumerId":"order-shipped","host":{"protocol":"HTTP","address":"127.0.0.1","port":8080},"pattern":"order.shipped"}
                 ]
                 """);
 
-        runner.withPropertyValues("mmmq.broker.dispatchers.file=" + file)
+        runner.withPropertyValues("mmmq.broker.persistence.root-dir=" + tempDir)
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context.getBeansOfType(Dispatcher.class).values())
@@ -50,30 +50,42 @@ class DispatcherBeanRegistrarTest {
 
     @Test
     @DisplayName("파일이 없으면 → 빈 파일을 만들고 0개로 기동한다")
-    void createsEmptyFileWhenMissing() throws IOException {
-        Path file = tempDir.resolve("absent.json");
-
-        runner.withPropertyValues("mmmq.broker.dispatchers.file=" + file)
+    void createsEmptyFileWhenMissing() {
+        runner.withPropertyValues("mmmq.broker.persistence.root-dir=" + tempDir)
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context.getBeansOfType(Dispatcher.class)).isEmpty();
                 });
 
-        assertThat(file).exists();
-        assertThat(Files.readString(file)).isEqualTo("[]");
+        assertThat(tempDir.resolve("dispatchers.json")).exists();
+        assertThat(readDispatchersFile()).isEqualTo("[]");
+    }
+
+    @Test
+    @DisplayName("root-dir 디렉토리가 없으면 → 디렉토리와 빈 파일을 만들고 기동한다")
+    void createsRootDirWhenMissing() {
+        Path absentRoot = tempDir.resolve("absent-root");
+
+        runner.withPropertyValues("mmmq.broker.persistence.root-dir=" + absentRoot)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBeansOfType(Dispatcher.class)).isEmpty();
+                });
+
+        assertThat(absentRoot.resolve("dispatchers.json")).exists();
     }
 
     @Test
     @DisplayName("중복 consumerId → 기동에 실패한다")
     void failsOnDuplicateConsumerId() throws IOException {
-        Path file = write("""
+        write("""
                 [
                   {"consumerId":"dup","host":{"protocol":"HTTP","address":"127.0.0.1","port":8080},"pattern":"a"},
                   {"consumerId":"dup","host":{"protocol":"HTTP","address":"127.0.0.1","port":8080},"pattern":"b"}
                 ]
                 """);
 
-        runner.withPropertyValues("mmmq.broker.dispatchers.file=" + file)
+        runner.withPropertyValues("mmmq.broker.persistence.root-dir=" + tempDir)
                 .run(context -> assertThat(context)
                         .hasFailed()
                         .getFailure()
@@ -83,42 +95,48 @@ class DispatcherBeanRegistrarTest {
     @Test
     @DisplayName("consumerId가 regex에 어긋나면 → 기동에 실패한다")
     void failsOnInvalidConsumerId() throws IOException {
-        Path file = write("""
+        write("""
                 [
                   {"consumerId":"invalid id!","host":{"protocol":"HTTP","address":"127.0.0.1","port":8080},"pattern":"a"}
                 ]
                 """);
 
-        runner.withPropertyValues("mmmq.broker.dispatchers.file=" + file)
+        runner.withPropertyValues("mmmq.broker.persistence.root-dir=" + tempDir)
                 .run(context -> assertThat(context).hasFailed());
     }
 
     @Test
     @DisplayName("알 수 없는 protocol → 기동에 실패한다")
     void failsOnUnknownProtocol() throws IOException {
-        Path file = write("""
+        write("""
                 [
                   {"consumerId":"x","host":{"protocol":"ftp","address":"127.0.0.1","port":8080},"pattern":"a"}
                 ]
                 """);
 
-        runner.withPropertyValues("mmmq.broker.dispatchers.file=" + file)
+        runner.withPropertyValues("mmmq.broker.persistence.root-dir=" + tempDir)
                 .run(context -> assertThat(context).hasFailed());
     }
 
     @Test
     @DisplayName("빈 파일 → 기동에 실패한다")
     void failsOnEmptyFile() throws IOException {
-        Path file = write("");
+        write("");
 
-        runner.withPropertyValues("mmmq.broker.dispatchers.file=" + file)
+        runner.withPropertyValues("mmmq.broker.persistence.root-dir=" + tempDir)
                 .run(context -> assertThat(context).hasFailed());
     }
 
-    private Path write(String json) throws IOException {
-        Path file = tempDir.resolve("dispatchers.json");
-        Files.writeString(file, json);
-        return file;
+    private void write(String json) throws IOException {
+        Files.writeString(tempDir.resolve("dispatchers.json"), json);
+    }
+
+    private String readDispatchersFile() {
+        try {
+            return Files.readString(tempDir.resolve("dispatchers.json"));
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to read dispatcher file", exception);
+        }
     }
 
     @Configuration
