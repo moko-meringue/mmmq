@@ -200,7 +200,7 @@ TopicQueue.close()                           // 보유 자원(SegmentFileChain, 
 
 #### 세그먼트 회전 (Soft Cap)
 
-새 메시지 append 직전에 현재 tail 세그먼트의 파일 크기가 `mmmq.broker.segment.max-bytes` 이상이면 새 세그먼트를 열고 거기에 append합니다. 임계치는 soft cap이므로 단일 메시지가 세그먼트 중간에 절단되지 않습니다.
+새 메시지 append 직전에 현재 tail 세그먼트의 파일 크기가 `mmmq.broker.persistence.segment.max-bytes` 이상이면 새 세그먼트를 열고 거기에 append합니다. 임계치는 soft cap이므로 단일 메시지가 세그먼트 중간에 절단되지 않습니다.
 
 #### Dispatcher별 체크포인트
 
@@ -432,35 +432,37 @@ Broker는 메시지를 디스크에 영속화합니다. 미설정 시 안전한 
 ```yaml
 mmmq:
   broker:
-    storage:
-      root-dir: ./data        # 토픽별 디렉토리가 생성될 루트 (기본값: ./data)
-    segment:
-      max-bytes: 67108864     # 세그먼트 회전 임계치 (기본값: 64MiB)
+    persistence:
+      root-dir: ./mmmq          # 모든 영속화 파일이 저장될 루트 (기본값: ./mmmq)
+      segment:
+        max-bytes: 67108864     # 세그먼트 회전 임계치 (기본값: 64MiB)
 ```
 
-`storage.root-dir`은 인프라 결정(저장 위치), `segment.max-bytes`는 워크로드 결정(회전 정책)으로 변경 축이 다르기 때문에 별도 그룹으로 분리되어 있습니다. 부팅 시 해당 디렉토리에 보존된 토픽 데이터가 자동으로 복원됩니다.
+영속화 관련 설정은 `mmmq.broker.persistence` 아래로 응집되어 있습니다. `root-dir`은 인프라 결정(저장 위치), `segment.max-bytes`는 워크로드 결정(회전 정책)입니다. Dispatcher 정의 파일은 `{root-dir}/dispatchers.json`, 토픽 데이터는 `{root-dir}/topics/` 아래에 고정되며 개별 경로 설정은 지원하지 않습니다. 부팅 시 보존된 토픽 데이터가 자동으로 복원됩니다.
 
 #### 디렉토리 레이아웃
 
 ```
-{rootDir}/
-├── order.created/                              # 토픽 디렉토리
-│   ├── 0000000000000000000.mmm                 # 세그먼트 데이터 (.mmm)
-│   ├── 0000000000000000000.idx                 # 오프셋 인덱스 (.idx)
-│   ├── 0000000000000123456.mmm                 # 회전 후 다음 세그먼트 (123456번째 메시지부터)
-│   ├── 0000000000000123456.idx
-│   └── checkpoints/
-│       ├── order-dispatcher.checkpoint         # Dispatcher별 다음 소비 오프셋
-│       └── audit-dispatcher.checkpoint
-└── payment.kakao.success/
-    └── ...
+{rootDir}/                                           # 기본값 ./mmmq
+├── dispatchers.json                                 # Dispatcher 정의 (고정 경로)
+└── topics/
+    ├── order.created/                               # 토픽 디렉토리
+    │   ├── 0000000000000000000.mmm                  # 세그먼트 데이터 (.mmm)
+    │   ├── 0000000000000000000.idx                  # 오프셋 인덱스 (.idx)
+    │   ├── 0000000000000123456.mmm                  # 회전 후 다음 세그먼트 (123456번째 메시지부터)
+    │   ├── 0000000000000123456.idx
+    │   └── checkpoints/
+    │       ├── order-dispatcher.checkpoint          # Dispatcher별 다음 소비 오프셋
+    │       └── audit-dispatcher.checkpoint
+    └── payment.kakao.success/
+        └── ...
 ```
 
 세그먼트와 인덱스 파일명은 19자리 zero-padded startOffset(`Long.MAX_VALUE`의 자릿수)을 사용합니다. startOffset은 해당 세그먼트의 첫 번째 메시지에 부여되는 절대 오프셋(메시지 개수 기준)입니다. 체크포인트 파일명은 `consumerId`가 그대로 사용됩니다.
 
 #### Dispatcher 등록
 
-`Dispatcher`는 JSON 파일에 정의하며, 부팅 시 각 정의가 스프링 빈으로 등록됩니다. 파일 경로는 `mmmq.broker.dispatchers.file`로 지정하고 기본값은 `./dispatchers.json`입니다. 파일이 없으면 빈 배열(`[]`) 파일을 생성하고 Dispatcher 없이 기동합니다.
+`Dispatcher`는 JSON 파일에 정의하며, 부팅 시 각 정의가 스프링 빈으로 등록됩니다. 파일 경로는 `{mmmq.broker.persistence.root-dir}/dispatchers.json`으로 고정됩니다(기본값 `./mmmq/dispatchers.json`). 별도 경로 설정은 지원하지 않습니다. 파일이 없으면 빈 배열(`[]`) 파일을 생성하고 Dispatcher 없이 기동합니다.
 
 최상위는 정의 배열이며, 한 항목은 하나의 `consumerId`·하나의 패턴에 대응합니다. `consumerId`는 체크포인트 파일명으로 사용되므로 `[A-Za-z0-9._-]+` 패턴을 따라야 합니다.
 
