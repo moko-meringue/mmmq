@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.mmmq.broker.persistence.PersistenceProperties;
 import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.TopicPattern;
 import org.slf4j.Logger;
@@ -24,9 +25,6 @@ public class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, E
 
     private static final Logger log = LoggerFactory.getLogger(DispatcherBeanRegistrar.class);
 
-    private static final String FILE_PROPERTY = "mmmq.broker.dispatchers.file";
-    private static final String DEFAULT_FILE = "./dispatchers.json";
-
     private Environment environment;
 
     @Override
@@ -36,14 +34,10 @@ public class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, E
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
-        Path path = Path.of(environment.getProperty(FILE_PROPERTY, DEFAULT_FILE));
+        Path path = PersistenceProperties.bind(environment).dispatchersFile();
 
         if (!Files.exists(path)) {
-            try {
-                Files.writeString(path, "[]");
-            } catch (IOException exception) {
-                throw new IllegalStateException("Failed to create dispatcher file: " + path, exception);
-            }
+            createEmptyFile(path);
             log.info("Dispatcher file not found. Created empty file at {}.", path);
         }
 
@@ -58,6 +52,15 @@ public class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, E
         });
 
         definitions.forEach(definition -> register(definition, registry));
+    }
+
+    private void createEmptyFile(Path path) {
+        try {
+            Files.createDirectories(path.toAbsolutePath().getParent());
+            Files.writeString(path, "[]");
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to create dispatcher file: " + path, exception);
+        }
     }
 
     private void register(DispatcherDefinition definition, BeanDefinitionRegistry registry) {

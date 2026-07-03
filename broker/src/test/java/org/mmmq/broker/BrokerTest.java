@@ -40,7 +40,7 @@ class BrokerTest {
 
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
-        registry.add("mmmq.broker.storage.root-dir", () -> tempDataDir.toAbsolutePath().toString());
+        registry.add("mmmq.broker.persistence.root-dir", () -> tempDataDir.toAbsolutePath().toString());
     }
 
     @BeforeEach

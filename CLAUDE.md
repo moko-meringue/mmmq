@@ -106,7 +106,7 @@ Both forms require an explicit string `id` matching the regex `[A-Za-z0-9._-]+`.
 
 ## Broker Dispatcher Registration
 
-Dispatchers are defined in a JSON file read at startup; `DispatcherBeanRegistrar` (an `ImportBeanDefinitionRegistrar`) registers each entry as a Spring `Dispatcher` bean. The file path is set by `mmmq.broker.dispatchers.file` (default `./dispatchers.json`). The top level is an array; one entry maps to exactly one `consumerId` and one pattern (1 id = 1 Dispatcher = 1 HE).
+Dispatchers are defined in a JSON file read at startup; `DispatcherBeanRegistrar` (an `ImportBeanDefinitionRegistrar`) registers each entry as a Spring `Dispatcher` bean. The file lives at `{mmmq.broker.persistence.root-dir}/dispatchers.json` (root-dir default `./mmmq`); the path is fixed and not individually configurable. The top level is an array; one entry maps to exactly one `consumerId` and one pattern (1 id = 1 Dispatcher = 1 HE).
 
 ```json
 [

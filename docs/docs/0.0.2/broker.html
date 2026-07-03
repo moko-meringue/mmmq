@@ -316,8 +316,10 @@
 
                 <p><strong>Dispatcher 설정 파일</strong></p>
                 <p>
-                    설정 파일의 경로는 <code>mmmq.broker.dispatchers.file</code> 속성으로 지정하며, 기본값은
-                    <code>./dispatchers.json</code>입니다. <br>
+                    설정 파일의 경로는 영속화 루트 디렉터리 바로 아래의 <code>dispatchers.json</code>으로 고정되며, 기본값은
+                    <code>./mmmq/dispatchers.json</code>입니다. <br>
+                    루트 디렉터리는 <code>mmmq.broker.persistence.root-dir</code> 설정으로 변경할 수 있고, 설정 파일의 경로만 따로
+                    지정할 수는 없습니다. <br>
                     최상위는 배열이고, 항목 하나가 <code>Dispatcher</code> 하나가 됩니다.
                 </p>
                 <div class="code-block">
@@ -461,7 +463,9 @@
 
                 <h3 id="directory-layout">디렉터리 레이아웃</h3>
                 <p>
-                    루트 디렉터리 아래에 토픽 별 하위 디렉터리가 만들어지고, 각 토픽 디렉터리 안에 필요한 파일이 함께 들어 있습니다.
+                    루트 디렉터리 아래에 <code>Dispatcher</code> 설정 파일(<code>dispatchers.json</code>)과
+                    <code>topics/</code> 디렉터리가 있습니다. <br>
+                    <code>topics/</code> 아래에 토픽 별 하위 디렉터리가 만들어지고, 각 토픽 디렉터리 안에 필요한 파일이 함께 들어 있습니다.
                 </p>
 
                 <div class="code-block">
@@ -469,20 +473,22 @@
                         <span class="code-block__lang">파일 트리</span>
                         <button class="code-block__copy">복사</button>
                     </div>
-                    <pre>./data/                             <span class="tk-com"># 기본 루트 디렉터리 (설정으로 변경 가능)</span>
-├── order.created/
-│   ├── 0000000000000000000.mmm
-│   ├── 0000000000000000000.idx
-│   ├── 0000000000000123456.mmm
-│   ├── 0000000000000123456.idx
-│   └── checkpoints/                <span class="tk-com"># Dispatcher별 체크포인트 디렉터리</span>
-│       ├── order-created.checkpoint
-│       └── order-audit.checkpoint
-└── notification.sent/
-    ├── 0000000000000000000.mmm
-    ├── 0000000000000000000.idx
-    └── checkpoints/
-        └── notification-mailer.checkpoint</pre>
+                    <pre>./mmmq/                             <span class="tk-com"># 기본 루트 디렉터리 (설정으로 변경 가능)</span>
+├── dispatchers.json                <span class="tk-com"># Dispatcher 설정 파일 (고정 경로)</span>
+└── topics/
+    ├── order.created/
+    │   ├── 0000000000000000000.mmm
+    │   ├── 0000000000000000000.idx
+    │   ├── 0000000000000123456.mmm
+    │   ├── 0000000000000123456.idx
+    │   └── checkpoints/            <span class="tk-com"># Dispatcher별 체크포인트 디렉터리</span>
+    │       ├── order-created.checkpoint
+    │       └── order-audit.checkpoint
+    └── notification.sent/
+        ├── 0000000000000000000.mmm
+        ├── 0000000000000000000.idx
+        └── checkpoints/
+            └── notification-mailer.checkpoint</pre>
                 </div>
 
                 <p>각 파일의 역할은 다음과 같습니다.</p>
@@ -506,6 +512,10 @@
                         <td><code>.checkpoint</code></td>
                         <td><code>Dispatcher</code> 별 체크포인트 파일</td>
                     </tr>
+                    <tr>
+                        <td><code>dispatchers.json</code></td>
+                        <td><code>Dispatcher</code> 설정 파일</td>
+                    </tr>
                     </tbody>
                 </table>
 
@@ -518,8 +528,8 @@
                     </div>
                     <pre>mmmq:
   broker:
-    storage:
-      root-dir: ./data</pre>
+    persistence:
+      root-dir: ./mmmq</pre>
                 </div>
 
                 <h3 id="segment">세그먼트</h3>
@@ -606,8 +616,9 @@
                     </div>
                     <pre>mmmq:
   broker:
-    segment:
-      max-bytes: 67108864 <span class="tk-com"># 64 MB</span></pre>
+    persistence:
+      segment:
+        max-bytes: 67108864 <span class="tk-com"># 64 MB</span></pre>
                 </div>
 
                 <h3 id="offset-index">오프셋 인덱스</h3>
@@ -684,7 +695,7 @@ byte    0          8         16         24</pre>
                         <span class="code-block__lang">파일 위치</span>
                         <button class="code-block__copy">복사</button>
                     </div>
-                    <pre>./data/
+                    <pre>./mmmq/topics/
 └── order.created/
     ├── ...
     └── checkpoints/
@@ -778,9 +789,11 @@ byte    0          8         16         24</pre>
                 </p>
 
                 <p>
-                    기본 디렉터리는 <code>./data</code>이며, <code>mmmq.broker.storage.root-dir</code> 설정으로 변경할 수 있습니다. <br>
-                    만약 <code>order.created</code> 토픽의 첫 메시지가 도착하면 broker는 <code>./data/order.created/</code> 디렉터리를
-                    생성합니다.
+                    토픽 데이터는 루트 디렉터리의 <code>topics/</code> 아래에 저장됩니다. <br>
+                    루트 디렉터리의 기본값은 <code>./mmmq</code>이며, <code>mmmq.broker.persistence.root-dir</code> 설정으로 변경할 수
+                    있습니다. <br>
+                    만약 <code>order.created</code> 토픽의 첫 메시지가 도착하면 broker는 <code>./mmmq/topics/order.created/</code>
+                    디렉터리를 생성합니다.
                 </p>
 
                 <div class="code-block">
@@ -788,7 +801,7 @@ byte    0          8         16         24</pre>
                         <span class="code-block__lang">새 토픽 큐의 파일 구조</span>
                         <button class="code-block__copy">복사</button>
                     </div>
-                    <pre>./data/
+                    <pre>./mmmq/topics/
 └── order.created/
     ├── 0000000000000000000.mmm
     ├── 0000000000000000000.idx
@@ -818,7 +831,7 @@ byte    0          8         16         24</pre>
                 </p>
 
                 <p>
-                    활성 세그먼트가 <code>mmmq.broker.segment.max-bytes</code> 기준을 넘으면 다음 메시지는 새로운 세그먼트에 저장됩니다. <br>
+                    활성 세그먼트가 <code>mmmq.broker.persistence.segment.max-bytes</code> 기준을 넘으면 다음 메시지는 새로운 세그먼트에 저장됩니다. <br>
                     새로운 세그먼트의 파일명은 직전 세그먼트의 시작 오프셋과 메시지 개수를 더한 값으로 만들어집니다. <br>
                     직전 세그먼트의 시작 오프셋이 <code>1200</code>이고 메시지 개수가 <code>401</code>이라면, 새 세그먼트 파일은 <code>0000000000000001601.mmm</code>이
                     됩니다.
