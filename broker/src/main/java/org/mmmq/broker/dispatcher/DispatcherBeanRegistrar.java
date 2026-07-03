@@ -16,7 +16,6 @@ import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionReaderUtils;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.env.Environment;
@@ -35,7 +34,7 @@ public class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, E
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
-        Path path = resolveDispatchersFile();
+        Path path = PersistenceProperties.bind(environment).dispatchersFile();
 
         if (!Files.exists(path)) {
             createEmptyFile(path);
@@ -53,14 +52,6 @@ public class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, E
         });
 
         definitions.forEach(definition -> register(definition, registry));
-    }
-
-    private Path resolveDispatchersFile() {
-        // ConfigurationProperties 빈 바인딩 이전 단계이므로 Binder로 동일 레코드를 직접 바인딩한다.
-        return Binder.get(environment)
-                .bind(PersistenceProperties.PREFIX, PersistenceProperties.class)
-                .orElseGet(() -> new PersistenceProperties(null, null))
-                .dispatchersFile();
     }
 
     private void createEmptyFile(Path path) {

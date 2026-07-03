@@ -2,6 +2,8 @@ package org.mmmq.broker.persistence;
 
 import java.nio.file.Path;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.core.env.Environment;
 
 @ConfigurationProperties(PersistenceProperties.PREFIX)
 public record PersistenceProperties(
@@ -22,6 +24,13 @@ public record PersistenceProperties(
         if (segment == null) {
             segment = new Segment(0);
         }
+    }
+
+    // ConfigurationProperties 빈이 아직 없는 단계(예: ImportBeanDefinitionRegistrar)에서 사용한다.
+    public static PersistenceProperties bind(Environment environment) {
+        return Binder.get(environment)
+                .bind(PREFIX, PersistenceProperties.class)
+                .orElseGet(() -> new PersistenceProperties(null, null));
     }
 
     public Path dispatchersFile() {
