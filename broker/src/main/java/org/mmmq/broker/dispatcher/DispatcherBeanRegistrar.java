@@ -26,8 +26,6 @@ public class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, E
 
     private static final Logger log = LoggerFactory.getLogger(DispatcherBeanRegistrar.class);
 
-    private static final String PERSISTENCE_PROPERTY_PREFIX = "mmmq.broker.persistence";
-
     private Environment environment;
 
     @Override
@@ -60,7 +58,7 @@ public class DispatcherBeanRegistrar implements ImportBeanDefinitionRegistrar, E
     private Path resolveDispatchersFile() {
         // ConfigurationProperties 빈 바인딩 이전 단계이므로 Binder로 동일 레코드를 직접 바인딩한다.
         return Binder.get(environment)
-                .bind(PERSISTENCE_PROPERTY_PREFIX, PersistenceProperties.class)
+                .bind(PersistenceProperties.PREFIX, PersistenceProperties.class)
                 .orElseGet(() -> new PersistenceProperties(null, null))
                 .dispatchersFile();
     }

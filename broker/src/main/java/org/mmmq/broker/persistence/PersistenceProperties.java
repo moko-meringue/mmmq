@@ -3,11 +3,13 @@ package org.mmmq.broker.persistence;
 import java.nio.file.Path;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties("mmmq.broker.persistence")
+@ConfigurationProperties(PersistenceProperties.PREFIX)
 public record PersistenceProperties(
         String rootDir,
         Segment segment
 ) {
+
+    public static final String PREFIX = "mmmq.broker.persistence";
 
     private static final String DEFAULT_ROOT_DIR = "./mmmq";
     private static final String DISPATCHERS_FILE_NAME = "dispatchers.json";
