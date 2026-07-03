@@ -11,10 +11,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mmmq.broker.dispatcher.DispatcherContainer;
+import org.mmmq.broker.persistence.PersistenceProperties;
 import org.mmmq.broker.topicqueue.storage.CheckpointDirectory;
 import org.mmmq.broker.topicqueue.storage.SegmentFileChain;
-import org.mmmq.broker.topicqueue.storage.SegmentProperties;
-import org.mmmq.broker.topicqueue.storage.StorageProperties;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 
@@ -23,17 +22,16 @@ class TopicQueueBootstrapperTest {
     private static final long DEFAULT_MAX_BYTES = 64L * 1024 * 1024;
 
     @Test
-    @DisplayName("data 디렉토리에 존재하는 토픽들이 부팅 시 모두 복원된다")
+    @DisplayName("topics 디렉토리에 존재하는 토픽들이 부팅 시 모두 복원된다")
     void restoresAllTopicsOnBoot(@TempDir Path tempDir) {
-        seedTopic(tempDir, "topic-a", new Message(new Topic("topic-a"), Map.of("k", "v")));
-        seedTopic(tempDir, "topic-b", new Message(new Topic("topic-b"), Map.of("k", "v")));
+        seedTopic(tempDir.resolve("topics"), "topic-a", new Message(new Topic("topic-a"), Map.of("k", "v")));
+        seedTopic(tempDir.resolve("topics"), "topic-b", new Message(new Topic("topic-b"), Map.of("k", "v")));
 
-        StorageProperties storage = new StorageProperties(tempDir.toAbsolutePath().toString());
-        SegmentProperties segment = new SegmentProperties(DEFAULT_MAX_BYTES);
-        TopicQueueFactory factory = new TopicQueueFactory(storage, segment);
+        PersistenceProperties properties = new PersistenceProperties(tempDir.toAbsolutePath().toString(), null);
+        TopicQueueFactory factory = new TopicQueueFactory(properties);
         DispatcherContainer dispatcherContainer = mock(DispatcherContainer.class);
         TopicQueueContainer container = new TopicQueueContainer(factory, dispatcherContainer);
-        TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, container);
+        TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(properties, container);
 
         bootstrapper.afterSingletonsInstantiated();
 
@@ -49,7 +47,7 @@ class TopicQueueBootstrapperTest {
     @Test
     @DisplayName("dispatcher가 마지막 commit 위치에서 재개한다")
     void resumesFromLastCommittedOffset(@TempDir Path tempDir) throws IOException {
-        Path topicDir = tempDir.resolve("topic-a");
+        Path topicDir = tempDir.resolve("topics").resolve("topic-a");
         Files.createDirectories(topicDir);
         SegmentFileChain segmentFileChain = SegmentFileChain.open(topicDir, DEFAULT_MAX_BYTES);
         CheckpointDirectory checkpointDirectory = CheckpointDirectory.open(topicDir);
@@ -60,12 +58,11 @@ class TopicQueueBootstrapperTest {
         queue.peek(offset);
         queue.commit("dispatcher-1", offset);
 
-        StorageProperties storage = new StorageProperties(tempDir.toAbsolutePath().toString());
-        SegmentProperties segment = new SegmentProperties(DEFAULT_MAX_BYTES);
-        TopicQueueFactory factory = new TopicQueueFactory(storage, segment);
+        PersistenceProperties properties = new PersistenceProperties(tempDir.toAbsolutePath().toString(), null);
+        TopicQueueFactory factory = new TopicQueueFactory(properties);
         DispatcherContainer dispatcherContainer = mock(DispatcherContainer.class);
         TopicQueueContainer container = new TopicQueueContainer(factory, dispatcherContainer);
-        TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, container);
+        TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(properties, container);
         bootstrapper.afterSingletonsInstantiated();
 
         TopicQueue restored = container.getOrCreate(new Topic("topic-a"));
@@ -75,24 +72,24 @@ class TopicQueueBootstrapperTest {
     }
 
     @Test
-    @DisplayName("data 디렉토리가 없으면 정상 부팅된다")
-    void noDataDirectoryDoesNotFail(@TempDir Path tempDir) {
-        StorageProperties storage = new StorageProperties(
-                tempDir.resolve("nonexistent").toAbsolutePath().toString()
+    @DisplayName("topics 디렉토리가 없으면 정상 부팅된다")
+    void noTopicsDirectoryDoesNotFail(@TempDir Path tempDir) {
+        PersistenceProperties properties = new PersistenceProperties(
+                tempDir.resolve("nonexistent").toAbsolutePath().toString(),
+                null
         );
-        SegmentProperties segment = new SegmentProperties(DEFAULT_MAX_BYTES);
-        TopicQueueFactory factory = new TopicQueueFactory(storage, segment);
+        TopicQueueFactory factory = new TopicQueueFactory(properties);
         DispatcherContainer dispatcherContainer = mock(DispatcherContainer.class);
         TopicQueueContainer container = new TopicQueueContainer(factory, dispatcherContainer);
-        TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(storage, container);
+        TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(properties, container);
 
         bootstrapper.afterSingletonsInstantiated();
 
         assertThat(container.getOrCreate(new Topic("anything"))).isNotNull();
     }
 
-    private void seedTopic(Path baseDir, String topicName, Message message) {
-        Path topicDir = baseDir.resolve(topicName);
+    private void seedTopic(Path topicsDir, String topicName, Message message) {
+        Path topicDir = topicsDir.resolve(topicName);
         try {
             Files.createDirectories(topicDir);
         } catch (IOException exception) {

@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
+import org.mmmq.broker.persistence.PersistenceProperties;
 import org.mmmq.broker.topicqueue.storage.StorageException;
-import org.mmmq.broker.topicqueue.storage.StorageProperties;
 import org.mmmq.core.message.Topic;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.stereotype.Component;
@@ -16,8 +16,8 @@ public class TopicQueueBootstrapper implements SmartInitializingSingleton {
     private final Path root;
     private final TopicQueueContainer container;
 
-    public TopicQueueBootstrapper(StorageProperties storage, TopicQueueContainer container) {
-        this.root = Path.of(storage.rootDir());
+    public TopicQueueBootstrapper(PersistenceProperties properties, TopicQueueContainer container) {
+        root = properties.topicsDir();
         this.container = container;
     }
 
@@ -31,7 +31,7 @@ public class TopicQueueBootstrapper implements SmartInitializingSingleton {
                     .map(path -> new Topic(path.getFileName().toString()))
                     .forEach(container::getOrCreate);
         } catch (IOException exception) {
-            throw new StorageException("Failed to scan data directory: " + root, exception);
+            throw new StorageException("Failed to scan topics directory: " + root, exception);
         }
     }
 }

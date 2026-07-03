@@ -3,11 +3,10 @@ package org.mmmq.broker.topicqueue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.mmmq.broker.persistence.PersistenceProperties;
 import org.mmmq.broker.topicqueue.storage.CheckpointDirectory;
 import org.mmmq.broker.topicqueue.storage.SegmentFileChain;
-import org.mmmq.broker.topicqueue.storage.SegmentProperties;
 import org.mmmq.broker.topicqueue.storage.StorageException;
-import org.mmmq.broker.topicqueue.storage.StorageProperties;
 import org.mmmq.core.message.Topic;
 import org.springframework.stereotype.Component;
 
@@ -17,9 +16,9 @@ public class TopicQueueFactory {
     private final Path root;
     private final long segmentMaxBytes;
 
-    public TopicQueueFactory(StorageProperties storage, SegmentProperties segment) {
-        this.root = Path.of(storage.rootDir());
-        this.segmentMaxBytes = segment.maxBytes();
+    public TopicQueueFactory(PersistenceProperties properties) {
+        root = properties.topicsDir();
+        segmentMaxBytes = properties.segment().maxBytes();
     }
 
     public TopicQueue create(Topic topic) {
