@@ -421,6 +421,7 @@ broker는 `@SpringBootConfiguration`이 없어서 `@WebMvcTest`를 쓸 수 없�
 - 없는 이름으로 `deregister`해도 아무 일도 없다
 
 **기존 테스트 영향**
+- `TopicQueueTest`: 기존 6개 중 5개가 "offer 먼저, subscribe 나중" 순서라 tail 전환으로 깨진다. 순서를 뒤집는 것이 새 의미론에 맞는 표현이므로 그렇게 고친다
 - `HostTest`: "잘못된 호스트명이면 예외" 케이스는 성립하지 않으므로 제거. 빈 주소·포트 범위 케이스로 대체
 - `SenderTest`·`GatewayTest`: 양쪽 다 `host.toUri()`를 쓰고 있어 그대로 통과
 - `DispatcherTest`·`FrontDispatcherTest`: `Dispatcher` 생성자가 그대로라 영향 없음
