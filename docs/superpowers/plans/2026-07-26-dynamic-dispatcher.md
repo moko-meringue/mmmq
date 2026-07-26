@@ -86,6 +86,8 @@ class HostTest {
     @Test
     @DisplayName("주소가 비어 있으면 IllegalArgumentException을 던진다.")
     void rejectsBlankAddress() {
+        assertThatThrownBy(() -> new Host(WebProtocol.HTTP, null, 8080))
+                .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new Host(WebProtocol.HTTP, "  ", 8080))
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -443,6 +445,16 @@ Expected: BUILD SUCCESSFUL
 `DispatcherFactory.create`는 정적 메서드다. 상태가 없고 호출자는 `DispatcherContainer` 하나뿐이라 빈으로 만들면 컨테이너의 필드와 생성자 인자, 테스트의 필드만 늘어난다.
 
 **포트는 필수로 요구한다.** 스킴 기본값(80/443)으로 대체하면 8080에 있는 소비자를 등록할 때 포트를 빼먹은 요청이 조용히 80으로 향한다. 등록 시점에 거절하는 편이 낫고, 저장·응답 형태가 입력과 같은 모양으로 유지된다.
+
+포트 검증은 **2단 구조**다. Task 1에서 확인한 실측 결과다.
+
+| 입력 | 걸리는 곳 | 메시지 |
+|---|---|---|
+| `http://h`, `http://h:` | 팩토리의 `getPort() == -1` | `host must include a port` |
+| `http://h:0`, `http://h:65536` | `Host` 생성자의 범위 검사 | `port must be in 1..65535` |
+| `http://h:-1`, `http://h:99999999999` | 팩토리의 `getHost() == null` | `host must be an absolute URL` |
+
+즉 팩토리의 `getPort() == -1`은 **누락만** 잡고 범위 위반은 `Host`가 잡는다. 세 경로 모두 `IllegalArgumentException`이라 400 매핑에는 차이가 없다. 그래서 아래 `rejectsMissingPort`는 "포트 없는 URL이 거절된다"까지만 붙들고 **어느 층이 거절하는지는 짚지 못한다** — 팩토리의 `-1` 검사를 지워도 `Host`가 `-1`을 거절해 통과한다. 그 한 줄이 담당하는 것은 방어가 아니라 메시지 품질이고, 범위 위반의 실제 방어는 `HostTest.rejectsPortOutOfRange`가 지킨다.
 
 **`DispatcherBeanRegistrar`를 이 태스크에서 지운다.** `definition.toHost()`가 사라지므로 `DispatcherBeanRegistrar`를 살려두려면 빈 정의를 공급자 방식으로 재작성하고 테스트의 JSON 픽스처를 새 포맷으로 고쳐야 하는데, 그 코드는 Task 7에서 컨테이너가 파일을 직접 읽는 순간 전부 삭제된다. 지금 지우면 그 왕복이 없다.
 
