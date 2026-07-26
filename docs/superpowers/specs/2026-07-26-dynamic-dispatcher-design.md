@@ -32,6 +32,7 @@
 | `Host`의 주소 표현 | `InetAddress` 즉시 해석을 그만두고 원본 문자열 보존 |
 | 새 구독의 시작 오프셋 | 로그의 tail |
 | 체크포인트 수명 | 구독이 끝나면 같이 지운다 (삭제·패턴 축소 모두) |
+| 엔드포인트 범위 | 추가·수정·삭제에 목록 조회(`GET /mmmq/dispatchers`)를 포함한다 |
 | 동기화·동시성 | 뮤테이션 단일 락 + 파일 원자 교체, 읽기는 무락 |
 
 각 결정의 근거는 아래 해당 절에 적었다.
@@ -110,35 +111,13 @@ PUT 본문 전용. `record DispatcherRoute(String host, String pattern)`.
 
 공개 메서드: `register(TopicQueue)`, `getSubscribers(TopicQueue)`, `definitions()`, `add(DispatcherDefinition)`, `modify(ConsumerId, DispatcherRoute)`, `remove(ConsumerId)`.
 
-내부에 매칭 로직을 하나 두고 세 뮤테이션이 공유한다.
-
-```java
-private List<Dispatcher> match(TopicQueue topicQueue) {
-    List<Dispatcher> matched = dispatchers.values().stream()
-            .filter(dispatcher -> dispatcher.canDispatch(topicQueue.getTopic()))
-            .toList();
-    matched.forEach(dispatcher -> dispatcher.subscribe(topicQueue));
-    return matched;
-}
-
-private void rematchAll() {
-    subscriptions.replaceAll((topicQueue, previous) -> {
-        List<Dispatcher> matched = match(topicQueue);
-        List<ConsumerId> retained = matched.stream().map(Dispatcher::consumerId).toList();
-        previous.stream()
-                .map(Dispatcher::consumerId)
-                .filter(consumerId -> !retained.contains(consumerId))
-                .forEach(consumerId -> topicQueue.unsubscribe(consumerId.value()));
-        return matched;
-    });
-}
-```
+내부 `match(TopicQueue)`가 패턴이 맞는 Dispatcher를 골라 그 큐를 구독시키고(현행 `register`의 본문 그대로다), `rematchAll()`이 `subscriptions`의 모든 큐에 `match`를 다시 돌려 구독 리스트를 갈아치우면서 이번에 빠진 짝은 `TopicQueue.unsubscribe`로 끊는다. 세 뮤테이션이 이 둘을 공유한다.
 
 `Dispatcher.subscribe`가 `computeIfAbsent`라 이미 구독한 큐를 다시 매칭해도 아무 일도 일어나지 않는다.
 
 구독이 끊긴 짝을 찾는 비교는 **`ConsumerId` 기준**이어야 한다. `Dispatcher`는 `equals`가 없어 객체 동일성으로 비교되는데, 수정은 새 인스턴스로 교체하는 방식이라 객체로 비교하면 호스트만 바꾼 수정에서도 모든 토픽의 체크포인트가 지워진다.
 
-`retained`와 지워지는 쪽은 서로 겹치지 않으므로 `match`가 먼저 새 구독을 만들고 그 뒤에 잃은 쪽을 정리해도 순서 문제가 없다. `remove`는 사라진 Dispatcher가 `matched`에 안 잡히므로 이 로직만으로 정리가 끝난다.
+남는 쪽과 지워지는 쪽은 서로 겹치지 않으므로 `match`가 먼저 새 구독을 만들고 그 뒤에 잃은 쪽을 정리해도 순서 문제가 없다. `remove`는 사라진 Dispatcher가 매칭 결과에 안 잡히므로 이 로직만으로 정리가 끝난다.
 
 **`TopicQueue`**
 
@@ -146,7 +125,7 @@ private void rematchAll() {
 
 `register`가 `computeIfAbsent`라 새로 만든 건지 알 수 없어서, `get`이 `null`인지로 신규를 판별한다. 경쟁은 없다 — `subscribe`에 닿는 경로는 `register`·`add`·`modify` 셋뿐이고 전부 뮤테이션 락 안이다. `CheckpointDirectory.open`이 디스크의 체크포인트 파일을 전부 맵에 올려두므로, 재기동 후 첫 `subscribe`에서도 `get`이 `null`이 아니고 tail로 덮어쓰지 않는다.
 
-구독을 끊는 `unsubscribe(name)`도 추가한다. `checkpointDirectory.deregister(name)`를 부르고 `StorageException`은 삼켜 로그만 남긴다. 이 호출은 `rematchAll`의 `replaceAll` 안에서 여러 토픽을 돌며 일어나는데, 한 토픽의 파일 삭제 실패가 예외로 올라가면 `subscriptions`가 반쯤 갱신된 채 남는다. 지우다 실패한 체크포인트는 아무도 읽지 않는 파일로 남을 뿐이다.
+구독을 끊는 `unsubscribe(name)`도 추가한다. `checkpointDirectory.deregister(name)`를 부르고 `StorageException`은 삼켜 로그만 남긴다. 이 호출은 `rematchAll`이 여러 토픽을 돌며 일어나는데, 한 토픽의 파일 삭제 실패가 예외로 올라가면 `subscriptions`가 반쯤 갱신된 채 남는다. 지우다 실패한 체크포인트는 아무도 읽지 않는 파일로 남을 뿐이다.
 
 **`SegmentFileChain`**
 
@@ -199,7 +178,7 @@ private void rematchAll() {
 GET    /mmmq/dispatchers               200
 POST   /mmmq/dispatchers               201 / 400 / 409
 PUT    /mmmq/dispatchers/{consumerId}  200 / 400 / 404
-DELETE /mmmq/dispatchers/{consumerId}  204 / 404
+DELETE /mmmq/dispatchers/{consumerId}  204 / 400 / 404
 ```
 
 메서드 이름은 기존 `Broker.postMessage` 선례를 따라 `getDispatchers`·`postDispatcher`·`putDispatcher`·`deleteDispatcher`로 짓는다.
@@ -273,6 +252,8 @@ broker는 `@SpringBootConfiguration`이 없어서 `@WebMvcTest`를 쓸 수 없�
 
 - 쓰기 후 `.tmp`가 남지 않는다: `Files.move`의 `ATOMIC_MOVE` 계약이고, 이동이 실패하면 쓰기 자체가 예외로 끝난다.
 - 컨테이너 부트스트랩의 파일 없음·깨진 JSON·미지원 스킴·잘못된 `consumerId`: 앞의 둘은 `DispatcherFileTest`가, 뒤의 둘은 `DispatcherFactoryTest`가 이미 같은 코드를 본다. 생성자는 그 둘을 잇는 7줄이라 컨테이너 수준에서는 와이어링(순서)과 유일한 분기(중복 `consumerId`)만 확인한다.
+- `DispatcherDefinition.from`의 단독 왕복: 세 필드를 그대로 옮기는 매핑이라 분기가 없고, 컨테이너의 추가 케이스가 파일 내용을 완전한 정의로 단정해 `create` → `from` → Jackson 왕복을 통째로 지난다. 호스트 이름이 IP로 바뀌지 않는다는 회귀는 `DispatcherFactoryTest`·`HostTest`가 `toUri()`로 잡는다.
+- 호스트만 바꾼 수정에서 오프셋 값 승계: 체크포인트 파일이 남았는지만 본다. 파일이 남아 있으면 값을 바꾸는 경로가 `commit`뿐이고, 기존 체크포인트를 tail로 덮어쓰지 않는다는 것은 `TopicQueueTest`가 본다.
 - 형식 검증 실패 시 파일 무변경: `add`가 파일에 쓰는 값이 생성된 `Dispatcher`에서 복원한 정의라, `file.write`가 구조적으로 `DispatcherFactory.create`보다 앞설 수 없다. "거절 시 파일이 바뀌지 않는다"는 성질은 중복 `consumerId` 케이스가 붙든다.
 - 동시성: 뮤테이션 락은 한 줄이고, 스레드를 여러 쌍 띄워 확인할 수 있는 것은 특정 인터리빙 한 번뿐이다. 뮤테이션이 만드는 최종 상태는 컨테이너 케이스들이 이미 본다.
 - 수정·삭제 시 옛 워커의 실제 종료: 인스턴스를 팩토리가 만들어 스파이를 끼울 수 없고, `ThreadPoolExecutor`의 종료 여부를 밖에서 관찰할 통로도 없다.
@@ -280,10 +261,11 @@ broker는 `@SpringBootConfiguration`이 없어서 `@WebMvcTest`를 쓸 수 없�
 - `deregister` 뒤의 `close()`가 터지지 않는다: `FileChannel.close`가 멱등이라 맵에서 빼든 안 빼든 통과해서, 어떤 구현에서도 지나가는 테스트가 된다. 맵에서 먼저 빼는 이유는 코드 옆 문장으로 남긴다.
 - `CheckpointFile.delete()` 단독 케이스: `deregister`가 유일한 호출자라 `CheckpointDirectory` 케이스가 같은 경로를 지나고, 핸들을 먼저 닫는지는 POSIX에서 관찰할 수 없다(열린 파일도 unlink된다).
 - `unsubscribe` 뒤 재구독이 tail을 받는다: "체크포인트가 없으면 tail"과 "`deregister`하면 맵에서도 빠진다"의 합성이라 새로 지나는 분기가 없다.
+- `TopicQueue.unsubscribe` 단독 케이스: `deregister`로 넘기는 3줄 위임이라, 아래로는 `CheckpointDirectory` 케이스가 파일 삭제를 보고 위로는 컨테이너의 패턴 축소·삭제 케이스가 체크포인트 경로를 직접 단정하며 같은 경로를 지난다.
 
 **기존 테스트 영향**
 - `TopicQueueTest`: 4개(`peekReturnsFirstMessage`·`commitAdvancesOffset`·`resumesFromCommittedOffsetAfterRestart`·`redeliversAfterCrashBeforeCommit`)가 "offer 먼저, subscribe 나중" 순서라 tail 전환으로 깨진다. `peekWithoutCommitReturnsSameMessage`는 `offer`가 1건이라 tail=1에서 두 `peek`이 모두 `null`을 돌려주고 통과하지만 아무것도 검증하지 못하게 되므로 같이 순서를 뒤집는다. 다섯 곳 모두 `subscribe`를 `offer` 앞으로 옮기는 것이 새 의미론에 맞는 표현이다
-- `TopicQueueBootstrapperTest`: 2개가 같은 이유로 깨진다. `resumesFromLastCommittedOffset`은 `subscribe`를 `offer` 앞으로 옮기고, `restoresAllTopicsOnBoot`는 세그먼트만 심고 있어 시드 단계에서 체크포인트도 함께 심는다(디스크에 남은 구독자가 재기동 후 이어 읽는 상황이 이 테스트의 원래 의도다)
+- `TopicQueueBootstrapperTest`: 2개가 같은 이유로 깨지지만, 둘 다 `getOrCreate`의 지연 생성 때문에 부트스트래퍼를 관찰하지 못하고 있어 고치는 대신 다르게 손본다. `restoresAllTopicsOnBoot`는 구독·`peek`을 걷어내고 목 `DispatcherContainer.register`가 받은 큐의 토픽을 단정해 처음으로 복원을 관찰한다. `resumesFromLastCommittedOffset`은 삭제한다 — 커밋 위치 재개는 `TopicQueueTest.resumesFromCommittedOffsetAfterRestart`가, `<root>/topics/<topic>` 경로 조합은 `DispatcherContainerTest`의 체크포인트 경로 단정이 본다
 - `HostTest`: "잘못된 호스트명이면 예외" 케이스는 성립하지 않으므로 제거. 빈 주소·포트 범위 케이스로 대체
 - `SenderTest`·`GatewayTest`: 양쪽 다 `host.toUri()`를 쓰고 있어 그대로 통과
 - `DispatcherTest`·`FrontDispatcherTest`: `Dispatcher` 생성자가 그대로라 영향 없음

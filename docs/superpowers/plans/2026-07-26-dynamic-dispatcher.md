@@ -318,23 +318,23 @@ Expected: PASS (2 tests)
 
 ---
 
-## Task 4: TopicQueue의 구독 시작점과 구독 해제
+## Task 4: TopicQueue의 구독 시작점
 
 신규 구독은 tail부터 시작한다. 이미 체크포인트가 있으면 손대지 않으므로 재기동은 영향이 없다. `register`가 `computeIfAbsent`라 새로 만든 건지 알 수 없어서 `get`이 `null`인지로 신규를 판별한다.
 
 **이 태스크는 기존 테스트 6개를 깨뜨린다.** `TopicQueueTest`에서 4개(`peekReturnsFirstMessage`·`commitAdvancesOffset`·`resumesFromCommittedOffsetAfterRestart`·`redeliversAfterCrashBeforeCommit`)가 "offer 먼저, subscribe 나중" 순서라 tail이 0이 아니게 되어 깨진다. `peekWithoutCommitReturnsSameMessage`는 `offer`가 1건이라 tail=1에서 두 `peek`이 모두 `null`을 돌려주고 `null == null`로 조용히 통과하지만 아무것도 검증하지 못하게 되므로 같이 순서를 뒤집는다. 순서를 뒤집는 것이 새 의미론에 맞는 표현이다.
 
-`TopicQueueBootstrapperTest`도 2개가 같은 이유로 깨진다.
+`TopicQueueBootstrapperTest`도 2개가 같은 이유로 깨지는데, 둘 다 부트스트래퍼를 관찰하지 못하고 있어서 고치는 대신 다르게 손본다. `TopicQueueContainer.getOrCreate`가 `computeIfAbsent`로 같은 토픽 디렉터리를 지연 생성하므로, `afterSingletonsInstantiated()`를 통째로 지워도 두 테스트의 단정이 그대로 성립한다.
 
-- `restoresAllTopicsOnBoot`: `seedTopic`이 세그먼트에 메시지 1건만 심고 체크포인트는 안 심어서, 복원된 큐에 처음 `subscribe`하면 tail(=1)을 받고 `peek`이 `null`이 된다.
-- `resumesFromLastCommittedOffset`: `offer` 2건 뒤에 `subscribe`해서 오프셋이 0이 아닌 2가 되고, `commit`이 3을 써서 `isEqualTo(1L)`이 깨진다.
+- `restoresAllTopicsOnBoot`: 복원된 큐에 처음 `subscribe`하면 tail(=1)을 받아 `peek`이 `null`이 된다. 큐를 밖에서 다시 열어 읽는 방식으로는 부팅 여부를 볼 수 없으므로, 부트스트래퍼가 밖으로 내보내는 유일한 관측점인 목 `dispatcherContainer.register` 호출을 단정한다.
+- `resumesFromLastCommittedOffset`: `offer` 2건 뒤에 `subscribe`해서 오프셋이 0이 아닌 2가 되고, `commit`이 3을 써서 `isEqualTo(1L)`이 깨진다. 이 테스트는 지운다. 커밋 위치 재개는 `TopicQueueTest.resumesFromCommittedOffsetAfterRestart`가 보고, `TopicQueueFactory`가 `<root>/topics/<topic>`을 조합한다는 것은 Task 7의 `DispatcherContainerTest`가 `checkpointOf`로 같은 경로를 단정하며 본다. 남는 것은 컨테이너·부트스트래퍼로 한 겹 감싼 부분뿐이고 그 부분이 결과에 기여하지 않는다.
 
 **Files:**
 - Modify: `broker/src/main/java/org/mmmq/broker/topicqueue/TopicQueue.java`
 - Modify: `broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueTest.java`
 - Modify: `broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueBootstrapperTest.java`
 
-- [ ] **Step 1: 기존 테스트 5개의 subscribe 위치를 옮기고 신규 2개 추가**
+- [ ] **Step 1: 기존 테스트 5개의 subscribe 위치를 옮기고 신규 1개 추가**
 
 `broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueTest.java`에서 아래 다섯 테스트의 `queue.subscribe("dispatcher-1")` 줄을 그 테스트의 첫 `queue.offer(...)` 줄 위로 옮긴다. 옮기는 것 말고는 어느 줄도 건드리지 않는다 — 구독이 0에서 출발하므로 기존 기대값은 모두 그대로 성립한다.
 
@@ -348,13 +348,7 @@ Expected: PASS (2 tests)
 
 `get != null` 분기(체크포인트가 이미 있으면 tail로 덮어쓰지 않는다)는 따로 케이스를 두지 않는다. `resumesFromCommittedOffsetAfterRestart`가 `commit(1)` 뒤 재기동 `subscribe`에서 tail(2)이 아니라 1을 받는지 단정하고, `redeliversAfterCrashBeforeCommit`도 tail(1)이 아니라 0을 기대해 같은 분기를 한 번 더 지난다(`CheckpointDirectory.open`이 디스크의 체크포인트를 맵에 올려두므로 재기동 후에도 `get`이 `null`이 아니다).
 
-`DEFAULT_MAX_BYTES` 아래에 체크포인트 경로용 상수를 추가한다.
-
-```java
-    private static final String CHECKPOINTS_DIR = "checkpoints";
-```
-
-마지막 `@Test`와 `createQueue` 사이에 신규 2개를 추가한다. 필요한 import(`Files`·`Path`·`Map`·`TempDir`·`assertThat`)는 이미 파일에 있다.
+마지막 `@Test`와 `createQueue` 사이에 신규 1개를 추가한다. 필요한 import(`Path`·`Map`·`TempDir`·`assertThat`)는 이미 파일에 있다.
 
 ```java
     @Test
@@ -369,32 +363,16 @@ Expected: PASS (2 tests)
         assertThat(offset.value()).isEqualTo(2L);
         assertThat(queue.peek(offset)).isNull();
     }
-
-    @Test
-    @DisplayName("unsubscribe하면 체크포인트가 지워진다")
-    void unsubscribeRemovesCheckpoint(@TempDir Path tempDir) {
-        TopicQueue queue = createQueue(tempDir, "topic");
-        Offset offset = queue.subscribe("dispatcher-1");
-        queue.offer(new Message(new Topic("topic"), Map.of("seq", 1)));
-        queue.commit("dispatcher-1", offset);
-
-        queue.unsubscribe("dispatcher-1");
-
-        assertThat(tempDir.resolve("topic").resolve(CHECKPOINTS_DIR).resolve("dispatcher-1.checkpoint"))
-                .doesNotExist();
-    }
 ```
-
-재구독이 tail을 받는다는 것은 따로 단정하지 않는다. `newSubscriptionStartsAtTail`의 "체크포인트가 없으면 tail"과 `CheckpointDirectoryTest.deregisterRemovesCheckpoint`의 "deregister하면 맵에서도 빠진다"의 합성이라 새로 지나는 분기가 없다.
 
 - [ ] **Step 2: 테스트가 실패하는지 확인**
 
 Run: `./gradlew :broker:test --tests "org.mmmq.broker.topicqueue.TopicQueueTest"`
-Expected: 컴파일 실패 — `cannot find symbol: method unsubscribe(String)`
+Expected: `newSubscriptionStartsAtTail` 실패 — 현행 `subscribe`가 `register(name).read()`라 새 체크포인트의 0을 돌려주고 `expected: 2L but was: 0L`이 된다
 
 - [ ] **Step 3: 구현**
 
-`broker/src/main/java/org/mmmq/broker/topicqueue/TopicQueue.java`의 `subscribe`를 아래로 교체하고 바로 뒤에 `unsubscribe`를 추가한다. `CheckpointFile`·`StorageException`은 이미 import되어 있다.
+`broker/src/main/java/org/mmmq/broker/topicqueue/TopicQueue.java`의 `subscribe`를 아래로 교체한다. `CheckpointFile`은 이미 import되어 있다.
 
 ```java
     public Offset subscribe(String name) {
@@ -405,54 +383,45 @@ Expected: 컴파일 실패 — `cannot find symbol: method unsubscribe(String)`
         }
         return new Offset(checkpointFile.read());
     }
-
-    public void unsubscribe(String name) {
-        try {
-            checkpointDirectory.deregister(name);
-        } catch (StorageException exception) {
-            log.error("Failed to remove checkpoint '{}' on topic {}", name, topic, exception);
-        }
-    }
 ```
 
-`unsubscribe`가 예외를 삼키고 로그만 남기는 이유: 이 호출은 여러 토픽을 돌며 일어나는데, 한 토픽의 삭제 실패가 예외로 올라가면 호출자의 구독 갱신이 반쯤 끝난 상태로 남는다. 지우다 실패한 체크포인트는 아무도 읽지 않는 파일로 남을 뿐이다.
+`unsubscribe(name)`는 여기서 만들지 않는다. 유일한 호출자가 Task 7의 `rematchAll`이고, 그 태스크의 `narrowingPatternDropsSubscriptionAndCheckpoint`·`removeDropsSubscriptionsAndCheckpoints`가 체크포인트 파일 경로를 직접 단정하며 RED를 만든다. `TopicQueue` 수준에서 삭제를 한 번 더 단정하면 `CheckpointDirectoryTest.deregisterRemovesCheckpoint`와 그 두 케이스 사이에 3줄 위임만 붙드는 계층이 하나 더 생긴다.
 
 - [ ] **Step 4: 테스트 통과 확인**
 
 Run: `./gradlew :broker:test --tests "org.mmmq.broker.topicqueue.TopicQueueTest"`
-Expected: PASS (8 tests)
+Expected: PASS (7 tests)
 
-- [ ] **Step 5: TopicQueueBootstrapperTest를 새 의미론에 맞게 고치기**
+- [ ] **Step 5: TopicQueueBootstrapperTest가 부팅을 관찰하게 고치기**
 
-`broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueBootstrapperTest.java`의 `seedTopic`을 아래로 교체한다. 세그먼트만 심으면 복원된 큐의 첫 `subscribe`가 tail을 받아 `peek`이 `null`이 되므로, 구독자가 디스크에 남아 있는 상황을 그대로 심는다.
+`broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueBootstrapperTest.java`에서 `resumesFromLastCommittedOffset`과 `seedTopic`, 상수 `DEFAULT_MAX_BYTES`를 지우고 `restoresAllTopicsOnBoot`를 아래로 교체한다. `noTopicsDirectoryDoesNotFail`은 손대지 않는다.
 
 ```java
-    private void seedTopic(Path topicsDir, String topicName, Message message) {
-        Path topicDir = topicsDir.resolve(topicName);
-        try {
-            Files.createDirectories(topicDir);
-        } catch (IOException exception) {
-            throw new IllegalStateException("Failed to create topic directory: " + topicDir, exception);
-        }
-        try (SegmentFileChain segmentFileChain = SegmentFileChain.open(topicDir, DEFAULT_MAX_BYTES)) {
-            segmentFileChain.append(message);
-        }
-        try (CheckpointDirectory checkpointDirectory = CheckpointDirectory.open(topicDir)) {
-            checkpointDirectory.register("dispatcher-1");
-        }
+    @Test
+    @DisplayName("topics 디렉토리에 존재하는 토픽들이 부팅 시 모두 복원된다")
+    void restoresAllTopicsOnBoot(@TempDir Path tempDir) throws IOException {
+        Files.createDirectories(tempDir.resolve("topics").resolve("topic-a"));
+        Files.createDirectories(tempDir.resolve("topics").resolve("topic-b"));
+        PersistenceProperties properties = new PersistenceProperties(tempDir.toAbsolutePath().toString(), null);
+        TopicQueueFactory factory = new TopicQueueFactory(properties);
+        DispatcherContainer dispatcherContainer = mock(DispatcherContainer.class);
+        TopicQueueContainer container = new TopicQueueContainer(factory, dispatcherContainer);
+        TopicQueueBootstrapper bootstrapper = new TopicQueueBootstrapper(properties, container);
+
+        bootstrapper.afterSingletonsInstantiated();
+
+        ArgumentCaptor<TopicQueue> restored = ArgumentCaptor.forClass(TopicQueue.class);
+        verify(dispatcherContainer, times(2)).register(restored.capture());
+        assertThat(restored.getAllValues()).extracting(TopicQueue::getTopic)
+                .containsExactlyInAnyOrder(new Topic("topic-a"), new Topic("topic-b"));
     }
 ```
 
-같은 파일의 `resumesFromLastCommittedOffset`에서 `subscribe`를 두 `offer` 앞으로 옮긴다. 그러면 오프셋이 0에서 출발해 `commit`이 1을 쓰고, 기존 기대값 `isEqualTo(1L)`이 그대로 성립한다.
+import 조정: `org.mockito.ArgumentCaptor`와 `static org.mockito.Mockito.times`·`static org.mockito.Mockito.verify`를 넣고, `java.util.Map`·`org.mmmq.broker.topicqueue.storage.CheckpointDirectory`·`org.mmmq.broker.topicqueue.storage.SegmentFileChain`·`org.mmmq.core.message.Message`를 뺀다. `java.io.IOException`·`java.nio.file.Files`는 그대로 쓴다.
 
-```java
-        TopicQueue queue = new TopicQueue(new Topic("topic-a"), segmentFileChain, checkpointDirectory);
-        Offset offset = queue.subscribe("dispatcher-1");
-        queue.offer(new Message(new Topic("topic-a"), Map.of("seq", 1)));
-        queue.offer(new Message(new Topic("topic-a"), Map.of("seq", 2)));
-        queue.peek(offset);
-        queue.commit("dispatcher-1", offset);
-```
+빈 토픽 디렉터리로 충분한 이유: 부트스트래퍼가 보는 것은 `topics/` 아래 디렉터리의 존재뿐이고(`Files::isDirectory`), 세그먼트가 없어도 `SegmentFileChain.bootstrap`이 startOffset=0 세그먼트를 만들고 `CheckpointDirectory.open`이 `checkpoints/`를 만들어 `TopicQueueFactory.create`가 정상적으로 끝난다.
+
+`register` 호출 수만 세지 않고 캡처한 큐의 토픽까지 단정하는 이유: 부트스트래퍼의 로직은 디렉터리 필터와 디렉터리명 → `Topic` 매핑 두 줄뿐인데, `times(2)`만으로는 매핑이 망가진 경우(예: `new Topic(path.toString())`은 절대경로를 이름으로 삼고 `root.resolve`가 같은 디렉터리로 되돌아온다)를 구분하지 못한다.
 
 - [ ] **Step 6: 전체 테스트로 회귀 확인**
 
@@ -482,7 +451,6 @@ Task 7까지 두 태스크 동안 `DispatcherContainer`는 `Collection<Dispatche
 - Modify: `broker/src/main/java/org/mmmq/broker/persistence/PersistenceProperties.java`
 - Create: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherFactory.java`
 - Create: `broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherFactoryTest.java`
-- Create: `broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherDefinitionTest.java`
 - Delete: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherBeanRegistrar.java`
 - Delete: `broker/src/test/java/org/mmmq/broker/config/DispatcherBeanRegistrarTest.java`
 - Delete: `broker/src/test/java/org/mmmq/broker/dispatcher/HostDefinitionTest.java`
@@ -571,43 +539,14 @@ class DispatcherFactoryTest {
 
 `host`는 `toUri()` 문자열로 단정한다. Task 1에서 `Host.equals`를 없앴고, 파싱 결과가 실제로 쓰이는 형태가 그 문자열이다.
 
-- [ ] **Step 2: 실패하는 테스트 작성 (DispatcherDefinition 왕복)**
+- [ ] **Step 2: 테스트가 실패하는지 확인**
 
-`broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherDefinitionTest.java`:
-
-```java
-package org.mmmq.broker.dispatcher;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-class DispatcherDefinitionTest {
-
-    @Test
-    @DisplayName("정의로 만든 Dispatcher에서 같은 정의를 복원한다")
-    void roundTripsThroughDispatcher() {
-        DispatcherDefinition definition =
-                new DispatcherDefinition("order-created", "https://consumer-host:8443", "order.created");
-
-        DispatcherDefinition restored = DispatcherDefinition.from(DispatcherFactory.create(definition));
-
-        assertThat(restored).isEqualTo(definition);
-    }
-}
-```
-
-호스트 이름이 IP로 바뀌지 않는다는 것도 이 테스트가 본다. `consumer-host`는 해석되지 않는 이름이라, `Host`가 다시 즉시 해석으로 돌아가면 여기서 터진다.
-
-- [ ] **Step 3: 테스트가 실패하는지 확인**
-
-Run: `./gradlew :broker:test --tests "org.mmmq.broker.dispatcher.DispatcherFactoryTest" --tests "org.mmmq.broker.dispatcher.DispatcherDefinitionTest"`
+Run: `./gradlew :broker:test --tests "org.mmmq.broker.dispatcher.DispatcherFactoryTest"`
 Expected: 컴파일 실패 — `DispatcherFactory` 클래스 없음, `DispatcherDefinition` 생성자가 `(String, HostDefinition, String)`이라 인자 타입 불일치
 
-- [ ] **Step 4: 레지스트라와 우회 코드 삭제**
+- [ ] **Step 3: 레지스트라와 우회 코드 삭제**
 
-레지스트라를 먼저 지운다. `definition.toHost()`와 `HostDefinition`의 유일한 사용자라, 이 순서면 Step 6에서 정의 레코드를 갈아치울 때 main 소스가 계속 컴파일된다.
+레지스트라를 먼저 지운다. `definition.toHost()`와 `HostDefinition`의 유일한 사용자라, 이 순서면 Step 5에서 정의 레코드를 갈아치울 때 main 소스가 계속 컴파일된다.
 
 ```bash
 git rm broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherBeanRegistrar.java broker/src/test/java/org/mmmq/broker/config/DispatcherBeanRegistrarTest.java broker/src/test/java/org/mmmq/broker/dispatcher/HostDefinitionTest.java
@@ -641,7 +580,7 @@ class BrokerConfiguration {
     }
 ```
 
-- [ ] **Step 5: Dispatcher에 host·pattern 접근자 추가**
+- [ ] **Step 4: Dispatcher에 host·pattern 접근자 추가**
 
 `DispatcherDefinition.from`이 두 값을 읽어야 한다. 필드를 밖에서 직접 읽지 않도록 `Dispatcher.java`의 `consumerId()` 뒤에 접근자를 둔다. Step 1의 `parsesUrlIntoHost`가 이 두 메서드를 쓴다.
 
@@ -655,7 +594,7 @@ class BrokerConfiguration {
     }
 ```
 
-- [ ] **Step 6: DispatcherDefinition 교체**
+- [ ] **Step 5: DispatcherDefinition 교체**
 
 `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherDefinition.java` 전체를 아래로 교체. 중첩 `HostDefinition`과 `toHost()`는 사라진다.
 
@@ -678,7 +617,9 @@ public record DispatcherDefinition(
 }
 ```
 
-- [ ] **Step 7: DispatcherFactory 작성**
+`from`에는 단독 케이스를 두지 않는다. 세 필드를 그대로 옮기는 매핑이라 분기가 없고, Task 7의 `addSubscribesToExistingQueueAndPersists`가 `file.read()`를 완전한 정의로 `containsExactly`하면서 `create` → `from` → Jackson 왕복을 통째로 지난다. 호스트 이름이 IP로 바뀌지 않는다는 회귀는 Step 1의 `parsesUrlIntoHost`가 해석되지 않는 이름(`consumer-host`)으로 `host().toUri()`를 단정해 먼저 잡는다.
+
+- [ ] **Step 6: DispatcherFactory 작성**
 
 `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherFactory.java`:
 
@@ -718,7 +659,7 @@ public class DispatcherFactory {
 
 `URI.create("consumer-host:8080")`은 예외를 던지지 않고 scheme만 채워진 URI를 만들고, 밑줄이 든 호스트명은 `getHost()`가 `null`이다. 그래서 scheme·host를 명시적으로 확인해야 한다.
 
-- [ ] **Step 8: 테스트 통과 확인**
+- [ ] **Step 7: 테스트 통과 확인**
 
 Run: `./gradlew test`
 Expected: BUILD SUCCESSFUL
@@ -897,6 +838,7 @@ Expected: PASS (3 tests)
 **Files:**
 - Modify: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherContainer.java`
 - Modify: `broker/src/main/java/org/mmmq/broker/dispatcher/Dispatcher.java`
+- Modify: `broker/src/main/java/org/mmmq/broker/topicqueue/TopicQueue.java`
 - Create: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherRoute.java`
 - Create: `broker/src/main/java/org/mmmq/broker/dispatcher/DuplicateConsumerIdException.java`
 - Create: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherNotFoundException.java`
@@ -1018,17 +960,14 @@ class DispatcherContainerTest {
     }
 
     @Test
-    @DisplayName("호스트만 바꾸면 체크포인트가 승계되고 파일이 지워지지 않는다")
+    @DisplayName("호스트만 바꾸면 체크포인트가 남고 파일에 새 host가 쓰인다")
     void modifyHostKeepsCheckpoint() {
-        TopicQueue queue = register(new Topic("order.created"));
+        register(new Topic("order.created"));
         container.add(new DispatcherDefinition("order-created", HOST, "order.*"));
-        queue.offer(new Message(new Topic("order.created"), Map.of("seq", 1)));
-        queue.commit("order-created", queue.subscribe("order-created"));
 
         container.modify(new ConsumerId("order-created"), new DispatcherRoute("http://moved-host:9090", "order.*"));
 
         assertThat(checkpointOf("order.created", "order-created")).exists();
-        assertThat(queue.subscribe("order-created").value()).isEqualTo(1L);
         assertThat(file.read())
                 .containsExactly(new DispatcherDefinition("order-created", "http://moved-host:9090", "order.*"));
     }
@@ -1158,7 +1097,21 @@ Expected: 컴파일 실패 — `DispatcherContainer` 생성자 인자 타입 불
     }
 ```
 
-- [ ] **Step 5: DispatcherContainer 구현**
+- [ ] **Step 5: TopicQueue.unsubscribe와 DispatcherContainer 구현**
+
+`broker/src/main/java/org/mmmq/broker/topicqueue/TopicQueue.java`의 `subscribe` 바로 뒤에 추가한다. `StorageException`은 이미 import되어 있다.
+
+```java
+    public void unsubscribe(String name) {
+        try {
+            checkpointDirectory.deregister(name);
+        } catch (StorageException exception) {
+            log.error("Failed to remove checkpoint '{}' on topic {}", name, topic, exception);
+        }
+    }
+```
+
+예외를 삼키고 로그만 남기는 이유: 이 호출은 `rematchAll`이 여러 토픽을 돌며 일어나는데, 한 토픽의 삭제 실패가 예외로 올라가면 `subscriptions`가 반쯤 갱신된 채 남는다. 지우다 실패한 체크포인트는 아무도 읽지 않는 파일로 남을 뿐이다.
 
 `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherContainer.java` 전체를 아래로 교체:
 
@@ -1313,7 +1266,9 @@ public class DispatcherContainer {
 }
 ```
 
-구독을 잃은 짝을 찾는 비교가 `ConsumerId` 기준인 이유: `Dispatcher`는 `equals`가 없어 객체 동일성으로 비교되는데 `modify`는 새 인스턴스로 교체하므로, 객체로 비교하면 호스트만 바꾼 수정에서도 모든 토픽의 체크포인트가 지워진다. `modifyHostKeepsCheckpoint` 테스트가 이 실수를 잡는다.
+구독을 잃은 짝을 찾는 비교가 `ConsumerId` 기준인 이유: `Dispatcher`는 `equals`가 없어 객체 동일성으로 비교되는데 `modify`는 새 인스턴스로 교체하므로, 객체로 비교하면 호스트만 바꾼 수정에서도 모든 토픽의 체크포인트가 지워진다. `modifyHostKeepsCheckpoint`의 `exists()`가 이 실수를 잡는다 — `rematchAll`이 `match`로 먼저 구독을 만든 뒤 잃은 쪽을 지우므로, 객체 비교 구현에서는 파일이 마지막에 삭제된다.
+
+그 테스트가 오프셋 값 승계까지 단정하지 않는 이유: 체크포인트 파일이 남아 있으면 그 값을 바꾸는 경로는 `commit`뿐이고(`subscribe`는 `get`이 `null`일 때만 쓴다), 기존 체크포인트를 tail로 덮어쓰지 않는다는 것은 `TopicQueueTest.resumesFromCommittedOffsetAfterRestart`가 본다.
 
 `destroy()`는 워커만 종료하고 체크포인트는 건드리지 않는다. 애플리케이션 종료는 구독 해제가 아니다.
 
@@ -1610,7 +1565,7 @@ Dispatchers are defined in a JSON file at `{mmmq.broker.persistence.root-dir}/di
 GET    /mmmq/dispatchers               200
 POST   /mmmq/dispatchers               201 / 400 / 409
 PUT    /mmmq/dispatchers/{consumerId}  200 / 400 / 404
-DELETE /mmmq/dispatchers/{consumerId}  204 / 404
+DELETE /mmmq/dispatchers/{consumerId}  204 / 400 / 404
 ```
 
 PUT takes only `host` and `pattern` in the body — `consumerId` is the identifier, not a mutable field. Mutations are serialized by a single `ReentrantLock` inside `DispatcherContainer`; the message hot path (`getSubscribers`) stays lock-free.
