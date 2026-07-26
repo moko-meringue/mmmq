@@ -6,7 +6,7 @@
 
 **Goal:** 브로커가 도는 중에 HTTP API로 Dispatcher를 추가·수정·삭제·조회할 수 있게 하고, 그 변경이 `dispatchers.json`에 원자적으로 반영돼 재기동 후에도 유지되게 한다.
 
-**Architecture:** `DispatcherContainer`가 Dispatcher의 소유자가 되어 `dispatchers.json`을 직접 읽고 쓴다. 뮤테이션(추가·수정·삭제·새 토픽 등록)은 컨테이너 내부의 `ReentrantLock` 하나로 직렬화하고, 메시지 핫패스인 `getSubscribers`는 `ConcurrentHashMap` 무락 읽기를 유지한다. 파일은 임시 파일에 전체를 쓰고 `ATOMIC_MOVE`로 교체한다. 새 구독은 로그 tail부터 시작하고, 구독이 끝나면 그 체크포인트 파일도 지운다.
+**Architecture:** `DispatcherContainer`가 Dispatcher의 소유자가 되어 `dispatchers.json`을 직접 읽고 쓴다. 뮤테이션(추가·수정·삭제·새 토픽 등록)은 컨테이너 내부의 `ReentrantLock` 하나로 직렬화하고, 메시지 핫패스인 `getSubscribers`는 `ConcurrentHashMap`을 락 없이 읽는 방식을 유지한다. 파일은 임시 파일에 전체를 쓰고 `ATOMIC_MOVE`로 교체한다. 새 구독은 로그 tail부터 시작하고, 구독이 끝나면 그 체크포인트 파일도 지운다.
 
 **Tech Stack:** Java 17, Spring Boot 3.2, Gradle 멀티모듈, JUnit 5, AssertJ, Mockito, spring-test(MockMvc standalone), Jackson
 
@@ -328,10 +328,10 @@ Expected: PASS (2 tests)
 
 **이 태스크는 기존 테스트 6개를 깨뜨린다.** `TopicQueueTest`에서 4개(`peekReturnsFirstMessage`·`commitAdvancesOffset`·`resumesFromCommittedOffsetAfterRestart`·`redeliversAfterCrashBeforeCommit`)가 "offer 먼저, subscribe 나중" 순서라 tail이 0이 아니게 되어 깨진다. `peekWithoutCommitReturnsSameMessage`는 `offer`가 1건이라 tail=1에서 두 `peek`이 모두 `null`을 돌려주고 `null == null`로 조용히 통과하지만 아무것도 검증하지 못하게 되므로 같이 순서를 뒤집는다. 순서를 뒤집는 것이 새 의미론에 맞는 표현이다.
 
-`TopicQueueBootstrapperTest`도 2개가 같은 이유로 깨지는데, 둘 다 부트스트래퍼를 관찰하지 못하고 있어서 고치는 대신 다르게 손본다. `TopicQueueContainer.getOrCreate`가 `computeIfAbsent`로 같은 토픽 디렉터리를 지연 생성하므로, `afterSingletonsInstantiated()`를 통째로 지워도 두 테스트의 단정이 그대로 성립한다.
+`TopicQueueBootstrapperTest`도 2개가 같은 이유로 깨지는데, 둘 다 `TopicQueueBootstrapper`를 관찰하지 못하고 있어서 고치는 대신 다르게 손본다. `TopicQueueContainer.getOrCreate`가 `computeIfAbsent`로 같은 토픽 디렉터리를 지연 생성하므로, `afterSingletonsInstantiated()`를 통째로 지워도 두 테스트의 단정이 그대로 성립한다.
 
-- `restoresAllTopicsOnBoot`: 복원된 큐에 처음 `subscribe`하면 tail(=1)을 받아 `peek`이 `null`이 된다. 큐를 밖에서 다시 열어 읽는 방식으로는 부팅 여부를 볼 수 없으므로, 부트스트래퍼가 밖으로 내보내는 유일한 관측점인 목 `dispatcherContainer.register` 호출을 단정한다.
-- `resumesFromLastCommittedOffset`: `offer` 2건 뒤에 `subscribe`해서 오프셋이 0이 아닌 2가 되고, `commit`이 3을 써서 `isEqualTo(1L)`이 깨진다. 이 테스트는 지운다. 커밋 위치 재개는 `TopicQueueTest.resumesFromCommittedOffsetAfterRestart`가 보고, `TopicQueueFactory`가 `<root>/topics/<topic>`을 조합한다는 것은 Task 7의 `DispatcherContainerTest`가 `checkpointOf`로 같은 경로를 단정하며 본다. 남는 것은 컨테이너·부트스트래퍼로 한 겹 감싼 부분뿐이고 그 부분이 결과에 기여하지 않는다.
+- `restoresAllTopicsOnBoot`: 복원된 큐에 처음 `subscribe`하면 tail(=1)을 받아 `peek`이 `null`이 된다. 큐를 밖에서 다시 열어 읽는 방식으로는 부팅 여부를 볼 수 없으므로, `TopicQueueBootstrapper`가 밖으로 내보내는 유일한 관측점인 목 `dispatcherContainer.register` 호출을 단정한다.
+- `resumesFromLastCommittedOffset`: `offer` 2건 뒤에 `subscribe`해서 오프셋이 0이 아닌 2가 되고, `commit`이 3을 써서 `isEqualTo(1L)`이 깨진다. 이 테스트는 지운다. 커밋 위치 재개는 `TopicQueueTest.resumesFromCommittedOffsetAfterRestart`가 보고, `TopicQueueFactory`가 `<root>/topics/<topic>`을 조합한다는 것은 Task 7의 `DispatcherContainerTest`가 `checkpointOf`로 같은 경로를 단정하며 본다. 남는 것은 컨테이너·`TopicQueueBootstrapper`로 한 겹 감싼 부분뿐이고 그 부분이 결과에 기여하지 않는다.
 
 **Files:**
 - Modify: `broker/src/main/java/org/mmmq/broker/topicqueue/TopicQueue.java`
@@ -423,9 +423,9 @@ Expected: PASS (7 tests)
 
 import 조정: `org.mockito.ArgumentCaptor`와 `static org.mockito.Mockito.times`·`static org.mockito.Mockito.verify`를 넣고, `java.util.Map`·`org.mmmq.broker.topicqueue.storage.CheckpointDirectory`·`org.mmmq.broker.topicqueue.storage.SegmentFileChain`·`org.mmmq.core.message.Message`를 뺀다. `java.io.IOException`·`java.nio.file.Files`는 그대로 쓴다.
 
-빈 토픽 디렉터리로 충분한 이유: 부트스트래퍼가 보는 것은 `topics/` 아래 디렉터리의 존재뿐이고(`Files::isDirectory`), 세그먼트가 없어도 `SegmentFileChain.bootstrap`이 startOffset=0 세그먼트를 만들고 `CheckpointDirectory.open`이 `checkpoints/`를 만들어 `TopicQueueFactory.create`가 정상적으로 끝난다.
+빈 토픽 디렉터리로 충분한 이유: `TopicQueueBootstrapper`가 보는 것은 `topics/` 아래 디렉터리의 존재뿐이고(`Files::isDirectory`), 세그먼트가 없어도 `SegmentFileChain.bootstrap`이 startOffset=0 세그먼트를 만들고 `CheckpointDirectory.open`이 `checkpoints/`를 만들어 `TopicQueueFactory.create`가 정상적으로 끝난다.
 
-`register` 호출 수만 세지 않고 캡처한 큐의 토픽까지 단정하는 이유: 부트스트래퍼의 로직은 디렉터리 필터와 디렉터리명 → `Topic` 매핑 두 줄뿐인데, `times(2)`만으로는 매핑이 망가진 경우(예: `new Topic(path.toString())`은 절대경로를 이름으로 삼고 `root.resolve`가 같은 디렉터리로 되돌아온다)를 구분하지 못한다.
+`register` 호출 수만 세지 않고 캡처한 큐의 토픽까지 단정하는 이유: `TopicQueueBootstrapper`의 로직은 디렉터리 필터와 디렉터리명 → `Topic` 매핑 두 줄뿐인데, `times(2)`만으로는 매핑이 망가진 경우(예: `new Topic(path.toString())`은 절대경로를 이름으로 삼고 `root.resolve`가 같은 디렉터리로 되돌아온다)를 구분하지 못한다.
 
 - [ ] **Step 6: 전체 테스트로 회귀 확인**
 
@@ -436,7 +436,7 @@ Expected: BUILD SUCCESSFUL
 
 ---
 
-## Task 5: 정의를 URL 문자열 포맷으로 바꾸고 DispatcherFactory 도입, 레지스트라 제거
+## Task 5: 정의를 URL 문자열 포맷으로 바꾸고 DispatcherFactory 도입, `DispatcherBeanRegistrar` 제거
 
 파일과 API가 같은 모양을 쓰도록 host를 URL 문자열 하나로 합친다. 문자열 → `Host`·`ConsumerId`·`TopicPattern` 변환과 검증은 `DispatcherFactory` 한 곳으로 모으고, 역방향은 `DispatcherDefinition.from(Dispatcher)`가 맡는다. `Host`가 주소 문자열을 보존하게 됐으므로 이 왕복은 무손실이다.
 
@@ -444,7 +444,7 @@ Expected: BUILD SUCCESSFUL
 
 **포트는 필수로 요구한다.** 스킴 기본값(80/443)으로 대체하면 8080에 있는 소비자를 등록할 때 포트를 빼먹은 요청이 조용히 80으로 향한다. 등록 시점에 거절하는 편이 낫고, 저장·응답 형태가 입력과 같은 모양으로 유지된다.
 
-**`DispatcherBeanRegistrar`를 이 태스크에서 지운다.** `definition.toHost()`가 사라지므로 레지스트라를 살려두려면 빈 정의를 공급자 방식으로 재작성하고 테스트의 JSON 픽스처를 새 포맷으로 고쳐야 하는데, 그 코드는 Task 7에서 컨테이너가 파일을 직접 읽는 순간 전부 삭제된다. 지금 지우면 그 왕복이 없다.
+**`DispatcherBeanRegistrar`를 이 태스크에서 지운다.** `definition.toHost()`가 사라지므로 `DispatcherBeanRegistrar`를 살려두려면 빈 정의를 공급자 방식으로 재작성하고 테스트의 JSON 픽스처를 새 포맷으로 고쳐야 하는데, 그 코드는 Task 7에서 컨테이너가 파일을 직접 읽는 순간 전부 삭제된다. 지금 지우면 그 왕복이 없다.
 
 Task 7까지 두 태스크 동안 `DispatcherContainer`는 `Collection<Dispatcher>` 생성자를 그대로 들고 있고, Dispatcher 빈을 등록하는 주체가 없어 브로커는 Dispatcher 0개로 뜬다. 생성자가 하나뿐인 빈의 컬렉션 인자는 후보가 없을 때 스프링이 빈 컬렉션을 넣어주므로 컨텍스트는 그대로 기동한다 — 지금도 `dispatchers.json`이 `[]`인 `BrokerTest`가 같은 경로로 뜬다.
 
@@ -559,9 +559,9 @@ class DispatcherFactoryTest {
 Run: `./gradlew :broker:test --tests "org.mmmq.broker.dispatcher.DispatcherFactoryTest"`
 Expected: 컴파일 실패 — `DispatcherFactory` 클래스 없음, `DispatcherDefinition` 생성자가 `(String, HostDefinition, String)`이라 인자 타입 불일치
 
-- [ ] **Step 3: 레지스트라와 우회 코드 삭제**
+- [ ] **Step 3: `DispatcherBeanRegistrar`와 우회 코드 삭제**
 
-레지스트라를 먼저 지운다. `definition.toHost()`와 `HostDefinition`의 유일한 사용자라, 이 순서면 Step 5에서 정의 레코드를 갈아치울 때 main 소스가 계속 컴파일된다.
+`DispatcherBeanRegistrar`를 먼저 지운다. `definition.toHost()`와 `HostDefinition`의 유일한 사용자라, 이 순서면 Step 5에서 정의 레코드를 갈아치울 때 main 소스가 계속 컴파일된다.
 
 ```bash
 git rm broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherBeanRegistrar.java broker/src/test/java/org/mmmq/broker/config/DispatcherBeanRegistrarTest.java broker/src/test/java/org/mmmq/broker/dispatcher/HostDefinitionTest.java
@@ -681,7 +681,7 @@ public class DispatcherFactory {
 
 `URI.create("consumer-host:8080")`은 예외를 던지지 않는다 — scheme이 `consumer-host`, host가 `null`인 opaque URI가 된다. 밑줄이 든 호스트명도 `getHost()`가 `null`이다. 그래서 host를 뽑을 수 있는지 명시적으로 확인해야 한다.
 
-경로·query·userInfo·fragment를 거절하는 이유는 포트 필수와 같다. `Host.toUri()`가 `%s://%s:%d`뿐이라 그 성분들은 저장·응답 왕복에서 소실되는데, 경로는 무해하게 사라지지 않는다 — `RestClient`의 baseUrl 경로에 `/mmmq/messages`가 **덧붙기 때문에**(spring-web 6.1.1 실측: `DefaultUriBuilderFactory("http://h:8080/foo").uriString("/mmmq/messages")` → `http://h:8080/foo/mmmq/messages`) 경로를 보존하면 라우팅이 달라지고, 버리면 사용자가 지정한 프리픽스를 무시하고 다른 엔드포인트로 보낸다. userInfo는 인증 정보가 조용히 사라지는 같은 부류다. 후행 슬래시(`http://h:8080/`)도 거절되며, 예외 메시지가 허용 모양을 그대로 알려주므로 조용한 실패가 아니다.
+경로·query·userInfo·fragment를 거절하는 이유는 포트 필수와 같다. `Host.toUri()`가 `%s://%s:%d`뿐이라 그 성분들은 저장·응답 왕복에서 소실되는데, 경로는 무해하게 사라지지 않는다 — `RestClient`의 baseUrl 경로에 `/mmmq/messages`가 **덧붙기 때문에**(spring-web 6.1.1 실측: `DefaultUriBuilderFactory("http://h:8080/foo").uriString("/mmmq/messages")` → `http://h:8080/foo/mmmq/messages`) 경로를 보존하면 라우팅이 달라지고, 버리면 사용자가 지정한 경로를 무시하고 다른 엔드포인트로 보낸다. userInfo는 인증 정보가 조용히 사라지는 같은 부류다. 후행 슬래시(`http://h:8080/`)도 거절되며, 예외 메시지가 허용 모양을 그대로 알려주므로 조용한 실패가 아니다.
 
 - [ ] **Step 7: 테스트 통과 확인**
 
@@ -698,7 +698,7 @@ Expected: BUILD SUCCESSFUL
 
 `ObjectMapper`는 주입받지 않고 클래스 상수로 만든다. broker는 라이브러리라 호스트 애플리케이션의 `ObjectMapper` 커스터마이징에 파일 포맷이 휘둘리면 안 된다.
 
-파일·디렉터리가 없을 때의 부팅 동작과 깨진 JSON 검증은 여기서 본다. Task 5에서 삭제한 `DispatcherBeanRegistrarTest`가 컨텍스트 레벨에서 지키던 것을 이 파일 레벨로 내린 것이고, Task 7의 컨테이너 테스트는 같은 것을 다시 보지 않는다.
+파일·디렉터리가 없을 때의 부팅 동작과 깨진 JSON 검증은 여기서 본다. Task 5에서 삭제한 `DispatcherBeanRegistrarTest`가 컨텍스트 수준에서 지키던 것을 이 파일 수준으로 내린 것이고, Task 7의 컨테이너 테스트는 같은 것을 다시 보지 않는다.
 
 `createsRootDirWhenMissing`이 root-dir까지 없는 상태를 보므로 "파일만 없는 상태"는 따로 두지 않는다 — `read()`의 같은 분기이고 `Files.createDirectories`는 이미 있는 디렉터리에 무해하다. 쓰기 후 `.tmp`가 남지 않는다는 것도 `Files.move`의 `ATOMIC_MOVE` 계약이라 케이스를 두지 않는다. 이동이 실패하면 `roundTrips`가 `IllegalStateException`으로 먼저 깨진다.
 
@@ -854,7 +854,7 @@ Expected: PASS (3 tests)
 
 ## Task 7: DispatcherContainer가 Dispatcher를 소유하고 변경한다
 
-컨테이너가 `dispatchers.json`을 직접 읽어 Dispatcher를 만들고, 추가·수정·삭제·조회를 노출한다. Dispatcher가 태어나는 길이 하나가 된다. 뮤테이션은 `ReentrantLock` 하나로 직렬화하고, 핫패스 `getSubscribers`는 무락 읽기를 유지한다. 순서는 언제나 **검증 → 파일 → 메모리**다.
+컨테이너가 `dispatchers.json`을 직접 읽어 Dispatcher를 만들고, 추가·수정·삭제·조회를 노출한다. Dispatcher가 태어나는 길이 하나가 된다. 뮤테이션은 `ReentrantLock` 하나로 직렬화하고, 핫패스 `getSubscribers`는 락 없이 읽는다. 순서는 언제나 **검증 → 파일 → 메모리**다.
 
 이 태스크에서 `Dispatcher`의 `@PreDestroy`를 컨테이너로 옮긴다. Dispatcher는 더 이상 빈이 아니라 `@PreDestroy`가 걸리지 않으므로, 컨테이너가 생명주기를 책임져야 한다.
 
@@ -1356,7 +1356,7 @@ public class DispatcherContainer {
 }
 ```
 
-세 뮤테이션이 파일에 쓸 목록을 `definitions()`로 만든다. 같은 투영을 세 번 다시 쓰지 않으려는 것이고, `mutationLock`이 재진입 가능해서 락을 잡은 채 불러도 된다. 순서는 그대로다 — `add`는 `dispatchers.put` 전이라 `definitions()`가 "새 것을 제외한 현재"를 주고, `modify`는 옛 항목이 든 목록에서 교체하며, `remove`는 제외한다. 비교 대상이 `Dispatcher.consumerId()`(→`ConsumerId`)에서 `DispatcherDefinition.consumerId()`(→`String`)로 내려가므로 `.equals(consumerId.value())`가 된다. `.value()`를 빼먹으면 `String.equals(Object)`가 항상 `false`를 돌려주는 변형이 컴파일되는데, `modify`에서는 `modifyHostKeepsCheckpoint`의 파일 단정이, `remove`에서는 `removeDropsSubscriptionsAndCheckpoints`의 `isEmpty()`가 잡는다.
+세 뮤테이션이 파일에 쓸 목록을 `definitions()`로 만든다. 같은 목록을 세 번 다시 만들지 않으려는 것이고, `mutationLock`이 재진입 가능해서 락을 잡은 채 불러도 된다. 순서는 그대로다 — `add`는 `dispatchers.put` 전이라 `definitions()`가 "새 것을 제외한 현재"를 주고, `modify`는 옛 항목이 든 목록에서 교체하며, `remove`는 제외한다. 비교 대상이 `Dispatcher.consumerId()`(→`ConsumerId`)에서 `DispatcherDefinition.consumerId()`(→`String`)로 내려가므로 `.equals(consumerId.value())`가 된다. `.value()`를 빼먹으면 `String.equals(Object)`가 항상 `false`를 돌려주는 변형이 컴파일되는데, `modify`에서는 `modifyHostKeepsCheckpoint`의 파일 단정이, `remove`에서는 `removeDropsSubscriptionsAndCheckpoints`의 `isEmpty()`가 잡는다.
 
 구독을 잃은 짝을 찾는 비교가 `ConsumerId` 기준인 이유: `Dispatcher`는 `equals`가 없어 객체 동일성으로 비교되는데 `modify`는 새 인스턴스로 교체하므로, 객체로 비교하면 호스트만 바꾼 수정에서도 모든 토픽의 체크포인트가 지워진다. `modifyHostKeepsCheckpoint`의 `exists()`가 이 실수를 잡는다 — `rematchAll`이 `match`로 먼저 구독을 만든 뒤 잃은 쪽을 지우므로, 객체 비교 구현에서는 파일이 마지막에 삭제된다.
 

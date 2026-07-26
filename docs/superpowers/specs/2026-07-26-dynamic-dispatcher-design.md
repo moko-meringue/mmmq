@@ -33,7 +33,7 @@
 | 새 구독의 시작 오프셋 | 로그의 tail |
 | 체크포인트 수명 | 구독이 끝나면 같이 지운다 (삭제·패턴 축소 모두) |
 | 엔드포인트 범위 | 추가·수정·삭제에 목록 조회(`GET /mmmq/dispatchers`)를 포함한다 |
-| 동기화·동시성 | 뮤테이션 단일 락 + 파일 원자 교체, 읽기는 무락 |
+| 동기화·동시성 | 뮤테이션 단일 락 + 파일 원자 교체, 읽기는 락을 잡지 않는다 |
 
 각 결정의 근거는 아래 해당 절에 적었다.
 
@@ -53,7 +53,7 @@
 
 포트는 생략할 수 없다. 소비자는 대개 8080 같은 비표준 포트에 있어서, 스킴 기본값으로 대체하면 포트를 빼먹은 등록이 조용히 80으로 향한다. 빠뜨렸으면 등록 시점에 거절하는 쪽이 낫고, `Host`가 포트를 필수로 들고 있어 저장·응답 형태도 입력과 같은 모양으로 유지된다.
 
-host는 `scheme://address:port` 세 성분만 받는다. 경로·query·userInfo·fragment가 붙으면 거절한다. `Host`가 그 세 성분만 들어 왕복에서 나머지가 소실되는데, 경로는 무해하게 사라지지 않기 때문이다 — `RestClient`의 baseUrl 경로에 `/mmmq/messages`가 덧붙으므로(spring-web 6.1.1 실측), 경로를 보존하면 라우팅이 달라지고 버리면 사용자가 지정한 프리픽스를 무시하고 다른 엔드포인트로 보낸다. userInfo는 인증 정보가 조용히 사라지는 같은 부류다. 포트를 필수로 요구한 것과 같은 논리다.
+host는 `scheme://address:port` 세 성분만 받는다. 경로·query·userInfo·fragment가 붙으면 거절한다. `Host`가 그 세 성분만 들어 왕복에서 나머지가 소실되는데, 경로는 무해하게 사라지지 않기 때문이다 — `RestClient`의 baseUrl 경로에 `/mmmq/messages`가 덧붙으므로(spring-web 6.1.1 실측), 경로를 보존하면 라우팅이 달라지고 버리면 사용자가 지정한 경로를 무시하고 다른 엔드포인트로 보낸다. userInfo는 인증 정보가 조용히 사라지는 같은 부류다. 포트를 필수로 요구한 것과 같은 논리다.
 
 ## 컴포넌트
 
@@ -198,7 +198,7 @@ DELETE /mmmq/dispatchers/{consumerId}  204 / 400 / 404
 
 전역 `@RestControllerAdvice`는 쓰지 않는다. broker는 라이브러리라 호스트 애플리케이션의 다른 컨트롤러 예외까지 가로챈다. `DispatcherController` 안의 `@ExceptionHandler`로 가둔다.
 
-예외 클래스에 `@ResponseStatus`를 붙이는 방식도 쓰지 않는다. `ResponseStatusExceptionResolver`는 `reason`이 비어 있어도 `response.sendError(statusCode)`를 부르기 때문에(spring-webmvc 6.1.1 확인), 컨테이너의 에러 페이지 디스패치를 타고 응답 본문이 호스트 애플리케이션의 `/error` 처리로 넘어간다. 상태 코드는 맞게 나가지만 이 API의 실패 응답 모양을 남의 설정이 정하게 되고, `IllegalArgumentException`(JDK 클래스라 애노테이션을 못 붙인다)만 브로커가 만든 본문을 돌려주는 비대칭도 생긴다.
+예외 클래스에 `@ResponseStatus`를 붙이는 방식도 쓰지 않는다. `ResponseStatusExceptionResolver`는 `reason`이 비어 있어도 `response.sendError(statusCode)`를 부르기 때문에(spring-webmvc 6.1.1 확인), 컨테이너의 에러 페이지 디스패치를 타고 응답 본문이 호스트 애플리케이션의 `/error` 처리로 넘어간다. 상태 코드는 맞게 나가지만 이 API의 실패 응답 모양을 남의 설정이 정하게 되고, `IllegalArgumentException`(JDK 클래스라 어노테이션을 못 붙인다)만 브로커가 만든 본문을 돌려주는 비대칭도 생긴다.
 
 ## 데이터 흐름
 
@@ -224,7 +224,7 @@ DELETE /mmmq/dispatchers/{consumerId}  204 / 400 / 404
 
 그래서 `Dispatcher`에 `volatile boolean destroyed`를 두고 `destroy()`가 그것을 먼저 세운 뒤 `dispatch`의 가드에서 확인한다. `dispatch`가 `submit`의 유일한 경로라 워커 자체가 생기지 않고, 그래서 `drain` 루프에는 체크가 필요 없다.
 
-낙오한 워커가 삭제된 체크포인트에 `commit`을 부르면 `checkpointDirectory.get`이 `null`이라 `IllegalStateException`이 나고 드레인 루프가 로그를 남기며 끝난다. 어차피 멈춰야 할 루프라 결과는 맞고, `commit`은 `register`가 아니라 `get`을 쓰므로 지워진 파일이 되살아나지도 않는다.
+낙오한 워커가 삭제된 체크포인트에 `commit`을 부르면 `checkpointDirectory.get`이 `null`이라 `IllegalStateException`이 나고 `drain` 루프가 로그를 남기며 끝난다. 어차피 멈춰야 할 루프라 결과는 맞고, `commit`은 `register`가 아니라 `get`을 쓰므로 지워진 파일이 되살아나지도 않는다.
 
 **조회 (GET)** — 락을 잡고 `dispatchers.values()`를 `DispatcherDefinition.from`으로 옮겨 담아 돌려준다. 읽기지만 락을 잡는 이유는 뮤테이션 중간 상태가 아닌 일관된 스냅샷을 돌려주기 위해서다. 호출 빈도가 낮아 핫패스와 무관하다.
 
@@ -275,7 +275,7 @@ broker는 `@SpringBootConfiguration`이 없어서 `@WebMvcTest`를 쓸 수 없�
 
 **기존 테스트 영향**
 - `TopicQueueTest`: 4개(`peekReturnsFirstMessage`·`commitAdvancesOffset`·`resumesFromCommittedOffsetAfterRestart`·`redeliversAfterCrashBeforeCommit`)가 "offer 먼저, subscribe 나중" 순서라 tail 전환으로 깨진다. `peekWithoutCommitReturnsSameMessage`는 `offer`가 1건이라 tail=1에서 두 `peek`이 모두 `null`을 돌려주고 통과하지만 아무것도 검증하지 못하게 되므로 같이 순서를 뒤집는다. 다섯 곳 모두 `subscribe`를 `offer` 앞으로 옮기는 것이 새 의미론에 맞는 표현이다
-- `TopicQueueBootstrapperTest`: 2개가 같은 이유로 깨지지만, 둘 다 `getOrCreate`의 지연 생성 때문에 부트스트래퍼를 관찰하지 못하고 있어 고치는 대신 다르게 손본다. `restoresAllTopicsOnBoot`는 구독·`peek`을 걷어내고 목 `DispatcherContainer.register`가 받은 큐의 토픽을 단정해 처음으로 복원을 관찰한다. `resumesFromLastCommittedOffset`은 삭제한다 — 커밋 위치 재개는 `TopicQueueTest.resumesFromCommittedOffsetAfterRestart`가, `<root>/topics/<topic>` 경로 조합은 `DispatcherContainerTest`의 체크포인트 경로 단정이 본다
+- `TopicQueueBootstrapperTest`: 2개가 같은 이유로 깨지지만, 둘 다 `getOrCreate`의 지연 생성 때문에 `TopicQueueBootstrapper`를 관찰하지 못하고 있어 고치는 대신 다르게 손본다. `restoresAllTopicsOnBoot`는 구독·`peek`을 걷어내고 목 `DispatcherContainer.register`가 받은 큐의 토픽을 단정해 처음으로 복원을 관찰한다. `resumesFromLastCommittedOffset`은 삭제한다 — 커밋 위치 재개는 `TopicQueueTest.resumesFromCommittedOffsetAfterRestart`가, `<root>/topics/<topic>` 경로 조합은 `DispatcherContainerTest`의 체크포인트 경로 단정이 본다
 - `HostTest`: "잘못된 호스트명이면 예외" 케이스는 성립하지 않으므로 제거. 빈 주소·포트 범위 케이스로 대체
 - `SenderTest`·`GatewayTest`: 양쪽 다 `host.toUri()`를 쓰고 있어 그대로 통과
 - `DispatcherTest`: 영향 없다(여섯 곳 모두 `subscribe`가 `offer`보다 앞이다). `destroyed` 플래그를 지키는 케이스 하나가 추가된다
