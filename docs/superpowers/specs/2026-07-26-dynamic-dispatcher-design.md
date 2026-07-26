@@ -50,34 +50,19 @@
 
 기존 `{ "protocol": "HTTP", "address": "...", "port": 8080 }` 중첩 구조를 대체한다. 마이그레이션은 제공하지 않는다(pre-1.0). 이 형태가 곧 POST 요청 본문이자 GET 응답 본문이라, 같은 개념을 두 가지 모양으로 유지할 일이 없다.
 
-포트를 생략하면 스킴 기본값(`http` 80, `https` 443)을 쓴다.
+포트는 생략할 수 없다. 소비자는 대개 8080 같은 비표준 포트에 있어서, 스킴 기본값으로 대체하면 포트를 빼먹은 등록이 조용히 80으로 향한다. 빠뜨렸으면 등록 시점에 거절하는 쪽이 낫고, `Host`가 포트를 필수로 들고 있어 저장·응답 형태도 입력과 같은 모양으로 유지된다.
 
 ## 컴포넌트
 
 ### 신규
 
-**`DispatcherFactory`** (`org.mmmq.broker.dispatcher`, `@Component`)
+**`DispatcherFactory`** (`org.mmmq.broker.dispatcher`)
 
-`DispatcherDefinition`을 받아 `Dispatcher`를 만든다. 문자열 → `Host`·`ConsumerId`·`TopicPattern` 변환과 검증이 전부 여기 모인다. `TopicQueueFactory`와 같은 자리, 같은 모양이다.
+`DispatcherDefinition`을 받아 `Dispatcher`를 만든다. 문자열 → `Host`·`ConsumerId`·`TopicPattern` 변환과 검증이 전부 여기 모인다.
 
-```java
-public Dispatcher create(DispatcherDefinition definition) {
-    URI uri = URI.create(definition.host());
-    if (uri.getScheme() == null || uri.getHost() == null) {
-        throw new IllegalArgumentException("host must be an absolute URL, but was: " + definition.host());
-    }
-    WebProtocol protocol = WebProtocol.from(uri.getScheme());
-    int port = uri.getPort();
-    if (port == -1) {
-        port = protocol.getDefaultPort();
-    }
-    return new Dispatcher(
-            new Host(protocol, uri.getHost(), port),
-            new ConsumerId(definition.consumerId()),
-            new TopicPattern(definition.pattern())
-    );
-}
-```
+상태가 없어 `create`는 정적 메서드다. 빈으로 만들면 컨테이너가 필드와 생성자 인자를 하나 더 들어야 하는데, 호출자는 `DispatcherContainer` 하나뿐이고 대체 구현이나 목이 필요한 곳이 없다. `SegmentFileChain.open`·`Sender.from`처럼 이 저장소에 이미 있는 정적 팩토리와 같은 모양이다.
+
+`create(definition)`은 host 문자열을 `URI.create`로 파싱해 스킴·호스트·포트를 확인한 뒤 `Host`·`ConsumerId`·`TopicPattern`을 만든다.
 
 `URI.create("garbage")`는 예외를 던지지 않고 scheme이 `null`인 URI를 만들기 때문에 scheme·host를 명시적으로 확인해야 한다. 밑줄이 든 호스트명(`consumer_host`)도 `getHost()`가 `null`이라 여기서 걸린다.
 
@@ -106,24 +91,7 @@ PUT 본문 전용. `record DispatcherRoute(String host, String pattern)`.
 
 **`DispatcherDefinition`**
 
-```java
-public record DispatcherDefinition(
-        String consumerId,
-        String host,
-        String pattern
-) {
-
-    public static DispatcherDefinition from(Dispatcher dispatcher) {
-        return new DispatcherDefinition(
-                dispatcher.consumerId().value(),
-                dispatcher.host().toUri(),
-                dispatcher.pattern().value()
-        );
-    }
-}
-```
-
-중첩 `HostDefinition` 레코드와 `toHost()`는 삭제한다. `Host`가 원본 주소 문자열을 보존하게 되면서 `Dispatcher` → 정의 복원이 무손실이 된다. 덕분에 컨테이너가 런타임 객체와 정의를 두 벌로 들 필요가 없다.
+레코드 컴포넌트는 `consumerId`·`host`·`pattern` 세 문자열이고, `from(Dispatcher)`가 `host().toUri()`로 host를 되돌린다. 중첩 `HostDefinition` 레코드와 `toHost()`는 삭제한다. `Host`가 원본 주소 문자열을 보존하게 되면서 `Dispatcher` → 정의 복원이 무손실이 된다. 덕분에 컨테이너가 런타임 객체와 정의를 두 벌로 들 필요가 없다.
 
 **`Dispatcher`**
 
@@ -133,13 +101,7 @@ public record DispatcherDefinition(
 
 **`DispatcherContainer`**
 
-```java
-private final DispatcherFactory factory;
-private final DispatcherFile file;
-private final Map<ConsumerId, Dispatcher> dispatchers = new LinkedHashMap<>();
-private final Map<TopicQueue, List<Dispatcher>> subscriptions = new ConcurrentHashMap<>();
-private final ReentrantLock mutationLock = new ReentrantLock();
-```
+`DispatcherFile` 하나를 주입받고, `Map<ConsumerId, Dispatcher> dispatchers`·`Map<TopicQueue, List<Dispatcher>> subscriptions`·`ReentrantLock mutationLock`을 필드로 든다.
 
 - 생성자에서 `file.read()`로 Dispatcher를 만들어 채운다. 중복 `consumerId`, 미지원 스킴, 깨진 JSON은 여기서 터져 컨텍스트 기동을 막는다(현행 fail-fast 유지).
 - `dispatchers`는 `LinkedHashMap`. 락으로 보호되고, 파일에 쓸 때 순서가 안정적이다.
@@ -162,9 +124,7 @@ private List<Dispatcher> match(TopicQueue topicQueue) {
 private void rematchAll() {
     subscriptions.replaceAll((topicQueue, previous) -> {
         List<Dispatcher> matched = match(topicQueue);
-        Set<ConsumerId> retained = matched.stream()
-                .map(Dispatcher::consumerId)
-                .collect(Collectors.toSet());
+        List<ConsumerId> retained = matched.stream().map(Dispatcher::consumerId).toList();
         previous.stream()
                 .map(Dispatcher::consumerId)
                 .filter(consumerId -> !retained.contains(consumerId))
@@ -182,75 +142,23 @@ private void rematchAll() {
 
 **`TopicQueue`**
 
-새 구독의 시작 오프셋을 tail로 잡는다.
+`subscribe(name)`은 체크포인트가 없을 때만 `segmentFileChain.tailOffset()`을 써서 새로 만든다. 기존 체크포인트는 손대지 않으므로 재기동 동작은 그대로다.
 
-```java
-public Offset subscribe(String name) {
-    CheckpointFile checkpointFile = checkpointDirectory.get(name);
-    if (checkpointFile == null) {
-        checkpointFile = checkpointDirectory.register(name);
-        checkpointFile.write(segmentFileChain.tailOffset());
-    }
-    return new Offset(checkpointFile.read());
-}
-```
+`register`가 `computeIfAbsent`라 새로 만든 건지 알 수 없어서, `get`이 `null`인지로 신규를 판별한다. 경쟁은 없다 — `subscribe`에 닿는 경로는 `register`·`add`·`modify` 셋뿐이고 전부 뮤테이션 락 안이다. `CheckpointDirectory.open`이 디스크의 체크포인트 파일을 전부 맵에 올려두므로, 재기동 후 첫 `subscribe`에서도 `get`이 `null`이 아니고 tail로 덮어쓰지 않는다.
 
-`register`가 `computeIfAbsent`라 새로 만든 건지 알 수 없어서, `get`이 `null`인지로 신규를 판별한다. 경쟁은 없다 — `subscribe`에 닿는 경로는 `register`·`add`·`modify` 셋뿐이고 전부 뮤테이션 락 안이다.
-
-구독을 끊는 쪽도 추가한다.
-
-```java
-public void unsubscribe(String name) {
-    try {
-        checkpointDirectory.deregister(name);
-    } catch (StorageException exception) {
-        log.error("Failed to remove checkpoint '{}' on topic {}", name, topic, exception);
-    }
-}
-```
-
-예외를 삼키고 로그만 남긴다. 이 호출은 `rematchAll`의 `replaceAll` 안에서 여러 토픽을 돌며 일어나는데, 한 토픽의 파일 삭제 실패가 예외로 올라가면 `subscriptions`가 반쯤 갱신된 채 남는다. 지우다 실패한 체크포인트는 아무도 읽지 않는 파일로 남을 뿐이다.
+구독을 끊는 `unsubscribe(name)`도 추가한다. `checkpointDirectory.deregister(name)`를 부르고 `StorageException`은 삼켜 로그만 남긴다. 이 호출은 `rematchAll`의 `replaceAll` 안에서 여러 토픽을 돌며 일어나는데, 한 토픽의 파일 삭제 실패가 예외로 올라가면 `subscriptions`가 반쯤 갱신된 채 남는다. 지우다 실패한 체크포인트는 아무도 읽지 않는 파일로 남을 뿐이다.
 
 **`SegmentFileChain`**
 
-```java
-public long tailOffset() {
-    SegmentFile tailSegmentFile = segmentsByStartOffset.lastEntry().getValue();
-    return tailSegmentFile.startOffset() + tailSegmentFile.count();
-}
-```
-
-`append`가 로테이션할 때 쓰던 `nextOffset` 계산과 같은 식이므로 그쪽도 이 메서드를 쓴다.
+`tailOffset()`을 추가한다. tail 세그먼트의 `startOffset() + count()`이고, `append`가 로테이션할 때 쓰던 `nextOffset` 계산과 같은 식이므로 그쪽도 이 메서드를 쓴다.
 
 **`CheckpointDirectory`**
 
-`deregister(name)`를 추가한다. 맵에서 빼고, 빠진 게 있으면 `CheckpointFile.delete()`를 부른다.
-
-```java
-public void deregister(String name) {
-    CheckpointFile checkpointFile = checkpoints.remove(name);
-    if (checkpointFile != null) {
-        checkpointFile.delete();
-    }
-}
-```
-
-맵에서 먼저 빼기 때문에 `close()`가 나중에 돌면서 이미 닫힌 파일을 다시 닫는 일은 없다.
+`deregister(name)`를 추가한다. 맵에서 빼고, 빠진 게 있으면 `CheckpointFile.delete()`를 부른다. 맵에서 먼저 빼기 때문에 `close()`가 나중에 돌면서 이미 닫힌 파일을 다시 닫는 일은 없다.
 
 **`CheckpointFile`**
 
-`delete()`를 추가한다. 경로를 이미 필드로 들고 있으니 자기 파일을 스스로 지운다.
-
-```java
-public void delete() {
-    close();
-    try {
-        Files.deleteIfExists(file);
-    } catch (IOException exception) {
-        throw new StorageException("Failed to delete offset checkpoint: " + file, exception);
-    }
-}
-```
+`delete()`를 추가한다. 경로를 이미 필드로 들고 있으니 핸들을 닫고 자기 파일을 스스로 지운다.
 
 `open`의 `size == 0 → write(0L)`은 유지한다. 그건 파일을 유효한 상태로 만드는 일이고, tail은 `TopicQueue.subscribe`가 그 위에 덮어쓴다.
 
@@ -258,26 +166,16 @@ public void delete() {
 
 **`Host`** (core)
 
-```java
-final WebProtocol protocol;
-final String address;
-final int port;
-```
-
-`InetAddress.getByName()` 즉시 해석을 없애고 원본 주소 문자열을 보존한다. `toUri()`가 그 문자열을 그대로 쓰므로 이름 해석은 `Sender`의 `RestClient`가 요청 시점에 한다.
+`address` 필드 타입을 `InetAddress`에서 `String`으로 바꿔 `InetAddress.getByName()` 즉시 해석을 없애고 원본 주소 문자열을 보존한다. `toUri()`가 그 문자열을 그대로 쓰므로 이름 해석은 `Sender`의 `RestClient`가 요청 시점에 한다.
 
 이유는 두 가지다.
 
 1. 아직 뜨지 않아 DNS에 없는 소비자를 미리 등록할 수 없으면, "운영 중에 소비자를 새로 붙인다"는 이 기능의 핵심 용례가 막힌다.
 2. 등록 후 소비자 IP가 바뀌어도 브로커가 재기동 전까지 옛 IP로 계속 보내던 문제도 같이 사라진다.
 
-`equals`/`hashCode`는 지금 `address`만 비교해서 포트가 달라도 같다고 나온다. 비교 대상 필드를 손대는 김에 `protocol`·`address`·`port` 전부 포함하도록 고친다.
+`equals`/`hashCode`는 고치지 않고 지운다. 지금 구현은 `address`만 비교해서 포트가 달라도 같다고 나오는데, 이 저장소에서 `Host`를 비교하는 코드가 없다 — `Sender.from`·`Gateway`는 `toUri()`만 쓰고, `Dispatcher`는 필드로만 들고, 맵·셋의 키는 `TopicQueue`와 `ConsumerId`다. 새로 들어오는 컨테이너·`rematchAll`도 `ConsumerId` 기준으로 비교한다. 틀린 비교를 남기는 것보다 없는 편이 안전하고, 필요해지는 날 전 필드로 넣으면 된다.
 
 주소 형식 검증은 `DispatcherFactory`의 URL 파싱이 맡는다. 다만 `Host`는 core의 공개 타입이라 라이브러리 사용자가 직접 생성하므로, 생성자에 빈 주소와 포트 범위(1~65535) 확인은 인라인으로 남긴다.
-
-**`WebProtocol`** (core)
-
-각 상수에 기본 포트를 붙이고 `getDefaultPort()`를 노출한다. 기본 포트를 아는 주체는 프로토콜이다.
 
 **`BrokerConfiguration`**
 
@@ -308,7 +206,7 @@ DELETE /mmmq/dispatchers/{consumerId}  204 / 404
 
 | 상황 | 코드 |
 |---|---|
-| 잘못된 URL, 알 수 없는 스킴, `consumerId` 정규식 위반, JSON 바인딩 실패 | 400 |
+| 잘못된 URL, 알 수 없는 스킴, 포트 누락, `consumerId` 정규식 위반, JSON 바인딩 실패 | 400 |
 | 중복 `consumerId` | 409 |
 | 없는 `consumerId` | 404 |
 | 파일 쓰기 실패 | 500 |
@@ -317,46 +215,25 @@ DELETE /mmmq/dispatchers/{consumerId}  204 / 404
 
 전역 `@RestControllerAdvice`는 쓰지 않는다. broker는 라이브러리라 호스트 애플리케이션의 다른 컨트롤러 예외까지 가로챈다. `DispatcherController` 안의 `@ExceptionHandler`로 가둔다.
 
+예외 클래스에 `@ResponseStatus`를 붙이는 방식도 쓰지 않는다. `ResponseStatusExceptionResolver`는 `reason`이 비어 있어도 `response.sendError(statusCode)`를 부르기 때문에(spring-webmvc 6.1.1 확인), 컨테이너의 에러 페이지 디스패치를 타고 응답 본문이 호스트 애플리케이션의 `/error` 처리로 넘어간다. 상태 코드는 맞게 나가지만 이 API의 실패 응답 모양을 남의 설정이 정하게 되고, `IllegalArgumentException`(JDK 클래스라 애노테이션을 못 붙인다)만 브로커가 만든 본문을 돌려주는 비대칭도 생긴다.
+
 ## 데이터 흐름
 
 세 뮤테이션 모두 **검증 → 파일 → 메모리** 순서다. 검증에서 터지면 파일도 메모리도 안 건드리고, 파일이 넘어간 뒤 죽어도 재기동하면 파일 상태로 수렴한다.
 
-**추가 (POST)**
+검증 안에서의 순서는 추가와 수정·삭제가 반대다. 추가는 `DispatcherFactory.create`가 중복 확인보다 앞서고(형식과 중복이 함께 어긋난 요청은 400), 수정·삭제는 존재 확인이 형식 검증보다 앞선다(없는 `consumerId`에 잘못된 host를 보내면 404).
 
-1. 락 획득
-2. `factory.create(definition)` — 여기서 검증. 실패 시 400
-3. 이미 있는 `consumerId`면 `DuplicateConsumerIdException`. 409
-4. 현재 정의 목록에 새 정의를 더해 `file.write`
-5. `dispatchers.put`
-6. `rematchAll()` — 기존 큐를 훑어 매칭되면 구독하고 구독 리스트를 교체
-7. 락 해제, 201
+**추가 (POST)**
 
 새 구독은 tail부터라 밀린 메시지가 없다. 그래서 등록 직후 `dispatch`를 킥할 필요가 없고, 다음 메시지가 오면 `FrontDispatcher`가 평소대로 깨운다.
 
 **수정 (PUT)**
-
-1. 락 획득
-2. 없으면 `DispatcherNotFoundException`. 404
-3. `factory.create(...)`로 새 Dispatcher 생성 — 검증. 실패 시 400
-4. 해당 항목을 바꾼 정의 목록으로 `file.write`
-5. 옛 Dispatcher `destroy()`
-6. `dispatchers.put`으로 교체
-7. `rematchAll()`
-8. 락 해제, 200
 
 호스트만 바꾸는 수정은 오프셋이 저절로 이어진다. 체크포인트 파일이 `<consumerId>.checkpoint`라 Dispatcher 객체를 갈아끼워도 새 객체가 같은 파일을 읽는다.
 
 패턴을 넓히면 새로 매칭된 토픽을 tail부터 구독한다. 좁히면 빠진 토픽으로 더 이상 전달하지 않고 그 토픽의 체크포인트도 지운다. 나중에 패턴을 다시 넓히면 예전 진도가 아니라 tail부터 시작한다 — 구독하지 않은 구간의 메시지는 받지 않는다는 뜻이고, "새 구독은 tail부터"와 같은 원칙이다.
 
 **삭제 (DELETE)**
-
-1. 락 획득
-2. 없으면 404
-3. 해당 항목을 뺀 정의 목록으로 `file.write`
-4. 옛 Dispatcher `destroy()`
-5. `dispatchers.remove`
-6. `rematchAll()` — 구독이 끊긴 토픽마다 체크포인트를 지운다
-7. 락 해제, 204
 
 수정과 삭제 모두 옛 Dispatcher의 `destroy()`를 `rematchAll()` **앞**에 둔다. 인터럽트를 먼저 던져야 낙오한 워커가 체크포인트 삭제 뒤에 `commit`을 부를 확률이 줄어든다. 그 사이 이미 죽은 워커에 `dispatch`가 들어갈 수는 있지만 `WorkerPool`의 `DiscardPolicy`가 조용히 버린다.
 
@@ -374,7 +251,7 @@ DELETE /mmmq/dispatchers/{consumerId}  204 / 404
 
 `fsync`는 하지 않는다. 프로세스가 죽는 경우는 커버되고, OS 크래시나 전원 손실까지는 다루지 않는다. 필요해지면 디렉터리 fsync를 추가하면 된다.
 
-파일 쓰기가 실패하면 예외가 올라가고 메모리는 손대지 않은 상태로 남는다(500). 반대로 파일이 넘어간 뒤 6~7단계에서 터지면 메모리가 부분 갱신된 채 500이 나가는데, 재기동하면 파일 기준으로 수렴한다.
+파일 쓰기가 실패하면 예외가 올라가고 메모리는 손대지 않은 상태로 남는다(500). 반대로 파일이 넘어간 뒤 메모리를 갱신하다 터지면 메모리가 부분 갱신된 채 500이 나가는데, 재기동하면 파일 기준으로 수렴한다.
 
 ## 동시성
 
@@ -388,40 +265,25 @@ DELETE /mmmq/dispatchers/{consumerId}  204 / 404
 
 ## 테스트
 
+케이스 목록은 계획서가 실제 테스트 코드로 갖는다. 여기에는 무엇을 테스트하지 않기로 했는지와 그 이유, 그리고 기존 테스트가 받는 영향만 적는다.
+
 broker는 `@SpringBootConfiguration`이 없어서 `@WebMvcTest`를 쓸 수 없다. 컨트롤러는 standalone MockMvc로 검증한다.
 
-**`DispatcherFileTest`**
-- 파일이 없으면 `[]`로 만들고 빈 목록을 돌려준다
-- 쓰고 다시 읽으면 같은 목록이 나온다
-- 쓰기 후 `.tmp`가 남지 않는다
+**두지 않는 케이스와 이유**
 
-**`DispatcherFactoryTest`**
-- URL을 `Host`로 파싱한다
-- 포트를 생략하면 스킴 기본값을 쓴다
-- scheme이 없는 문자열, 미지원 스킴, 정규식에 안 맞는 `consumerId`에서 예외
-
-**`DispatcherContainerTest`**
-- 추가하면 매칭되는 기존 큐에 붙고 tail부터 시작한다
-- 추가·수정·삭제가 파일에 반영된다
-- 호스트만 바꾸면 체크포인트가 승계된다. 인스턴스가 교체돼도 **체크포인트 파일이 지워지지 않는다**(`ConsumerId` 기준 비교가 깨지면 여기서 잡힌다)
-- 패턴을 넓히면 새 토픽을 tail부터 구독한다
-- 패턴을 좁히면 전달이 끊기고 그 토픽의 체크포인트도 지워진다
-- 삭제하면 `getSubscribers`에서 빠지고 워커가 종료되며, 구독하던 모든 토픽의 체크포인트가 지워진다
-- 중복 `consumerId`는 `DuplicateConsumerIdException`, 없는 id는 `DispatcherNotFoundException`
-- 검증에 실패하면 파일이 바뀌지 않는다
-- 부트스트랩: 파일 없음 / 중복 id / 미지원 스킴 / 깨진 JSON → 생성자에서 실패 (기존 `DispatcherBeanRegistrarTest`에서 이관)
-- `register`와 `add`를 여러 스레드에서 동시에 호출해도 최종 상태가 일관된다 (`CountDownLatch`)
-
-**`DispatcherControllerTest`**
-- 네 엔드포인트의 상태 코드 매핑
-
-**`CheckpointFileTest`·`CheckpointDirectoryTest` 보강**
-- `delete()`가 핸들을 닫고 파일을 지운다
-- `deregister(name)` 후 `get(name)`이 `null`이고, 뒤이은 `close()`가 터지지 않는다
-- 없는 이름으로 `deregister`해도 아무 일도 없다
+- 쓰기 후 `.tmp`가 남지 않는다: `Files.move`의 `ATOMIC_MOVE` 계약이고, 이동이 실패하면 쓰기 자체가 예외로 끝난다.
+- 컨테이너 부트스트랩의 파일 없음·깨진 JSON·미지원 스킴·잘못된 `consumerId`: 앞의 둘은 `DispatcherFileTest`가, 뒤의 둘은 `DispatcherFactoryTest`가 이미 같은 코드를 본다. 생성자는 그 둘을 잇는 7줄이라 컨테이너 수준에서는 와이어링(순서)과 유일한 분기(중복 `consumerId`)만 확인한다.
+- 형식 검증 실패 시 파일 무변경: `add`가 파일에 쓰는 값이 생성된 `Dispatcher`에서 복원한 정의라, `file.write`가 구조적으로 `DispatcherFactory.create`보다 앞설 수 없다. "거절 시 파일이 바뀌지 않는다"는 성질은 중복 `consumerId` 케이스가 붙든다.
+- 동시성: 뮤테이션 락은 한 줄이고, 스레드를 여러 쌍 띄워 확인할 수 있는 것은 특정 인터리빙 한 번뿐이다. 뮤테이션이 만드는 최종 상태는 컨테이너 케이스들이 이미 본다.
+- 수정·삭제 시 옛 워커의 실제 종료: 인스턴스를 팩토리가 만들어 스파이를 끼울 수 없고, `ThreadPoolExecutor`의 종료 여부를 밖에서 관찰할 통로도 없다.
+- DELETE의 404: `@ExceptionHandler`는 컨트롤러 단위라 어느 엔드포인트로 들어와도 같은 코드를 지난다. PUT에서 한 번만 확인한다.
+- `deregister` 뒤의 `close()`가 터지지 않는다: `FileChannel.close`가 멱등이라 맵에서 빼든 안 빼든 통과해서, 어떤 구현에서도 지나가는 테스트가 된다. 맵에서 먼저 빼는 이유는 코드 옆 문장으로 남긴다.
+- `CheckpointFile.delete()` 단독 케이스: `deregister`가 유일한 호출자라 `CheckpointDirectory` 케이스가 같은 경로를 지나고, 핸들을 먼저 닫는지는 POSIX에서 관찰할 수 없다(열린 파일도 unlink된다).
+- `unsubscribe` 뒤 재구독이 tail을 받는다: "체크포인트가 없으면 tail"과 "`deregister`하면 맵에서도 빠진다"의 합성이라 새로 지나는 분기가 없다.
 
 **기존 테스트 영향**
-- `TopicQueueTest`: 기존 6개 중 5개가 "offer 먼저, subscribe 나중" 순서라 tail 전환으로 깨진다. 순서를 뒤집는 것이 새 의미론에 맞는 표현이므로 그렇게 고친다
+- `TopicQueueTest`: 4개(`peekReturnsFirstMessage`·`commitAdvancesOffset`·`resumesFromCommittedOffsetAfterRestart`·`redeliversAfterCrashBeforeCommit`)가 "offer 먼저, subscribe 나중" 순서라 tail 전환으로 깨진다. `peekWithoutCommitReturnsSameMessage`는 `offer`가 1건이라 tail=1에서 두 `peek`이 모두 `null`을 돌려주고 통과하지만 아무것도 검증하지 못하게 되므로 같이 순서를 뒤집는다. 다섯 곳 모두 `subscribe`를 `offer` 앞으로 옮기는 것이 새 의미론에 맞는 표현이다
+- `TopicQueueBootstrapperTest`: 2개가 같은 이유로 깨진다. `resumesFromLastCommittedOffset`은 `subscribe`를 `offer` 앞으로 옮기고, `restoresAllTopicsOnBoot`는 세그먼트만 심고 있어 시드 단계에서 체크포인트도 함께 심는다(디스크에 남은 구독자가 재기동 후 이어 읽는 상황이 이 테스트의 원래 의도다)
 - `HostTest`: "잘못된 호스트명이면 예외" 케이스는 성립하지 않으므로 제거. 빈 주소·포트 범위 케이스로 대체
 - `SenderTest`·`GatewayTest`: 양쪽 다 `host.toUri()`를 쓰고 있어 그대로 통과
 - `DispatcherTest`·`FrontDispatcherTest`: `Dispatcher` 생성자가 그대로라 영향 없음
@@ -429,6 +291,8 @@ broker는 `@SpringBootConfiguration`이 없어서 `@WebMvcTest`를 쓸 수 없�
 ## 문서
 
 `CLAUDE.md`의 "Broker Dispatcher Registration" 절을 새 파일 포맷과 런타임 API 기준으로 갱신한다.
+
+문서 사이트의 `docs/index.html`·`docs/quickstart.html`도 `dispatchers.json` 예시를 URL 문자열 포맷으로 바꾼다. 옛 중첩 host는 새 `DispatcherDefinition`에 바인딩되지 않아 그대로 따라 쓰면 브로커가 뜨지 못한다. `docs/docs/0.0.2/broker.html`은 릴리스 스냅샷이라 손대지 않는다.
 
 ## 다루지 않는 것
 

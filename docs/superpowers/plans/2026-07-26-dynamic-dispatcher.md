@@ -10,6 +10,10 @@
 
 **Spec:** `docs/superpowers/specs/2026-07-26-dynamic-dispatcher-design.md`
 
+**커밋 정책:** 이 계획을 실행할 때 **코드 변경은 커밋하지 않는다.** Task 1~8은 파일 수정과 테스트 통과 확인까지만 하고 멈춘다. 스테이징과 커밋은 사용자가 직접 한다. 예외는 문서만 바꾸는 Task 9뿐이고, 그 태스크에만 커밋 스텝이 있다. 실행 스킬(subagent-driven-development, executing-plans)이 태스크마다 커밋하라고 지시해도 이 정책이 우선한다.
+
+`git rm`은 파일 삭제 수단이므로 그대로 쓴다 — 삭제가 스테이징되는 건 커밋이 아니다.
+
 ---
 
 ## 파일 구조
@@ -18,7 +22,7 @@
 
 | 경로 | 책임 |
 |---|---|
-| `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherFactory.java` | `DispatcherDefinition` → `Dispatcher` 변환과 입력 검증의 단일 지점 |
+| `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherFactory.java` | `DispatcherDefinition` → `Dispatcher` 변환과 입력 검증의 단일 지점 (상태가 없어 정적 `create`) |
 | `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherFile.java` | `dispatchers.json` 읽기 + 원자적 쓰기 |
 | `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherRoute.java` | PUT 본문 (host·pattern) |
 | `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherController.java` | 런타임 관리 REST 엔드포인트 4개 |
@@ -29,8 +33,7 @@
 
 | 경로 | 변경 |
 |---|---|
-| `core/src/main/java/org/mmmq/core/WebProtocol.java` | 프로토콜별 기본 포트 |
-| `core/src/main/java/org/mmmq/core/Host.java` | `InetAddress` → 원본 주소 문자열, `equals`/`hashCode` 전 필드 반영 |
+| `core/src/main/java/org/mmmq/core/Host.java` | `InetAddress` → 원본 주소 문자열, 아무도 쓰지 않는 `equals`/`hashCode` 제거 |
 | `broker/.../topicqueue/storage/SegmentFileChain.java` | `tailOffset()` |
 | `broker/.../topicqueue/storage/CheckpointFile.java` | `delete()`, MOKO 주석 제거 |
 | `broker/.../topicqueue/storage/CheckpointDirectory.java` | `deregister(name)` |
@@ -41,6 +44,7 @@
 | `broker/src/main/java/org/mmmq/broker/BrokerConfiguration.java` | `@Import(DispatcherBeanRegistrar.class)` 제거 |
 | `broker/.../persistence/PersistenceProperties.java` | `bind(Environment)` 제거 |
 | `CLAUDE.md` | 새 파일 포맷과 런타임 API |
+| `docs/index.html`, `docs/quickstart.html` | `dispatchers.json` 예시의 중첩 host를 URL 문자열로 |
 
 ### 삭제
 
@@ -50,121 +54,11 @@
 
 ---
 
-## Task 1: WebProtocol에 기본 포트 추가
-
-URL에서 포트가 생략됐을 때 쓸 값이 필요하다. 기본 포트를 아는 주체는 프로토콜이다.
-
-**Files:**
-- Modify: `core/src/main/java/org/mmmq/core/WebProtocol.java`
-- Create: `core/src/test/java/org/mmmq/core/WebProtocolTest.java`
-
-- [ ] **Step 1: 실패하는 테스트 작성**
-
-`core/src/test/java/org/mmmq/core/WebProtocolTest.java`:
-
-```java
-package org.mmmq.core;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-class WebProtocolTest {
-
-    @Test
-    @DisplayName("스킴 문자열은 대소문자를 가리지 않고 변환된다")
-    void convertsSchemeCaseInsensitively() {
-        assertThat(WebProtocol.from("HTTP")).isEqualTo(WebProtocol.HTTP);
-        assertThat(WebProtocol.from("https")).isEqualTo(WebProtocol.HTTPS);
-    }
-
-    @Test
-    @DisplayName("알 수 없는 스킴은 예외를 던진다")
-    void rejectsUnknownScheme() {
-        assertThatThrownBy(() -> WebProtocol.from("ftp"))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
-    @DisplayName("프로토콜마다 기본 포트를 안다")
-    void knowsDefaultPort() {
-        assertThat(WebProtocol.HTTP.getDefaultPort()).isEqualTo(80);
-        assertThat(WebProtocol.HTTPS.getDefaultPort()).isEqualTo(443);
-    }
-}
-```
-
-- [ ] **Step 2: 테스트가 실패하는지 확인**
-
-Run: `./gradlew :core:test --tests "org.mmmq.core.WebProtocolTest"`
-Expected: 컴파일 실패 — `cannot find symbol: method getDefaultPort()`
-
-- [ ] **Step 3: 구현**
-
-`core/src/main/java/org/mmmq/core/WebProtocol.java` 전체를 아래로 교체:
-
-```java
-package org.mmmq.core;
-
-public enum WebProtocol {
-
-    HTTP("http", 80),
-    HTTPS("https", 443);
-
-    private final String scheme;
-    private final int defaultPort;
-
-    WebProtocol(String scheme, int defaultPort) {
-        this.scheme = scheme;
-        this.defaultPort = defaultPort;
-    }
-
-    public static WebProtocol from(String scheme) {
-        for (WebProtocol protocol : values()) {
-            if (protocol.scheme.equalsIgnoreCase(scheme)) {
-                return protocol;
-            }
-        }
-        throw new IllegalArgumentException("Unknown scheme: " + scheme);
-    }
-
-    public String getScheme() {
-        return scheme;
-    }
-
-    public int getDefaultPort() {
-        return defaultPort;
-    }
-}
-```
-
-- [ ] **Step 4: 테스트 통과 확인**
-
-Run: `./gradlew :core:test --tests "org.mmmq.core.WebProtocolTest"`
-Expected: PASS (3 tests)
-
-- [ ] **Step 5: 커밋**
-
-```bash
-git add core/src/main/java/org/mmmq/core/WebProtocol.java core/src/test/java/org/mmmq/core/WebProtocolTest.java
-git commit -F - <<'MSGEOF'
-feat: WebProtocol에 프로토콜별 기본 포트 추가
-
-- URL에서 포트가 생략됐을 때 쓸 기본값을 프로토콜이 직접 알도록 추가.
-
-Co-authored-by: songsunkook <songsunkook@gmail.com>
-MSGEOF
-```
-
----
-
-## Task 2: Host가 원본 주소 문자열을 보존
+## Task 1: Host가 원본 주소 문자열을 보존
 
 `Host`가 생성자에서 `InetAddress.getByName()`으로 DNS를 즉시 해석하는 탓에, DNS에 아직 없는 소비자를 런타임에 등록할 수 없고 소비자 IP가 바뀌어도 재기동 전까지 옛 IP로 보낸다. 주소 문자열을 그대로 들고, 해석은 `Sender`의 `RestClient`가 요청할 때 하게 한다.
 
-`equals`/`hashCode`가 지금 `address`만 비교해서 포트가 달라도 같다고 나온다. 비교 대상 필드를 손대는 김에 전 필드를 반영한다.
+`equals`/`hashCode`도 같이 지운다. 지금 구현은 `address`만 비교해서 포트가 달라도 같다고 나오는데, 이 저장소에서 `Host`를 비교하는 코드가 없다 — `Sender.from`·`Gateway`는 `toUri()`만 쓰고, `Dispatcher`는 필드로만 들고, 맵·셋의 키는 `TopicQueue`와 `ConsumerId`다. 이번에 들어오는 컨테이너도 `ConsumerId` 기준으로 비교한다. 틀린 비교를 고쳐서 남기는 것보다 없애는 편이 짧고, 필요해지는 날 전 필드로 넣는다.
 
 **Files:**
 - Modify: `core/src/main/java/org/mmmq/core/Host.java`
@@ -172,26 +66,18 @@ MSGEOF
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
-`core/src/test/java/org/mmmq/core/HostTest.java` 전체를 아래로 교체. 기존 `createWithUnknownHost`("invalid..host..name"이면 예외)는 DNS 해석을 없애면 성립하지 않으므로 사라지고, 그 자리를 형식 검증 케이스가 대신한다.
+`core/src/test/java/org/mmmq/core/HostTest.java` 전체를 아래로 교체. 기존 `createWithUnknownHost`("invalid..host..name"이면 예외)는 DNS 해석을 없애면 성립하지 않으므로 사라지고, 그 자리를 형식 검증 케이스가 대신한다. 기존 `createWithValidHost`도 사라진다 — 유효한 값으로 생성이 터지지 않는다는 것은 `keepsOriginalAddressInUri`가 이미 지나는 경로다.
 
 ```java
 package org.mmmq.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class HostTest {
-
-    @Test
-    @DisplayName("유효한 호스트 이름으로 Host를 생성할 수 있다.")
-    void createWithValidHost() {
-        assertThatCode(() -> new Host(WebProtocol.HTTP, "localhost", 8080))
-                .doesNotThrowAnyException();
-    }
 
     @Test
     @DisplayName("주소가 비어 있으면 IllegalArgumentException을 던진다.")
@@ -216,22 +102,13 @@ class HostTest {
 
         assertThat(host.toUri()).isEqualTo("https://consumer-host:8443");
     }
-
-    @Test
-    @DisplayName("포트가 다르면 다른 Host로 취급한다.")
-    void distinguishesByPort() {
-        Host first = new Host(WebProtocol.HTTP, "localhost", 8080);
-        Host second = new Host(WebProtocol.HTTP, "localhost", 9090);
-
-        assertThat(first).isNotEqualTo(second);
-    }
 }
 ```
 
 - [ ] **Step 2: 테스트가 실패하는지 확인**
 
 Run: `./gradlew :core:test --tests "org.mmmq.core.HostTest"`
-Expected: FAIL — `keepsOriginalAddressInUri`가 `"https://consumer-host:8443"` 대신 해석된 IP를 받아 실패하거나 `UnknownHostException` 기반 `IllegalArgumentException`을 던진다. `rejectsBlankAddress`·`distinguishesByPort`도 실패.
+Expected: FAIL — `keepsOriginalAddressInUri`는 `consumer-host`가 해석되지 않아 `UnknownHostException` 기반 `IllegalArgumentException`을 받고, `rejectsPortOutOfRange`는 포트 검증이 없어 아무 예외도 받지 못한다. `rejectsBlankAddress`는 `InetAddress.getByName("  ")`이 던지는 덕에 지금도 우연히 통과할 수 있다.
 
 - [ ] **Step 3: 구현**
 
@@ -240,8 +117,6 @@ Expected: FAIL — `keepsOriginalAddressInUri`가 `"https://consumer-host:8443"`
 ```java
 package org.mmmq.core;
 
-import java.util.Objects;
-
 public class Host {
 
     final WebProtocol protocol;
@@ -249,9 +124,6 @@ public class Host {
     final int port;
 
     public Host(WebProtocol webProtocol, String address, int port) {
-        if (webProtocol == null) {
-            throw new IllegalArgumentException("protocol must not be null");
-        }
         if (address == null || address.isBlank()) {
             throw new IllegalArgumentException("address must not be blank");
         }
@@ -266,54 +138,24 @@ public class Host {
     public String toUri() {
         return String.format("%s://%s:%d", protocol.getScheme(), address, port);
     }
-
-    @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof Host host)) {
-            return false;
-        }
-        return port == host.port
-                && protocol == host.protocol
-                && Objects.equals(address, host.address);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(protocol, address, port);
-    }
 }
 ```
 
 - [ ] **Step 4: 테스트 통과 확인**
 
 Run: `./gradlew :core:test --tests "org.mmmq.core.HostTest"`
-Expected: PASS (5 tests)
+Expected: PASS (3 tests)
 
 - [ ] **Step 5: 전체 테스트로 회귀 확인**
 
 Run: `./gradlew test`
 Expected: BUILD SUCCESSFUL
 
-`SenderTest`와 `GatewayTest`는 `RestClient`의 baseUrl과 `requestTo(...)` 양쪽에 같은 `host.toUri()`를 쓰기 때문에 `"http://127.0.0.1:8080"`이 `"http://localhost:8080"`으로 바뀌어도 함께 움직여 통과한다. `HostDefinitionTest`는 주소를 이미 `"127.0.0.1"`로 주고 있어 기대 문자열이 그대로 성립한다.
-
-- [ ] **Step 6: 커밋**
-
-```bash
-git add core/src/main/java/org/mmmq/core/Host.java core/src/test/java/org/mmmq/core/HostTest.java
-git commit -F - <<'MSGEOF'
-refactor: Host가 원본 주소 문자열을 보존하도록 변경
-
-- 생성자의 DNS 즉시 해석 때문에 아직 뜨지 않은 소비자를 등록할 수 없었던 문제를 해결.
-- 이름 해석을 요청 시점으로 미뤄 소비자 IP 변경도 재기동 없이 따라가게 함.
-- 포트가 달라도 같다고 판정하던 equals·hashCode를 전 필드 기준으로 수정.
-
-Co-authored-by: songsunkook <songsunkook@gmail.com>
-MSGEOF
-```
+`SenderTest`와 `GatewayTest`는 `RestClient`의 baseUrl과 `requestTo(...)` 양쪽에 같은 `host.toUri()`를 쓰기 때문에 `"http://127.0.0.1:8080"`이 `"http://localhost:8080"`으로 바뀌어도 함께 움직여 통과한다. `HostDefinitionTest`는 주소를 이미 `"127.0.0.1"`로 주고 있어 기대 문자열이 그대로 성립한다. `equals`/`hashCode` 제거는 어느 테스트도 건드리지 않는다 — `ProducerTest`의 `mock(Host.class)`는 Mockito가 `equals`를 목으로 넘기지 않아 동일성 비교 그대로다.
 
 ---
 
-## Task 3: SegmentFileChain.tailOffset()
+## Task 2: SegmentFileChain.tailOffset()
 
 새 구독을 로그 끝에서 시작시키려면 다음에 쓰일 절대 오프셋을 알아야 한다. `append`가 로테이션할 때 쓰던 계산식과 같은 값이라 그쪽도 이 메서드를 쓴다.
 
@@ -323,28 +165,11 @@ MSGEOF
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
-`SegmentFileChainTest`의 마지막 `@Test` 뒤에 아래 3개를 추가한다. 필요한 import(`Message`, `Topic`, `Map`, `TempDir`, `assertThat`)와 `DEFAULT_MAX_BYTES` 상수는 이미 파일에 있다.
+`SegmentFileChainTest`의 마지막 `@Test` 뒤에 아래를 추가한다. 필요한 import(`Message`, `Topic`, `Map`, `TempDir`, `assertThat`)는 이미 파일에 있다.
+
+로테이션 케이스 하나만 둔다. `startOffset`과 `count` 두 항이 모두 걸리는 유일한 케이스이고, 빈 체인이 0이라는 것과 append 개수만큼 늘어난다는 것은 Task 4의 `TopicQueueTest`가 같은 숫자로 붙든다 — 빈 큐에 `subscribe`한 뒤 `peek`하는 테스트들은 tail이 0이 아니면 전부 깨지고, `newSubscriptionStartsAtTail`은 `offer` 2건 뒤의 `subscribe`가 2를 돌려주는지 본다.
 
 ```java
-    @Test
-    @DisplayName("빈 체인의 tailOffset은 0이다")
-    void tailOffsetOfEmptyChainIsZero(@TempDir Path tempDir) {
-        try (SegmentFileChain chain = SegmentFileChain.open(tempDir, DEFAULT_MAX_BYTES)) {
-            assertThat(chain.tailOffset()).isZero();
-        }
-    }
-
-    @Test
-    @DisplayName("append한 개수만큼 tailOffset이 증가한다")
-    void tailOffsetAdvancesWithAppends(@TempDir Path tempDir) {
-        try (SegmentFileChain chain = SegmentFileChain.open(tempDir, DEFAULT_MAX_BYTES)) {
-            chain.append(new Message(new Topic("topic"), Map.of("seq", 1)));
-            chain.append(new Message(new Topic("topic"), Map.of("seq", 2)));
-
-            assertThat(chain.tailOffset()).isEqualTo(2L);
-        }
-    }
-
     @Test
     @DisplayName("세그먼트가 로테이션돼도 tailOffset은 전체 개수를 반영한다")
     void tailOffsetSpansRotatedSegments(@TempDir Path tempDir) {
@@ -389,50 +214,20 @@ Expected: 컴파일 실패 — `cannot find symbol: method tailOffset()`
 Run: `./gradlew :broker:test --tests "org.mmmq.broker.topicqueue.storage.SegmentFileChainTest"`
 Expected: PASS
 
-- [ ] **Step 5: 커밋**
-
-```bash
-git add broker/src/main/java/org/mmmq/broker/topicqueue/storage/SegmentFileChain.java broker/src/test/java/org/mmmq/broker/topicqueue/storage/SegmentFileChainTest.java
-git commit -F - <<'MSGEOF'
-feat: SegmentFileChain에 tailOffset 추가
-
-- 새 구독을 로그 끝에서 시작시키기 위해 다음에 쓰일 절대 오프셋을 노출.
-- 로테이션 시 쓰던 동일한 계산식을 이 메서드로 통일.
-
-Co-authored-by: songsunkook <songsunkook@gmail.com>
-MSGEOF
-```
-
 ---
 
-## Task 4: 체크포인트 삭제 경로
+## Task 3: 체크포인트 삭제 경로
 
 Dispatcher가 사라졌는데 그 `consumerId`의 읽기 위치가 디스크에 남으면 아무도 소유하지 않는 상태가 된다. 파일을 지우는 경로를 만든다.
 
 **Files:**
 - Modify: `broker/src/main/java/org/mmmq/broker/topicqueue/storage/CheckpointFile.java`
 - Modify: `broker/src/main/java/org/mmmq/broker/topicqueue/storage/CheckpointDirectory.java`
-- Modify: `broker/src/test/java/org/mmmq/broker/topicqueue/storage/CheckpointFileTest.java`
 - Create: `broker/src/test/java/org/mmmq/broker/topicqueue/storage/CheckpointDirectoryTest.java`
 
-- [ ] **Step 1: 실패하는 테스트 작성 (CheckpointFile)**
+`CheckpointFile.delete()`에는 단독 케이스를 두지 않는다. `deregister`가 유일한 호출자라 `delete()`를 깨는 변경은 아래 `deregisterRemovesCheckpoint`에서 먼저 터지고, 핸들을 먼저 닫는지는 POSIX에서 어느 테스트도 관찰할 수 없다(열린 파일도 unlink된다).
 
-`CheckpointFileTest`의 마지막 `@Test` 뒤에 추가:
-
-```java
-    @Test
-    @DisplayName("delete는 핸들을 닫고 파일을 지운다")
-    void deleteRemovesFile(@TempDir Path tempDir) {
-        CheckpointFile store = CheckpointFile.open(tempDir, "dispatcher-a");
-        store.write(7L);
-
-        store.delete();
-
-        assertThat(tempDir.resolve("dispatcher-a.checkpoint")).doesNotExist();
-    }
-```
-
-- [ ] **Step 2: 실패하는 테스트 작성 (CheckpointDirectory)**
+- [ ] **Step 1: 실패하는 테스트 작성 (CheckpointDirectory)**
 
 `broker/src/test/java/org/mmmq/broker/topicqueue/storage/CheckpointDirectoryTest.java`:
 
@@ -452,17 +247,6 @@ class CheckpointDirectoryTest {
     private static final String SUBDIRECTORY_NAME = "checkpoints";
 
     @Test
-    @DisplayName("register한 체크포인트는 get으로 찾을 수 있다")
-    void registersCheckpoint(@TempDir Path tempDir) {
-        CheckpointDirectory directory = CheckpointDirectory.open(tempDir);
-
-        directory.register("dispatcher-a");
-
-        assertThat(directory.get("dispatcher-a")).isNotNull();
-        directory.close();
-    }
-
-    @Test
     @DisplayName("deregister하면 get이 null이고 파일도 사라진다")
     void deregisterRemovesCheckpoint(@TempDir Path tempDir) {
         CheckpointDirectory directory = CheckpointDirectory.open(tempDir);
@@ -476,16 +260,6 @@ class CheckpointDirectoryTest {
     }
 
     @Test
-    @DisplayName("deregister 후 close해도 이미 닫힌 파일을 다시 닫지 않는다")
-    void closeAfterDeregisterDoesNotFail(@TempDir Path tempDir) {
-        CheckpointDirectory directory = CheckpointDirectory.open(tempDir);
-        directory.register("dispatcher-a");
-        directory.deregister("dispatcher-a");
-
-        assertThatCode(directory::close).doesNotThrowAnyException();
-    }
-
-    @Test
     @DisplayName("없는 이름으로 deregister해도 아무 일도 없다")
     void deregisterUnknownNameIsNoop(@TempDir Path tempDir) {
         CheckpointDirectory directory = CheckpointDirectory.open(tempDir);
@@ -496,12 +270,12 @@ class CheckpointDirectoryTest {
 }
 ```
 
-- [ ] **Step 3: 테스트가 실패하는지 확인**
+- [ ] **Step 2: 테스트가 실패하는지 확인**
 
-Run: `./gradlew :broker:test --tests "org.mmmq.broker.topicqueue.storage.CheckpointFileTest" --tests "org.mmmq.broker.topicqueue.storage.CheckpointDirectoryTest"`
-Expected: 컴파일 실패 — `cannot find symbol: method delete()`, `cannot find symbol: method deregister(String)`
+Run: `./gradlew :broker:test --tests "org.mmmq.broker.topicqueue.storage.CheckpointDirectoryTest"`
+Expected: 컴파일 실패 — `cannot find symbol: method deregister(String)`
 
-- [ ] **Step 4: CheckpointFile 구현**
+- [ ] **Step 3: CheckpointFile 구현**
 
 `CheckpointFile.java`의 `write` 메서드 뒤, `close` 앞에 추가:
 
@@ -522,7 +296,7 @@ Expected: 컴파일 실패 — `cannot find symbol: method delete()`, `cannot fi
             // MOKO: 새 Checkpoint 생성 시 처음부터 시작할지, 최신부터 시작할지 옵션 고려.
 ```
 
-- [ ] **Step 5: CheckpointDirectory 구현**
+- [ ] **Step 4: CheckpointDirectory 구현**
 
 `CheckpointDirectory.java`의 `get` 메서드 뒤, `close` 앞에 추가:
 
@@ -535,154 +309,54 @@ Expected: 컴파일 실패 — `cannot find symbol: method delete()`, `cannot fi
     }
 ```
 
-맵에서 먼저 빼기 때문에 뒤이은 `close()`가 이미 닫힌 파일을 다시 닫지 않는다.
+맵에서 먼저 빼기 때문에 뒤이은 `close()`가 이미 닫힌 파일을 다시 닫지 않는다. 이 순서를 테스트로는 잡지 않는다 — `FileHandle.close`가 `FileChannel.close`고 그건 멱등이라, 맵에 남겨두는 구현도 이중 close에서 터지지 않는다. `deregisterRemovesCheckpoint`가 보는 `get(name) == null`이 맵 제거 자체는 붙든다.
 
-- [ ] **Step 6: 테스트 통과 확인**
+- [ ] **Step 5: 테스트 통과 확인**
 
-Run: `./gradlew :broker:test --tests "org.mmmq.broker.topicqueue.storage.CheckpointFileTest" --tests "org.mmmq.broker.topicqueue.storage.CheckpointDirectoryTest"`
-Expected: PASS (CheckpointFileTest 4개, CheckpointDirectoryTest 4개)
-
-- [ ] **Step 7: 커밋**
-
-```bash
-git add broker/src/main/java/org/mmmq/broker/topicqueue/storage/CheckpointFile.java broker/src/main/java/org/mmmq/broker/topicqueue/storage/CheckpointDirectory.java broker/src/test/java/org/mmmq/broker/topicqueue/storage/CheckpointFileTest.java broker/src/test/java/org/mmmq/broker/topicqueue/storage/CheckpointDirectoryTest.java
-git commit -F - <<'MSGEOF'
-feat: 체크포인트 삭제 경로 추가
-
-- Dispatcher가 사라진 뒤에도 읽기 위치 파일이 남아 아무도 소유하지 않는 상태를 없애기 위해 추가.
-- CheckpointFile은 자기 파일을 스스로 지우고, CheckpointDirectory는 맵에서 먼저 빼 이중 close를 막음.
-
-Co-authored-by: songsunkook <songsunkook@gmail.com>
-MSGEOF
-```
+Run: `./gradlew :broker:test --tests "org.mmmq.broker.topicqueue.storage.CheckpointDirectoryTest"`
+Expected: PASS (2 tests)
 
 ---
 
-## Task 5: TopicQueue의 구독 시작점과 구독 해제
+## Task 4: TopicQueue의 구독 시작점과 구독 해제
 
 신규 구독은 tail부터 시작한다. 이미 체크포인트가 있으면 손대지 않으므로 재기동은 영향이 없다. `register`가 `computeIfAbsent`라 새로 만든 건지 알 수 없어서 `get`이 `null`인지로 신규를 판별한다.
 
-**이 태스크는 기존 `TopicQueueTest` 5개를 깨뜨린다.** 모두 "offer 먼저, subscribe 나중" 순서라 tail이 0이 아니게 된다. 순서를 뒤집는 것이 새 의미론에 맞는 표현이므로 테스트를 그렇게 고친다.
+**이 태스크는 기존 테스트 6개를 깨뜨린다.** `TopicQueueTest`에서 4개(`peekReturnsFirstMessage`·`commitAdvancesOffset`·`resumesFromCommittedOffsetAfterRestart`·`redeliversAfterCrashBeforeCommit`)가 "offer 먼저, subscribe 나중" 순서라 tail이 0이 아니게 되어 깨진다. `peekWithoutCommitReturnsSameMessage`는 `offer`가 1건이라 tail=1에서 두 `peek`이 모두 `null`을 돌려주고 `null == null`로 조용히 통과하지만 아무것도 검증하지 못하게 되므로 같이 순서를 뒤집는다. 순서를 뒤집는 것이 새 의미론에 맞는 표현이다.
+
+`TopicQueueBootstrapperTest`도 2개가 같은 이유로 깨진다.
+
+- `restoresAllTopicsOnBoot`: `seedTopic`이 세그먼트에 메시지 1건만 심고 체크포인트는 안 심어서, 복원된 큐에 처음 `subscribe`하면 tail(=1)을 받고 `peek`이 `null`이 된다.
+- `resumesFromLastCommittedOffset`: `offer` 2건 뒤에 `subscribe`해서 오프셋이 0이 아닌 2가 되고, `commit`이 3을 써서 `isEqualTo(1L)`이 깨진다.
 
 **Files:**
 - Modify: `broker/src/main/java/org/mmmq/broker/topicqueue/TopicQueue.java`
 - Modify: `broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueTest.java`
+- Modify: `broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueBootstrapperTest.java`
 
-- [ ] **Step 1: 기존 테스트 5개를 새 의미론에 맞게 고치고 신규 3개 추가**
+- [ ] **Step 1: 기존 테스트 5개의 subscribe 위치를 옮기고 신규 2개 추가**
 
-`broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueTest.java` 전체를 아래로 교체. 지역변수의 `final`은 프로젝트 규칙에 따라 걷어냈다.
+`broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueTest.java`에서 아래 다섯 테스트의 `queue.subscribe("dispatcher-1")` 줄을 그 테스트의 첫 `queue.offer(...)` 줄 위로 옮긴다. 옮기는 것 말고는 어느 줄도 건드리지 않는다 — 구독이 0에서 출발하므로 기존 기대값은 모두 그대로 성립한다.
+
+- `peekReturnsFirstMessage`
+- `peekWithoutCommitReturnsSameMessage`
+- `commitAdvancesOffset`
+- `resumesFromCommittedOffsetAfterRestart`
+- `redeliversAfterCrashBeforeCommit`
+
+이 파일의 지역변수 `final` 28개는 그대로 둔다. 프로젝트 규칙에는 어긋나지만, 걷어내면 이 변경의 diff가 tail 의미론과 무관한 28줄을 더 들고 `BrokerTest`·`SegmentFileChainTest`·`SegmentFileTest`·`ConsumerRoutingTest`는 그대로 남아 반쪽 정리가 된다. 아래 신규 테스트는 규칙대로 `final`을 쓰지 않으므로 한동안 한 파일에 두 스타일이 섞인다.
+
+`get != null` 분기(체크포인트가 이미 있으면 tail로 덮어쓰지 않는다)는 따로 케이스를 두지 않는다. `resumesFromCommittedOffsetAfterRestart`가 `commit(1)` 뒤 재기동 `subscribe`에서 tail(2)이 아니라 1을 받는지 단정하고, `redeliversAfterCrashBeforeCommit`도 tail(1)이 아니라 0을 기대해 같은 분기를 한 번 더 지난다(`CheckpointDirectory.open`이 디스크의 체크포인트를 맵에 올려두므로 재기동 후에도 `get`이 `null`이 아니다).
+
+`DEFAULT_MAX_BYTES` 아래에 체크포인트 경로용 상수를 추가한다.
 
 ```java
-package org.mmmq.broker.topicqueue;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Map;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.mmmq.broker.topicqueue.storage.CheckpointDirectory;
-import org.mmmq.broker.topicqueue.storage.SegmentFileChain;
-import org.mmmq.core.message.Message;
-import org.mmmq.core.message.Topic;
-
-class TopicQueueTest {
-
-    private static final long DEFAULT_MAX_BYTES = 64L * 1024 * 1024;
     private static final String CHECKPOINTS_DIR = "checkpoints";
+```
 
-    @Test
-    @DisplayName("offer 성공 시 true 반환")
-    void offerReturnsTrueOnSuccess(@TempDir Path tempDir) {
-        TopicQueue queue = createQueue(tempDir, "topic");
-        Message message = new Message(new Topic("topic"), Map.of("k", "v"));
+마지막 `@Test`와 `createQueue` 사이에 신규 2개를 추가한다. 필요한 import(`Files`·`Path`·`Map`·`TempDir`·`assertThat`)는 이미 파일에 있다.
 
-        assertThat(queue.offer(message)).isTrue();
-    }
-
-    @Test
-    @DisplayName("subscribe 후 peek은 첫 메시지를 반환한다")
-    void peekReturnsFirstMessage(@TempDir Path tempDir) {
-        TopicQueue queue = createQueue(tempDir, "topic");
-        Message message = new Message(new Topic("topic"), Map.of("k", "v"));
-
-        Offset offset = queue.subscribe("dispatcher-1");
-        queue.offer(message);
-        Message peeked = queue.peek(offset);
-
-        assertThat(peeked).isEqualTo(message);
-    }
-
-    @Test
-    @DisplayName("commit 없이 peek만 반복하면 같은 메시지가 반환된다 (at-least-once)")
-    void peekWithoutCommitReturnsSameMessage(@TempDir Path tempDir) {
-        TopicQueue queue = createQueue(tempDir, "topic");
-        Message message = new Message(new Topic("topic"), Map.of("k", "v"));
-
-        Offset offset = queue.subscribe("dispatcher-1");
-        queue.offer(message);
-        Message first = queue.peek(offset);
-        Message second = queue.peek(offset);
-
-        assertThat(first).isEqualTo(second);
-    }
-
-    @Test
-    @DisplayName("commit 후 peek은 다음 메시지로 이동한다")
-    void commitAdvancesOffset(@TempDir Path tempDir) {
-        TopicQueue queue = createQueue(tempDir, "topic");
-        Message first = new Message(new Topic("topic"), Map.of("seq", 1));
-        Message second = new Message(new Topic("topic"), Map.of("seq", 2));
-
-        Offset offset = queue.subscribe("dispatcher-1");
-        queue.offer(first);
-        queue.offer(second);
-
-        assertThat(queue.peek(offset)).isEqualTo(first);
-        offset = queue.commit("dispatcher-1", offset);
-        assertThat(queue.peek(offset)).isEqualTo(second);
-    }
-
-    @Test
-    @DisplayName("재시작 후 subscribe는 마지막 commit 위치부터 재개된다")
-    void resumesFromCommittedOffsetAfterRestart(@TempDir Path tempDir) {
-        TopicQueue queue = createQueue(tempDir, "topic");
-        Message first = new Message(new Topic("topic"), Map.of("seq", 1));
-        Message second = new Message(new Topic("topic"), Map.of("seq", 2));
-
-        Offset offset = queue.subscribe("dispatcher-1");
-        queue.offer(first);
-        queue.offer(second);
-        queue.peek(offset);
-        queue.commit("dispatcher-1", offset);
-
-        TopicQueue restarted = createQueue(tempDir, "topic");
-        Offset restoredOffset = restarted.subscribe("dispatcher-1");
-
-        assertThat(restoredOffset.value()).isEqualTo(1L);
-        assertThat(restarted.peek(restoredOffset)).isEqualTo(second);
-    }
-
-    @Test
-    @DisplayName("commit 전 재시작 시 같은 메시지가 다시 peek된다")
-    void redeliversAfterCrashBeforeCommit(@TempDir Path tempDir) {
-        TopicQueue queue = createQueue(tempDir, "topic");
-        Message message = new Message(new Topic("topic"), Map.of("k", "v"));
-
-        Offset offset = queue.subscribe("dispatcher-1");
-        queue.offer(message);
-        queue.peek(offset);
-
-        TopicQueue restarted = createQueue(tempDir, "topic");
-        Offset restoredOffset = restarted.subscribe("dispatcher-1");
-
-        assertThat(restoredOffset.value()).isZero();
-        assertThat(restarted.peek(restoredOffset)).isEqualTo(message);
-    }
-
+```java
     @Test
     @DisplayName("이미 쌓인 큐에 새로 subscribe하면 tail부터 시작한다")
     void newSubscriptionStartsAtTail(@TempDir Path tempDir) {
@@ -697,21 +371,7 @@ class TopicQueueTest {
     }
 
     @Test
-    @DisplayName("체크포인트가 이미 있으면 tail이 아니라 저장된 오프셋을 쓴다")
-    void existingCheckpointWinsOverTail(@TempDir Path tempDir) {
-        TopicQueue queue = createQueue(tempDir, "topic");
-        Offset offset = queue.subscribe("dispatcher-1");
-        queue.offer(new Message(new Topic("topic"), Map.of("seq", 1)));
-        queue.offer(new Message(new Topic("topic"), Map.of("seq", 2)));
-        queue.commit("dispatcher-1", offset);
-
-        Offset resubscribed = queue.subscribe("dispatcher-1");
-
-        assertThat(resubscribed.value()).isEqualTo(1L);
-    }
-
-    @Test
-    @DisplayName("unsubscribe하면 체크포인트가 지워지고 다시 subscribe하면 tail부터 시작한다")
+    @DisplayName("unsubscribe하면 체크포인트가 지워진다")
     void unsubscribeRemovesCheckpoint(@TempDir Path tempDir) {
         TopicQueue queue = createQueue(tempDir, "topic");
         Offset offset = queue.subscribe("dispatcher-1");
@@ -722,27 +382,10 @@ class TopicQueueTest {
 
         assertThat(tempDir.resolve("topic").resolve(CHECKPOINTS_DIR).resolve("dispatcher-1.checkpoint"))
                 .doesNotExist();
-
-        queue.offer(new Message(new Topic("topic"), Map.of("seq", 2)));
-        Offset resubscribed = queue.subscribe("dispatcher-1");
-
-        assertThat(resubscribed.value()).isEqualTo(2L);
     }
-
-    private TopicQueue createQueue(Path baseDir, String topicName) {
-        Path topicDir = baseDir.resolve(topicName);
-        try {
-            Files.createDirectories(topicDir);
-        } catch (IOException exception) {
-            throw new IllegalStateException("Failed to create topic directory: " + topicDir, exception);
-        }
-        SegmentFileChain segmentFileChain = SegmentFileChain.open(topicDir, DEFAULT_MAX_BYTES);
-        CheckpointDirectory checkpointDirectory = CheckpointDirectory.open(topicDir);
-
-        return new TopicQueue(new Topic(topicName), segmentFileChain, checkpointDirectory);
-    }
-}
 ```
+
+재구독이 tail을 받는다는 것은 따로 단정하지 않는다. `newSubscriptionStartsAtTail`의 "체크포인트가 없으면 tail"과 `CheckpointDirectoryTest.deregisterRemovesCheckpoint`의 "deregister하면 맵에서도 빠진다"의 합성이라 새로 지나는 분기가 없다.
 
 - [ ] **Step 2: 테스트가 실패하는지 확인**
 
@@ -777,107 +420,71 @@ Expected: 컴파일 실패 — `cannot find symbol: method unsubscribe(String)`
 - [ ] **Step 4: 테스트 통과 확인**
 
 Run: `./gradlew :broker:test --tests "org.mmmq.broker.topicqueue.TopicQueueTest"`
-Expected: PASS (9 tests)
+Expected: PASS (8 tests)
 
-- [ ] **Step 5: 전체 테스트로 회귀 확인**
+- [ ] **Step 5: TopicQueueBootstrapperTest를 새 의미론에 맞게 고치기**
+
+`broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueBootstrapperTest.java`의 `seedTopic`을 아래로 교체한다. 세그먼트만 심으면 복원된 큐의 첫 `subscribe`가 tail을 받아 `peek`이 `null`이 되므로, 구독자가 디스크에 남아 있는 상황을 그대로 심는다.
+
+```java
+    private void seedTopic(Path topicsDir, String topicName, Message message) {
+        Path topicDir = topicsDir.resolve(topicName);
+        try {
+            Files.createDirectories(topicDir);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to create topic directory: " + topicDir, exception);
+        }
+        try (SegmentFileChain segmentFileChain = SegmentFileChain.open(topicDir, DEFAULT_MAX_BYTES)) {
+            segmentFileChain.append(message);
+        }
+        try (CheckpointDirectory checkpointDirectory = CheckpointDirectory.open(topicDir)) {
+            checkpointDirectory.register("dispatcher-1");
+        }
+    }
+```
+
+같은 파일의 `resumesFromLastCommittedOffset`에서 `subscribe`를 두 `offer` 앞으로 옮긴다. 그러면 오프셋이 0에서 출발해 `commit`이 1을 쓰고, 기존 기대값 `isEqualTo(1L)`이 그대로 성립한다.
+
+```java
+        TopicQueue queue = new TopicQueue(new Topic("topic-a"), segmentFileChain, checkpointDirectory);
+        Offset offset = queue.subscribe("dispatcher-1");
+        queue.offer(new Message(new Topic("topic-a"), Map.of("seq", 1)));
+        queue.offer(new Message(new Topic("topic-a"), Map.of("seq", 2)));
+        queue.peek(offset);
+        queue.commit("dispatcher-1", offset);
+```
+
+- [ ] **Step 6: 전체 테스트로 회귀 확인**
 
 Run: `./gradlew test`
 Expected: BUILD SUCCESSFUL
 
 `DispatcherTest`의 drain 관련 테스트는 모두 `subscribe`를 `offer`보다 먼저 호출하므로 tail이 0이라 영향이 없다.
 
-- [ ] **Step 6: 커밋**
-
-```bash
-git add broker/src/main/java/org/mmmq/broker/topicqueue/TopicQueue.java broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueTest.java
-git commit -F - <<'MSGEOF'
-feat: 신규 구독을 로그 tail부터 시작하고 구독 해제를 추가
-
-- 런타임에 붙은 소비자가 기존 백로그를 전부 받아버리는 문제를 막기 위해 신규 구독을 tail로 초기화.
-- 기존 체크포인트가 있으면 손대지 않으므로 재기동 동작은 그대로 유지.
-- 구독이 끝날 때 체크포인트를 지우는 unsubscribe를 추가하고, 삭제 실패는 로그만 남기게 함.
-
-Co-authored-by: songsunkook <songsunkook@gmail.com>
-MSGEOF
-```
-
 ---
 
-## Task 6: Dispatcher의 host·pattern 접근자
-
-파일에 쓸 정의를 `Dispatcher`에서 복원하려면 두 값을 읽을 수 있어야 한다. 필드를 밖에서 직접 읽지 않도록 접근자를 둔다.
-
-**Files:**
-- Modify: `broker/src/main/java/org/mmmq/broker/dispatcher/Dispatcher.java`
-- Modify: `broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherTest.java`
-
-- [ ] **Step 1: 실패하는 테스트 작성**
-
-`DispatcherTest`의 `consumerIdGetter` 테스트 뒤에 추가:
-
-```java
-    @Test
-    @DisplayName("host와 pattern 접근자가 생성자 인자를 그대로 반환한다")
-    void exposesHostAndPattern() {
-        Dispatcher dispatcher = new Dispatcher(host, new ConsumerId("order-dispatcher"), new TopicPattern("order.*"));
-
-        assertThat(dispatcher.host()).isEqualTo(host);
-        assertThat(dispatcher.pattern()).isEqualTo(new TopicPattern("order.*"));
-    }
-```
-
-- [ ] **Step 2: 테스트가 실패하는지 확인**
-
-Run: `./gradlew :broker:test --tests "org.mmmq.broker.dispatcher.DispatcherTest"`
-Expected: 컴파일 실패 — `cannot find symbol: method host()`
-
-- [ ] **Step 3: 구현**
-
-`Dispatcher.java`의 `consumerId()` 메서드 뒤에 추가:
-
-```java
-    public Host host() {
-        return host;
-    }
-
-    public TopicPattern pattern() {
-        return pattern;
-    }
-```
-
-- [ ] **Step 4: 테스트 통과 확인**
-
-Run: `./gradlew :broker:test --tests "org.mmmq.broker.dispatcher.DispatcherTest"`
-Expected: PASS
-
-- [ ] **Step 5: 커밋**
-
-```bash
-git add broker/src/main/java/org/mmmq/broker/dispatcher/Dispatcher.java broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherTest.java
-git commit -F - <<'MSGEOF'
-feat: Dispatcher에 host·pattern 접근자 추가
-
-- 파일에 쓸 정의를 Dispatcher에서 복원할 수 있도록 두 값을 노출.
-
-Co-authored-by: songsunkook <songsunkook@gmail.com>
-MSGEOF
-```
-
----
-
-## Task 7: 정의를 URL 문자열 포맷으로 바꾸고 DispatcherFactory 도입
+## Task 5: 정의를 URL 문자열 포맷으로 바꾸고 DispatcherFactory 도입, 레지스트라 제거
 
 파일과 API가 같은 모양을 쓰도록 host를 URL 문자열 하나로 합친다. 문자열 → `Host`·`ConsumerId`·`TopicPattern` 변환과 검증은 `DispatcherFactory` 한 곳으로 모으고, 역방향은 `DispatcherDefinition.from(Dispatcher)`가 맡는다. `Host`가 주소 문자열을 보존하게 됐으므로 이 왕복은 무손실이다.
 
-`DispatcherBeanRegistrar`는 Task 10에서 삭제되지만 그 전까지 컴파일과 테스트가 통과해야 하므로, 빈 정의를 공급자(supplier) 방식으로 바꿔 팩토리에 위임한다.
+`DispatcherFactory.create`는 정적 메서드다. 상태가 없고 호출자는 `DispatcherContainer` 하나뿐이라 빈으로 만들면 컨테이너의 필드와 생성자 인자, 테스트의 필드만 늘어난다.
+
+**포트는 필수로 요구한다.** 스킴 기본값(80/443)으로 대체하면 8080에 있는 소비자를 등록할 때 포트를 빼먹은 요청이 조용히 80으로 향한다. 등록 시점에 거절하는 편이 낫고, 저장·응답 형태가 입력과 같은 모양으로 유지된다.
+
+**`DispatcherBeanRegistrar`를 이 태스크에서 지운다.** `definition.toHost()`가 사라지므로 레지스트라를 살려두려면 빈 정의를 공급자 방식으로 재작성하고 테스트의 JSON 픽스처를 새 포맷으로 고쳐야 하는데, 그 코드는 Task 7에서 컨테이너가 파일을 직접 읽는 순간 전부 삭제된다. 지금 지우면 그 왕복이 없다.
+
+Task 7까지 두 태스크 동안 `DispatcherContainer`는 `Collection<Dispatcher>` 생성자를 그대로 들고 있고, Dispatcher 빈을 등록하는 주체가 없어 브로커는 Dispatcher 0개로 뜬다. 생성자가 하나뿐인 빈의 컬렉션 인자는 후보가 없을 때 스프링이 빈 컬렉션을 넣어주므로 컨텍스트는 그대로 기동한다 — 지금도 `dispatchers.json`이 `[]`인 `BrokerTest`가 같은 경로로 뜬다.
 
 **Files:**
 - Modify: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherDefinition.java`
+- Modify: `broker/src/main/java/org/mmmq/broker/dispatcher/Dispatcher.java`
+- Modify: `broker/src/main/java/org/mmmq/broker/BrokerConfiguration.java`
+- Modify: `broker/src/main/java/org/mmmq/broker/persistence/PersistenceProperties.java`
 - Create: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherFactory.java`
-- Modify: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherBeanRegistrar.java`
 - Create: `broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherFactoryTest.java`
 - Create: `broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherDefinitionTest.java`
-- Modify: `broker/src/test/java/org/mmmq/broker/config/DispatcherBeanRegistrarTest.java`
+- Delete: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherBeanRegistrar.java`
+- Delete: `broker/src/test/java/org/mmmq/broker/config/DispatcherBeanRegistrarTest.java`
 - Delete: `broker/src/test/java/org/mmmq/broker/dispatcher/HostDefinitionTest.java`
 
 - [ ] **Step 1: 실패하는 테스트 작성 (DispatcherFactory)**
@@ -892,77 +499,77 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mmmq.core.Host;
-import org.mmmq.core.WebProtocol;
 import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.TopicPattern;
 
 class DispatcherFactoryTest {
 
-    DispatcherFactory factory = new DispatcherFactory();
-
     @Test
     @DisplayName("URL 문자열을 Host로 파싱한다")
     void parsesUrlIntoHost() {
-        Dispatcher dispatcher = factory.create(
+        Dispatcher dispatcher = DispatcherFactory.create(
                 new DispatcherDefinition("order-created", "https://consumer-host:8443", "order.created"));
 
-        assertThat(dispatcher.host()).isEqualTo(new Host(WebProtocol.HTTPS, "consumer-host", 8443));
+        assertThat(dispatcher.host().toUri()).isEqualTo("https://consumer-host:8443");
         assertThat(dispatcher.consumerId()).isEqualTo(new ConsumerId("order-created"));
         assertThat(dispatcher.pattern()).isEqualTo(new TopicPattern("order.created"));
     }
 
     @Test
-    @DisplayName("포트를 생략하면 스킴의 기본 포트를 쓴다")
-    void fallsBackToDefaultPort() {
-        Dispatcher http = factory.create(new DispatcherDefinition("a", "http://consumer-host", "**"));
-        Dispatcher https = factory.create(new DispatcherDefinition("b", "https://consumer-host", "**"));
-
-        assertThat(http.host().toUri()).isEqualTo("http://consumer-host:80");
-        assertThat(https.host().toUri()).isEqualTo("https://consumer-host:443");
+    @DisplayName("포트가 없는 URL은 예외를 던진다")
+    void rejectsMissingPort() {
+        assertThatThrownBy(() -> DispatcherFactory.create(
+                new DispatcherDefinition("a", "http://consumer-host", "**")))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("스킴이 없는 문자열은 예외를 던진다")
     void rejectsRelativeUrl() {
-        assertThatThrownBy(() -> factory.create(new DispatcherDefinition("a", "consumer-host:8080", "**")))
+        assertThatThrownBy(() -> DispatcherFactory.create(
+                new DispatcherDefinition("a", "consumer-host:8080", "**")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("미지원 스킴은 예외를 던진다")
     void rejectsUnsupportedScheme() {
-        assertThatThrownBy(() -> factory.create(new DispatcherDefinition("a", "ftp://consumer-host:21", "**")))
+        assertThatThrownBy(() -> DispatcherFactory.create(
+                new DispatcherDefinition("a", "ftp://consumer-host:21", "**")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("host가 비어 있으면 예외를 던진다")
     void rejectsBlankHost() {
-        assertThatThrownBy(() -> factory.create(new DispatcherDefinition("a", null, "**")))
+        assertThatThrownBy(() -> DispatcherFactory.create(new DispatcherDefinition("a", null, "**")))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> factory.create(new DispatcherDefinition("a", "  ", "**")))
+        assertThatThrownBy(() -> DispatcherFactory.create(new DispatcherDefinition("a", "  ", "**")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("pattern이 비어 있으면 예외를 던진다")
     void rejectsBlankPattern() {
-        assertThatThrownBy(() -> factory.create(new DispatcherDefinition("a", "http://consumer-host:8080", null)))
+        assertThatThrownBy(() -> DispatcherFactory.create(
+                new DispatcherDefinition("a", "http://consumer-host:8080", null)))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> factory.create(new DispatcherDefinition("a", "http://consumer-host:8080", " ")))
+        assertThatThrownBy(() -> DispatcherFactory.create(
+                new DispatcherDefinition("a", "http://consumer-host:8080", " ")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("consumerId가 regex에 어긋나면 예외를 던진다")
     void rejectsInvalidConsumerId() {
-        assertThatThrownBy(() ->
-                factory.create(new DispatcherDefinition("invalid id!", "http://consumer-host:8080", "**")))
+        assertThatThrownBy(() -> DispatcherFactory.create(
+                new DispatcherDefinition("invalid id!", "http://consumer-host:8080", "**")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }
 ```
+
+`host`는 `toUri()` 문자열로 단정한다. Task 1에서 `Host.equals`를 없앴고, 파싱 결과가 실제로 쓰이는 형태가 그 문자열이다.
 
 - [ ] **Step 2: 실패하는 테스트 작성 (DispatcherDefinition 왕복)**
 
@@ -978,47 +585,77 @@ import org.junit.jupiter.api.Test;
 
 class DispatcherDefinitionTest {
 
-    DispatcherFactory factory = new DispatcherFactory();
-
     @Test
     @DisplayName("정의로 만든 Dispatcher에서 같은 정의를 복원한다")
     void roundTripsThroughDispatcher() {
         DispatcherDefinition definition =
                 new DispatcherDefinition("order-created", "https://consumer-host:8443", "order.created");
 
-        DispatcherDefinition restored = DispatcherDefinition.from(factory.create(definition));
+        DispatcherDefinition restored = DispatcherDefinition.from(DispatcherFactory.create(definition));
 
         assertThat(restored).isEqualTo(definition);
     }
-
-    @Test
-    @DisplayName("호스트 이름은 IP로 바뀌지 않고 그대로 복원된다")
-    void keepsHostName() {
-        DispatcherDefinition definition = new DispatcherDefinition("a", "http://localhost:8080", "**");
-
-        DispatcherDefinition restored = DispatcherDefinition.from(factory.create(definition));
-
-        assertThat(restored.host()).isEqualTo("http://localhost:8080");
-    }
-
-    @Test
-    @DisplayName("포트를 생략한 입력은 기본 포트가 채워진 형태로 복원된다")
-    void normalizesOmittedPort() {
-        DispatcherDefinition definition = new DispatcherDefinition("a", "http://consumer-host", "**");
-
-        DispatcherDefinition restored = DispatcherDefinition.from(factory.create(definition));
-
-        assertThat(restored.host()).isEqualTo("http://consumer-host:80");
-    }
 }
 ```
+
+호스트 이름이 IP로 바뀌지 않는다는 것도 이 테스트가 본다. `consumer-host`는 해석되지 않는 이름이라, `Host`가 다시 즉시 해석으로 돌아가면 여기서 터진다.
 
 - [ ] **Step 3: 테스트가 실패하는지 확인**
 
 Run: `./gradlew :broker:test --tests "org.mmmq.broker.dispatcher.DispatcherFactoryTest" --tests "org.mmmq.broker.dispatcher.DispatcherDefinitionTest"`
 Expected: 컴파일 실패 — `DispatcherFactory` 클래스 없음, `DispatcherDefinition` 생성자가 `(String, HostDefinition, String)`이라 인자 타입 불일치
 
-- [ ] **Step 4: DispatcherDefinition 교체**
+- [ ] **Step 4: 레지스트라와 우회 코드 삭제**
+
+레지스트라를 먼저 지운다. `definition.toHost()`와 `HostDefinition`의 유일한 사용자라, 이 순서면 Step 6에서 정의 레코드를 갈아치울 때 main 소스가 계속 컴파일된다.
+
+```bash
+git rm broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherBeanRegistrar.java broker/src/test/java/org/mmmq/broker/config/DispatcherBeanRegistrarTest.java broker/src/test/java/org/mmmq/broker/dispatcher/HostDefinitionTest.java
+```
+
+`broker/src/main/java/org/mmmq/broker/BrokerConfiguration.java` 전체를 아래로 교체:
+
+```java
+package org.mmmq.broker;
+
+import org.mmmq.broker.persistence.PersistenceProperties;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.ComponentScan;
+
+@AutoConfiguration
+@EnableConfigurationProperties(PersistenceProperties.class)
+@ComponentScan(basePackages = "org.mmmq.broker")
+class BrokerConfiguration {
+
+}
+```
+
+`broker/src/main/java/org/mmmq/broker/persistence/PersistenceProperties.java`에서 아래 메서드와 두 import(`Binder`, `Environment`)를 제거한다. `ImportBeanDefinitionRegistrar`가 `@ConfigurationProperties` 바인딩보다 먼저 도는 탓에 필요했던 우회이고, 유일한 호출자가 방금 사라졌다.
+
+```java
+    public static PersistenceProperties bind(Environment environment) {
+        return Binder.get(environment)
+                .bind(PREFIX, PersistenceProperties.class)
+                .orElseGet(() -> new PersistenceProperties(null, null));
+    }
+```
+
+- [ ] **Step 5: Dispatcher에 host·pattern 접근자 추가**
+
+`DispatcherDefinition.from`이 두 값을 읽어야 한다. 필드를 밖에서 직접 읽지 않도록 `Dispatcher.java`의 `consumerId()` 뒤에 접근자를 둔다. Step 1의 `parsesUrlIntoHost`가 이 두 메서드를 쓴다.
+
+```java
+    public Host host() {
+        return host;
+    }
+
+    public TopicPattern pattern() {
+        return pattern;
+    }
+```
+
+- [ ] **Step 6: DispatcherDefinition 교체**
 
 `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherDefinition.java` 전체를 아래로 교체. 중첩 `HostDefinition`과 `toHost()`는 사라진다.
 
@@ -1041,7 +678,7 @@ public record DispatcherDefinition(
 }
 ```
 
-- [ ] **Step 5: DispatcherFactory 작성**
+- [ ] **Step 7: DispatcherFactory 작성**
 
 `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherFactory.java`:
 
@@ -1053,12 +690,10 @@ import org.mmmq.core.Host;
 import org.mmmq.core.WebProtocol;
 import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.TopicPattern;
-import org.springframework.stereotype.Component;
 
-@Component
 public class DispatcherFactory {
 
-    public Dispatcher create(DispatcherDefinition definition) {
+    public static Dispatcher create(DispatcherDefinition definition) {
         if (definition.host() == null || definition.host().isBlank()) {
             throw new IllegalArgumentException("host must not be blank");
         }
@@ -1069,13 +704,11 @@ public class DispatcherFactory {
         if (uri.getScheme() == null || uri.getHost() == null) {
             throw new IllegalArgumentException("host must be an absolute URL, but was: " + definition.host());
         }
-        WebProtocol protocol = WebProtocol.from(uri.getScheme());
-        int port = uri.getPort();
-        if (port == -1) {
-            port = protocol.getDefaultPort();
+        if (uri.getPort() == -1) {
+            throw new IllegalArgumentException("host must include a port, but was: " + definition.host());
         }
         return new Dispatcher(
-                new Host(protocol, uri.getHost(), port),
+                new Host(WebProtocol.from(uri.getScheme()), uri.getHost(), uri.getPort()),
                 new ConsumerId(definition.consumerId()),
                 new TopicPattern(definition.pattern())
         );
@@ -1085,106 +718,24 @@ public class DispatcherFactory {
 
 `URI.create("consumer-host:8080")`은 예외를 던지지 않고 scheme만 채워진 URI를 만들고, 밑줄이 든 호스트명은 `getHost()`가 `null`이다. 그래서 scheme·host를 명시적으로 확인해야 한다.
 
-- [ ] **Step 6: DispatcherBeanRegistrar를 팩토리에 위임 (임시, Task 10에서 삭제)**
-
-`DispatcherBeanRegistrar.java`의 `register` 메서드를 아래로 교체하고, 클래스 상단 `log` 상수 뒤에 팩토리 상수를 추가한다.
-
-```java
-    private static final DispatcherFactory FACTORY = new DispatcherFactory();
-```
-
-```java
-    private void register(DispatcherDefinition definition, BeanDefinitionRegistry registry) {
-        AbstractBeanDefinition beanDefinition = BeanDefinitionBuilder
-                .genericBeanDefinition(Dispatcher.class, () -> FACTORY.create(definition))
-                .getBeanDefinition();
-        BeanDefinitionReaderUtils.registerWithGeneratedName(beanDefinition, registry);
-    }
-```
-
-`ConsumerId`·`TopicPattern` import가 더 이상 쓰이지 않으므로 제거한다. 검증은 빈 생성 시점에 일어나므로 컨텍스트 기동 실패(fail-fast)는 유지된다.
-
-- [ ] **Step 7: 레지스트라 테스트의 JSON 픽스처를 새 포맷으로 갱신**
-
-`broker/src/test/java/org/mmmq/broker/config/DispatcherBeanRegistrarTest.java`에서 `write(...)`에 넘기는 JSON 5곳을 새 포맷으로 바꾼다.
-
-`registersDispatchersFromFile`:
-
-```java
-        write("""
-                [
-                  {"consumerId":"order-created","host":"http://127.0.0.1:8080","pattern":"order.created"},
-                  {"consumerId":"order-shipped","host":"http://127.0.0.1:8080","pattern":"order.shipped"}
-                ]
-                """);
-```
-
-`failsOnDuplicateConsumerId`:
-
-```java
-        write("""
-                [
-                  {"consumerId":"dup","host":"http://127.0.0.1:8080","pattern":"a"},
-                  {"consumerId":"dup","host":"http://127.0.0.1:8080","pattern":"b"}
-                ]
-                """);
-```
-
-`failsOnInvalidConsumerId`:
-
-```java
-        write("""
-                [
-                  {"consumerId":"invalid id!","host":"http://127.0.0.1:8080","pattern":"a"}
-                ]
-                """);
-```
-
-`failsOnUnknownProtocol`:
-
-```java
-        write("""
-                [
-                  {"consumerId":"x","host":"ftp://127.0.0.1:8080","pattern":"a"}
-                ]
-                """);
-```
-
-`failsOnEmptyFile`은 `write("")` 그대로 둔다.
-
-- [ ] **Step 8: HostDefinitionTest 삭제**
-
-```bash
-git rm broker/src/test/java/org/mmmq/broker/dispatcher/HostDefinitionTest.java
-```
-
-- [ ] **Step 9: 테스트 통과 확인**
+- [ ] **Step 8: 테스트 통과 확인**
 
 Run: `./gradlew test`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 10: 커밋**
-
-```bash
-git add broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherDefinition.java broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherFactory.java broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherBeanRegistrar.java broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherFactoryTest.java broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherDefinitionTest.java broker/src/test/java/org/mmmq/broker/config/DispatcherBeanRegistrarTest.java
-git commit -F - <<'MSGEOF'
-refactor: Dispatcher 정의의 host를 URL 문자열로 통일하고 DispatcherFactory 도입
-
-- 파일과 API가 같은 모양을 쓰도록 중첩 HostDefinition을 URL 문자열 하나로 합침.
-- 문자열에서 Host·ConsumerId·TopicPattern으로 가는 변환과 검증을 팩토리 한 곳으로 모음.
-- Host가 주소 문자열을 보존하므로 Dispatcher에서 정의를 무손실로 복원하도록 from()을 추가.
-
-Co-authored-by: songsunkook <songsunkook@gmail.com>
-MSGEOF
-```
+`BrokerTest`는 Dispatcher 빈이 0개인 채로 컨텍스트를 띄운다. 파일 기반 등록은 Task 7에서 `DispatcherContainer`가 되살린다.
 
 ---
 
-## Task 8: DispatcherFile
+## Task 6: DispatcherFile
 
 `dispatchers.json`을 읽고, 임시 파일에 전체를 쓴 뒤 `ATOMIC_MOVE`로 교체한다. 같은 파일시스템이라 이동이 원자적이고, 반쯤 쓰인 JSON이 최종 경로에 보일 수 없다.
 
 `ObjectMapper`는 주입받지 않고 클래스 상수로 만든다. broker는 라이브러리라 호스트 애플리케이션의 `ObjectMapper` 커스터마이징에 파일 포맷이 휘둘리면 안 된다.
+
+파일·디렉터리가 없을 때의 부팅 동작과 깨진 JSON 검증은 여기서 본다. Task 5에서 삭제한 `DispatcherBeanRegistrarTest`가 컨텍스트 레벨에서 지키던 것을 이 파일 레벨로 내린 것이고, Task 7의 컨테이너 테스트는 같은 것을 다시 보지 않는다.
+
+`createsRootDirWhenMissing`이 root-dir까지 없는 상태를 보므로 "파일만 없는 상태"는 따로 두지 않는다 — `read()`의 같은 분기이고 `Files.createDirectories`는 이미 있는 디렉터리에 무해하다. 쓰기 후 `.tmp`가 남지 않는다는 것도 `Files.move`의 `ATOMIC_MOVE` 계약이라 케이스를 두지 않는다. 이동이 실패하면 `roundTrips`가 `IllegalStateException`으로 먼저 깨진다.
 
 **Files:**
 - Create: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherFile.java`
@@ -1225,14 +776,6 @@ class DispatcherFileTest {
     }
 
     @Test
-    @DisplayName("파일이 없으면 빈 배열 파일을 만들고 빈 목록을 반환한다")
-    void createsEmptyFileWhenMissing() {
-        assertThat(dispatcherFile.read()).isEmpty();
-
-        assertThat(tempDir.resolve(FILE_NAME)).exists();
-    }
-
-    @Test
     @DisplayName("쓰고 다시 읽으면 같은 목록이 나온다")
     void roundTrips() {
         List<DispatcherDefinition> definitions = List.of(
@@ -1246,21 +789,12 @@ class DispatcherFileTest {
     }
 
     @Test
-    @DisplayName("쓰기 후 임시 파일이 남지 않는다")
-    void leavesNoTempFile() {
-        dispatcherFile.write(List.of(
-                new DispatcherDefinition("order-created", "http://consumer-host:8080", "order.created")));
-
-        assertThat(tempDir.resolve(FILE_NAME + ".tmp")).doesNotExist();
-    }
-
-    @Test
-    @DisplayName("root-dir 디렉터리가 없으면 만들고 쓴다")
+    @DisplayName("root-dir 디렉터리가 없으면 만들고 빈 목록을 반환한다")
     void createsRootDirWhenMissing() {
         Path absentRoot = tempDir.resolve("absent-root");
         DispatcherFile file = new DispatcherFile(new PersistenceProperties(absentRoot.toString(), null));
 
-        file.write(List.of(new DispatcherDefinition("x", "http://consumer-host:8080", "a")));
+        assertThat(file.read()).isEmpty();
 
         assertThat(absentRoot.resolve(FILE_NAME)).exists();
     }
@@ -1326,7 +860,6 @@ public class DispatcherFile {
     public void write(List<DispatcherDefinition> definitions) {
         Path temp = path.resolveSibling(path.getFileName() + TEMP_SUFFIX);
         try {
-            Files.createDirectories(path.toAbsolutePath().getParent());
             Files.write(temp, OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsBytes(definitions));
             Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException exception) {
@@ -1338,36 +871,28 @@ public class DispatcherFile {
 
 `JsonProcessingException`은 `IOException`의 하위 타입이라 catch 하나로 충분하다.
 
+`write`는 디렉터리를 만들지 않는다. 유일한 호출자가 `DispatcherContainer`의 뮤테이션이고, 컨테이너 생성자가 이미 `read()`로 디렉터리를 만든 뒤다. 도는 중에 누가 root-dir을 지웠다면 `Files.write`가 `NoSuchFileException`을 던져 `IllegalStateException` → 500이 되는데, 메모리를 건드리기 전이라 상태는 온전하다(검증 → 파일 → 메모리 순서 그대로).
+
 - [ ] **Step 4: 테스트 통과 확인**
 
 Run: `./gradlew :broker:test --tests "org.mmmq.broker.dispatcher.DispatcherFileTest"`
-Expected: PASS (5 tests)
-
-- [ ] **Step 5: 커밋**
-
-```bash
-git add broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherFile.java broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherFileTest.java
-git commit -F - <<'MSGEOF'
-feat: dispatchers.json 읽기·원자적 쓰기를 담당하는 DispatcherFile 추가
-
-- 런타임 변경 중 프로세스가 죽어도 설정 파일이 깨지지 않도록 임시 파일 + ATOMIC_MOVE로 교체.
-- 호스트 애플리케이션 설정에 파일 포맷이 휘둘리지 않도록 ObjectMapper를 자체 보유.
-
-Co-authored-by: songsunkook <songsunkook@gmail.com>
-MSGEOF
-```
+Expected: PASS (3 tests)
 
 ---
 
-## Task 9: DispatcherContainer 가변화
+## Task 7: DispatcherContainer가 Dispatcher를 소유하고 변경한다
 
-컨테이너에 추가·수정·삭제·조회를 넣는다. 뮤테이션은 `ReentrantLock` 하나로 직렬화하고, 핫패스 `getSubscribers`는 무락 읽기를 유지한다. 순서는 언제나 **검증 → 파일 → 메모리**다.
+컨테이너가 `dispatchers.json`을 직접 읽어 Dispatcher를 만들고, 추가·수정·삭제·조회를 노출한다. Dispatcher가 태어나는 길이 하나가 된다. 뮤테이션은 `ReentrantLock` 하나로 직렬화하고, 핫패스 `getSubscribers`는 무락 읽기를 유지한다. 순서는 언제나 **검증 → 파일 → 메모리**다.
 
-이 태스크에서 `Dispatcher`의 `@PreDestroy`를 컨테이너로 옮긴다. 런타임에 추가된 Dispatcher는 스프링 빈이 아니라 `@PreDestroy`가 걸리지 않으므로, 컨테이너가 생명주기를 책임져야 한다.
+이 태스크에서 `Dispatcher`의 `@PreDestroy`를 컨테이너로 옮긴다. Dispatcher는 더 이상 빈이 아니라 `@PreDestroy`가 걸리지 않으므로, 컨테이너가 생명주기를 책임져야 한다.
 
-생성자는 이 태스크에서 `Collection<Dispatcher>`를 유지한다(Task 10에서 교체). 그래서 중간 상태에서도 빌드와 테스트가 통과한다.
+`DispatcherFactory.create`는 정적 메서드라 컨테이너 생성자 인자는 `DispatcherFile` 하나다.
 
-**저장 시 정규화:** 파일에는 `DispatcherDefinition.from(dispatcher)`로 복원한 값을 쓴다. 포트를 생략한 입력(`http://consumer-host`)이 기본 포트가 채워진 형태(`http://consumer-host:80`)로 저장되고, API 응답도 실제 등록된 값을 돌려준다.
+**파일에 쓰는 값:** `DispatcherDefinition.from(dispatcher)`로 복원한 값을 쓴다. 실제 등록된 Dispatcher가 유일한 출처라 파일과 API 응답이 메모리 상태와 어긋날 수 없다.
+
+**부트스트랩 검증 범위:** 생성자는 `file.read()`와 `DispatcherFactory.create`를 잇는 7줄이다. 파일 없음·깨진 JSON은 Task 6의 `DispatcherFileTest`가, 미지원 스킴·잘못된 `consumerId`는 Task 5의 `DispatcherFactoryTest`가 이미 같은 코드를 본다. 그래서 컨테이너 수준에서는 와이어링(순서)과 생성자의 유일한 분기(중복 `consumerId`)만 확인한다.
+
+**tail 시작과 등록 순서를 따로 보지 않는 이유:** 새 구독이 tail에서 출발한다는 것은 `wideningPatternSubscribesNewTopicAtTail`이 `paymentQueue`에서 정확히 같은 경로(`rematchAll` → `match` → `dispatcher.subscribe` → `queue.subscribe`)로 본다. `definitions()`의 순서는 `loadsDefinitionsFromFile`이 `containsExactly`로 단정하고, `add`·`remove` 케이스가 `file.read()`를 같은 방식으로 보면서 `dispatchers.values()` 순서를 두 번 더 지난다.
 
 **Files:**
 - Modify: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherContainer.java`
@@ -1375,7 +900,6 @@ MSGEOF
 - Create: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherRoute.java`
 - Create: `broker/src/main/java/org/mmmq/broker/dispatcher/DuplicateConsumerIdException.java`
 - Create: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherNotFoundException.java`
-- Modify: `broker/src/test/java/org/mmmq/broker/config/DispatcherBeanRegistrarTest.java`
 - Create: `broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherContainerTest.java`
 
 - [ ] **Step 1: 예외 두 개와 DispatcherRoute 작성**
@@ -1432,17 +956,10 @@ package org.mmmq.broker.dispatcher;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -1457,12 +974,12 @@ import org.mmmq.core.message.Topic;
 class DispatcherContainerTest {
 
     private static final String CHECKPOINTS_DIR = "checkpoints";
+    private static final String FILE_NAME = "dispatchers.json";
     private static final String HOST = "http://consumer-host:8080";
 
     @TempDir
     Path tempDir;
 
-    DispatcherFactory factory;
     DispatcherFile file;
     TopicQueueFactory topicQueueFactory;
     DispatcherContainer container;
@@ -1470,15 +987,9 @@ class DispatcherContainerTest {
     @BeforeEach
     void setUp() {
         PersistenceProperties properties = new PersistenceProperties(tempDir.toString(), null);
-        factory = new DispatcherFactory();
         file = new DispatcherFile(properties);
         topicQueueFactory = new TopicQueueFactory(properties);
-        container = new DispatcherContainer(List.of(), factory, file);
-    }
-
-    @AfterEach
-    void tearDown() {
-        container.destroy();
+        container = new DispatcherContainer(file);
     }
 
     @Test
@@ -1496,35 +1007,12 @@ class DispatcherContainerTest {
     }
 
     @Test
-    @DisplayName("이미 쌓인 큐에 추가하면 tail부터 시작한다")
-    void addStartsAtTail() {
-        TopicQueue queue = register(new Topic("order.created"));
-        queue.offer(new Message(new Topic("order.created"), Map.of("seq", 1)));
-        queue.offer(new Message(new Topic("order.created"), Map.of("seq", 2)));
-
-        container.add(new DispatcherDefinition("order-created", HOST, "order.*"));
-
-        assertThat(queue.subscribe("order-created").value()).isEqualTo(2L);
-    }
-
-    @Test
     @DisplayName("중복 consumerId는 DuplicateConsumerIdException을 던지고 파일을 바꾸지 않는다")
     void rejectsDuplicateConsumerId() {
         container.add(new DispatcherDefinition("order-created", HOST, "order.*"));
 
         assertThatThrownBy(() -> container.add(new DispatcherDefinition("order-created", HOST, "other.*")))
                 .isInstanceOf(DuplicateConsumerIdException.class);
-        assertThat(file.read())
-                .containsExactly(new DispatcherDefinition("order-created", HOST, "order.*"));
-    }
-
-    @Test
-    @DisplayName("검증에 실패하면 파일이 바뀌지 않는다")
-    void invalidDefinitionLeavesFileUntouched() {
-        container.add(new DispatcherDefinition("order-created", HOST, "order.*"));
-
-        assertThatThrownBy(() -> container.add(new DispatcherDefinition("other", "not-a-url", "**")))
-                .isInstanceOf(IllegalArgumentException.class);
         assertThat(file.read())
                 .containsExactly(new DispatcherDefinition("order-created", HOST, "order.*"));
     }
@@ -1602,50 +1090,34 @@ class DispatcherContainerTest {
     }
 
     @Test
-    @DisplayName("definitions는 등록 순서대로 현재 정의를 돌려준다")
-    void definitionsReflectRegistrationOrder() {
-        container.add(new DispatcherDefinition("first", HOST, "a.*"));
-        container.add(new DispatcherDefinition("second", HOST, "b.*"));
+    @DisplayName("파일의 정의를 순서대로 읽어 Dispatcher를 만든다")
+    void loadsDefinitionsFromFile() {
+        write("""
+                [
+                  {"consumerId":"order-created","host":"http://127.0.0.1:8080","pattern":"order.created"},
+                  {"consumerId":"order-shipped","host":"http://127.0.0.1:8080","pattern":"order.shipped"}
+                ]
+                """);
 
-        assertThat(container.definitions())
-                .containsExactly(
-                        new DispatcherDefinition("first", HOST, "a.*"),
-                        new DispatcherDefinition("second", HOST, "b.*"));
+        DispatcherContainer loaded = new DispatcherContainer(file);
+
+        assertThat(loaded.definitions())
+                .extracting(DispatcherDefinition::consumerId)
+                .containsExactly("order-created", "order-shipped");
     }
 
     @Test
-    @DisplayName("register와 add를 동시에 호출해도 최종 상태가 일관된다")
-    void concurrentRegisterAndAddStayConsistent() throws InterruptedException {
-        int count = 8;
-        CountDownLatch start = new CountDownLatch(1);
-        CountDownLatch done = new CountDownLatch(count * 2);
-        Queue<TopicQueue> queues = new ConcurrentLinkedQueue<>();
-        ExecutorService executor = Executors.newFixedThreadPool(count * 2);
+    @DisplayName("파일에 중복 consumerId가 있으면 생성에 실패한다")
+    void failsOnDuplicateConsumerIdInFile() {
+        write("""
+                [
+                  {"consumerId":"dup","host":"http://127.0.0.1:8080","pattern":"a"},
+                  {"consumerId":"dup","host":"http://127.0.0.1:8080","pattern":"b"}
+                ]
+                """);
 
-        for (int index = 0; index < count; index++) {
-            String suffix = String.valueOf(index);
-            executor.submit(() -> {
-                await(start);
-                TopicQueue queue = topicQueueFactory.create(new Topic("topic-" + suffix));
-                queues.add(queue);
-                container.register(queue);
-                done.countDown();
-            });
-            executor.submit(() -> {
-                await(start);
-                container.add(new DispatcherDefinition("consumer-" + suffix, HOST, "**"));
-                done.countDown();
-            });
-        }
-        start.countDown();
-
-        assertThat(done.await(10, TimeUnit.SECONDS)).isTrue();
-        executor.shutdownNow();
-
-        assertThat(container.definitions()).hasSize(count);
-        assertThat(file.read()).hasSize(count);
-        assertThat(queues).hasSize(count);
-        queues.forEach(queue -> assertThat(container.getSubscribers(queue)).hasSize(count));
+        assertThatThrownBy(() -> new DispatcherContainer(file))
+                .isInstanceOf(DuplicateConsumerIdException.class);
     }
 
     private TopicQueue register(Topic topic) {
@@ -1661,12 +1133,11 @@ class DispatcherContainerTest {
                 .resolve(consumerId + ".checkpoint");
     }
 
-    private void await(CountDownLatch latch) {
+    private void write(String json) {
         try {
-            latch.await();
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException(interrupted);
+            Files.writeString(tempDir.resolve(FILE_NAME), json);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to write dispatcher file", exception);
         }
     }
 }
@@ -1675,7 +1146,7 @@ class DispatcherContainerTest {
 - [ ] **Step 3: 테스트가 실패하는지 확인**
 
 Run: `./gradlew :broker:test --tests "org.mmmq.broker.dispatcher.DispatcherContainerTest"`
-Expected: 컴파일 실패 — `DispatcherContainer` 생성자 인자 개수 불일치, `add`/`modify`/`remove`/`definitions`/`destroy` 없음
+Expected: 컴파일 실패 — `DispatcherContainer` 생성자 인자 타입 불일치, `add`/`modify`/`remove`/`definitions` 없음
 
 - [ ] **Step 4: Dispatcher에서 @PreDestroy 제거**
 
@@ -1695,14 +1166,11 @@ Expected: 컴파일 실패 — `DispatcherContainer` 생성자 인자 개수 불
 package org.mmmq.broker.dispatcher;
 
 import jakarta.annotation.PreDestroy;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.mmmq.broker.topicqueue.TopicQueue;
 import org.mmmq.core.identifier.ConsumerId;
@@ -1711,17 +1179,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class DispatcherContainer {
 
-    private final DispatcherFactory factory;
     private final DispatcherFile file;
     private final Map<ConsumerId, Dispatcher> dispatchers = new LinkedHashMap<>();
     private final Map<TopicQueue, List<Dispatcher>> subscriptions = new ConcurrentHashMap<>();
     private final ReentrantLock mutationLock = new ReentrantLock();
 
-    public DispatcherContainer(Collection<Dispatcher> dispatchers, DispatcherFactory factory, DispatcherFile file) {
-        this.factory = factory;
+    public DispatcherContainer(DispatcherFile file) {
         this.file = file;
-        dispatchers.forEach(dispatcher -> {
-            if (this.dispatchers.putIfAbsent(dispatcher.consumerId(), dispatcher) != null) {
+        file.read().forEach(definition -> {
+            Dispatcher dispatcher = DispatcherFactory.create(definition);
+            if (dispatchers.putIfAbsent(dispatcher.consumerId(), dispatcher) != null) {
                 throw new DuplicateConsumerIdException(dispatcher.consumerId());
             }
         });
@@ -1754,7 +1221,7 @@ public class DispatcherContainer {
     public DispatcherDefinition add(DispatcherDefinition definition) {
         mutationLock.lock();
         try {
-            Dispatcher dispatcher = factory.create(definition);
+            Dispatcher dispatcher = DispatcherFactory.create(definition);
             if (dispatchers.containsKey(dispatcher.consumerId())) {
                 throw new DuplicateConsumerIdException(dispatcher.consumerId());
             }
@@ -1778,7 +1245,7 @@ public class DispatcherContainer {
             if (previous == null) {
                 throw new DispatcherNotFoundException(consumerId);
             }
-            Dispatcher next = factory.create(
+            Dispatcher next = DispatcherFactory.create(
                     new DispatcherDefinition(consumerId.value(), route.host(), route.pattern()));
             DispatcherDefinition registered = DispatcherDefinition.from(next);
             file.write(dispatchers.values().stream()
@@ -1835,9 +1302,7 @@ public class DispatcherContainer {
     private void rematchAll() {
         subscriptions.replaceAll((topicQueue, previous) -> {
             List<Dispatcher> matched = match(topicQueue);
-            Set<ConsumerId> retained = matched.stream()
-                    .map(Dispatcher::consumerId)
-                    .collect(Collectors.toSet());
+            List<ConsumerId> retained = matched.stream().map(Dispatcher::consumerId).toList();
             previous.stream()
                     .map(Dispatcher::consumerId)
                     .filter(consumerId -> !retained.contains(consumerId))
@@ -1854,299 +1319,31 @@ public class DispatcherContainer {
 
 **검증하지 않는 것:** 수정·삭제 시 옛 Dispatcher의 워커가 실제로 종료됐는지는 테스트로 확인하지 않는다. 인스턴스를 팩토리가 만들기 때문에 스파이를 끼울 수 없고, `ThreadPoolExecutor`의 종료 여부를 밖에서 관찰할 통로도 없다. `previous.destroy()`·`dispatcher.destroy()` 호출 경로는 코드 리뷰로 확인한다.
 
-- [ ] **Step 6: 레지스트라 테스트의 컨테이너 생성 부분 갱신**
+같은 이유로 테스트에 `@AfterEach container.destroy()`를 두지 않는다. `WorkerPool`은 `dispatch`의 `computeIfAbsent`에서만 채워지는데 이 파일의 9개 테스트 중 `dispatch`를 부르는 것이 없어 풀이 언제나 비어 있고, 그래서 `destroy()`가 아무 일도 하지 않는다.
 
-`DispatcherBeanRegistrarTest`의 `TestConfig`를 아래로 교체한다. 새 생성자 시그니처에 맞추고, 테스트용 `PersistenceProperties`는 컨텍스트가 바인딩한 값을 그대로 쓴다.
+형식 검증(`not-a-url` 같은 입력) 실패 시 파일이 바뀌지 않는다는 케이스도 따로 두지 않는다. `add`가 파일에 쓰는 값이 `DispatcherDefinition.from(dispatcher)`라서 `file.write`의 인자를 만들려면 `DispatcherFactory.create`가 먼저 성공해야 하고, 그래서 이 순서는 구조적으로 뒤집힐 수 없다. "거절 시 파일 무변경"이라는 성질 자체는 `rejectsDuplicateConsumerId`가 같은 세 단 구조로 붙든다.
 
-```java
-    @Configuration
-    @EnableConfigurationProperties(PersistenceProperties.class)
-    @Import(DispatcherBeanRegistrar.class)
-    static class TestConfig {
+동시성 테스트도 두지 않는다. 뮤테이션 락은 한 줄이고, 스레드를 여러 쌍 띄워 확인할 수 있는 것은 특정 인터리빙 한 번뿐이다. 뮤테이션이 만드는 최종 상태는 위 9개가 이미 본다.
 
-        @Bean
-        DispatcherFactory dispatcherFactory() {
-            return new DispatcherFactory();
-        }
-
-        @Bean
-        DispatcherFile dispatcherFile(PersistenceProperties properties) {
-            return new DispatcherFile(properties);
-        }
-
-        @Bean
-        DispatcherContainer dispatcherContainer(
-                Collection<Dispatcher> dispatchers,
-                DispatcherFactory factory,
-                DispatcherFile file) {
-            return new DispatcherContainer(dispatchers, factory, file);
-        }
-    }
-```
-
-추가 import:
-
-```java
-import org.mmmq.broker.dispatcher.DispatcherFactory;
-import org.mmmq.broker.dispatcher.DispatcherFile;
-import org.mmmq.broker.persistence.PersistenceProperties;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-```
-
-- [ ] **Step 7: 테스트 통과 확인**
+- [ ] **Step 6: 테스트 통과 확인**
 
 Run: `./gradlew :broker:test --tests "org.mmmq.broker.dispatcher.DispatcherContainerTest"`
-Expected: PASS (11 tests)
+Expected: PASS (9 tests)
 
-- [ ] **Step 8: 전체 테스트로 회귀 확인**
+- [ ] **Step 7: 전체 테스트로 회귀 확인**
 
 Run: `./gradlew test`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 9: 커밋**
-
-```bash
-git add broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherContainer.java broker/src/main/java/org/mmmq/broker/dispatcher/Dispatcher.java broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherRoute.java broker/src/main/java/org/mmmq/broker/dispatcher/DuplicateConsumerIdException.java broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherNotFoundException.java broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherContainerTest.java broker/src/test/java/org/mmmq/broker/config/DispatcherBeanRegistrarTest.java
-git commit -F - <<'MSGEOF'
-feat: DispatcherContainer에 추가·수정·삭제·조회를 추가
-
-- 뮤테이션을 ReentrantLock 하나로 직렬화하고 핫패스 getSubscribers는 무락 읽기를 유지.
-- 검증 → 파일 → 메모리 순서로 처리해 검증 실패 시 아무것도 바뀌지 않게 함.
-- 구독을 잃은 짝은 ConsumerId 기준으로 찾아 체크포인트까지 정리.
-- 런타임 추가분에는 @PreDestroy가 걸리지 않으므로 생명주기 책임을 컨테이너로 이동.
-
-Co-authored-by: songsunkook <songsunkook@gmail.com>
-MSGEOF
-```
-
 ---
 
-## Task 10: Dispatcher 소유권을 컨테이너로 이전
-
-`DispatcherContainer`가 파일을 직접 읽어 Dispatcher를 만든다. 그러면 Dispatcher가 태어나는 길이 하나가 되고, `ImportBeanDefinitionRegistrar`가 `@ConfigurationProperties` 바인딩보다 먼저 도는 탓에 필요했던 `PersistenceProperties.bind(Environment)` 우회도 사라진다.
-
-**Files:**
-- Modify: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherContainer.java`
-- Modify: `broker/src/main/java/org/mmmq/broker/BrokerConfiguration.java`
-- Modify: `broker/src/main/java/org/mmmq/broker/persistence/PersistenceProperties.java`
-- Modify: `broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherContainerTest.java`
-- Delete: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherBeanRegistrar.java`
-- Delete: `broker/src/test/java/org/mmmq/broker/config/DispatcherBeanRegistrarTest.java`
-
-- [ ] **Step 1: 부트스트랩 테스트를 컨테이너 테스트로 이관**
-
-`DispatcherContainerTest`의 `setUp`에서 생성자 호출을 새 시그니처로 바꾸고, `properties`를 필드로 올린다.
-
-```java
-    PersistenceProperties properties;
-    DispatcherFactory factory;
-    DispatcherFile file;
-    TopicQueueFactory topicQueueFactory;
-    DispatcherContainer container;
-
-    @BeforeEach
-    void setUp() {
-        properties = new PersistenceProperties(tempDir.toString(), null);
-        factory = new DispatcherFactory();
-        file = new DispatcherFile(properties);
-        topicQueueFactory = new TopicQueueFactory(properties);
-        container = new DispatcherContainer(factory, file);
-    }
-```
-
-그리고 `DispatcherBeanRegistrarTest`에 있던 부트스트랩 케이스를 아래 7개로 옮겨 `DispatcherContainerTest` 마지막에 추가한다.
-
-```java
-    @Test
-    @DisplayName("파일의 정의 2개를 읽어 Dispatcher 2개를 만든다")
-    void loadsDefinitionsFromFile() {
-        write("""
-                [
-                  {"consumerId":"order-created","host":"http://127.0.0.1:8080","pattern":"order.created"},
-                  {"consumerId":"order-shipped","host":"http://127.0.0.1:8080","pattern":"order.shipped"}
-                ]
-                """);
-
-        DispatcherContainer loaded = new DispatcherContainer(factory, file);
-
-        assertThat(loaded.definitions())
-                .extracting(DispatcherDefinition::consumerId)
-                .containsExactly("order-created", "order-shipped");
-        loaded.destroy();
-    }
-
-    @Test
-    @DisplayName("파일이 비어 있으면 0개로 기동한다")
-    void bootsEmptyWhenFileHasNoDefinitions() {
-        write("[]");
-
-        DispatcherContainer loaded = new DispatcherContainer(factory, file);
-
-        assertThat(loaded.definitions()).isEmpty();
-        loaded.destroy();
-    }
-
-    @Test
-    @DisplayName("root-dir 디렉터리가 없으면 디렉터리와 빈 파일을 만들고 기동한다")
-    void createsRootDirWhenMissing() {
-        Path absentRoot = tempDir.resolve("absent-root");
-        DispatcherFile absentFile = new DispatcherFile(new PersistenceProperties(absentRoot.toString(), null));
-
-        DispatcherContainer loaded = new DispatcherContainer(factory, absentFile);
-
-        assertThat(loaded.definitions()).isEmpty();
-        assertThat(absentRoot.resolve("dispatchers.json")).exists();
-        loaded.destroy();
-    }
-
-    @Test
-    @DisplayName("중복 consumerId면 생성에 실패한다")
-    void failsOnDuplicateConsumerIdInFile() {
-        write("""
-                [
-                  {"consumerId":"dup","host":"http://127.0.0.1:8080","pattern":"a"},
-                  {"consumerId":"dup","host":"http://127.0.0.1:8080","pattern":"b"}
-                ]
-                """);
-
-        assertThatThrownBy(() -> new DispatcherContainer(factory, file))
-                .isInstanceOf(DuplicateConsumerIdException.class);
-    }
-
-    @Test
-    @DisplayName("consumerId가 regex에 어긋나면 생성에 실패한다")
-    void failsOnInvalidConsumerIdInFile() {
-        write("""
-                [
-                  {"consumerId":"invalid id!","host":"http://127.0.0.1:8080","pattern":"a"}
-                ]
-                """);
-
-        assertThatThrownBy(() -> new DispatcherContainer(factory, file))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
-    @DisplayName("미지원 스킴이면 생성에 실패한다")
-    void failsOnUnsupportedSchemeInFile() {
-        write("""
-                [
-                  {"consumerId":"x","host":"ftp://127.0.0.1:8080","pattern":"a"}
-                ]
-                """);
-
-        assertThatThrownBy(() -> new DispatcherContainer(factory, file))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
-    @DisplayName("깨진 JSON이면 생성에 실패한다")
-    void failsOnMalformedFile() {
-        write("");
-
-        assertThatThrownBy(() -> new DispatcherContainer(factory, file))
-                .isInstanceOf(IllegalStateException.class);
-    }
-```
-
-그리고 아래 헬퍼를 `DispatcherContainerTest`의 private 메서드 영역에 추가한다.
-
-```java
-    private void write(String json) {
-        try {
-            Files.writeString(tempDir.resolve("dispatchers.json"), json);
-        } catch (IOException exception) {
-            throw new IllegalStateException("Failed to write dispatcher file", exception);
-        }
-    }
-```
-
-`import java.io.IOException;`을 추가한다.
-
-- [ ] **Step 2: 테스트가 실패하는지 확인**
-
-Run: `./gradlew :broker:test --tests "org.mmmq.broker.dispatcher.DispatcherContainerTest"`
-Expected: 컴파일 실패 — `DispatcherContainer(DispatcherFactory, DispatcherFile)` 생성자 없음
-
-- [ ] **Step 3: 컨테이너 생성자 교체**
-
-`DispatcherContainer.java`의 생성자를 아래로 교체하고, 쓰이지 않게 된 `import java.util.Collection;`을 제거한다.
-
-```java
-    public DispatcherContainer(DispatcherFactory factory, DispatcherFile file) {
-        this.factory = factory;
-        this.file = file;
-        file.read().forEach(definition -> {
-            Dispatcher dispatcher = factory.create(definition);
-            if (dispatchers.putIfAbsent(dispatcher.consumerId(), dispatcher) != null) {
-                throw new DuplicateConsumerIdException(dispatcher.consumerId());
-            }
-        });
-    }
-```
-
-- [ ] **Step 4: 레지스트라와 우회 코드 삭제**
-
-```bash
-git rm broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherBeanRegistrar.java broker/src/test/java/org/mmmq/broker/config/DispatcherBeanRegistrarTest.java
-```
-
-`broker/src/main/java/org/mmmq/broker/BrokerConfiguration.java` 전체를 아래로 교체:
-
-```java
-package org.mmmq.broker;
-
-import org.mmmq.broker.persistence.PersistenceProperties;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.annotation.ComponentScan;
-
-@AutoConfiguration
-@EnableConfigurationProperties(PersistenceProperties.class)
-@ComponentScan(basePackages = "org.mmmq.broker")
-class BrokerConfiguration {
-
-}
-```
-
-`broker/src/main/java/org/mmmq/broker/persistence/PersistenceProperties.java`에서 아래 메서드와 두 import(`Binder`, `Environment`)를 제거한다.
-
-```java
-    public static PersistenceProperties bind(Environment environment) {
-        return Binder.get(environment)
-                .bind(PREFIX, PersistenceProperties.class)
-                .orElseGet(() -> new PersistenceProperties(null, null));
-    }
-```
-
-- [ ] **Step 5: 테스트 통과 확인**
-
-Run: `./gradlew test`
-Expected: BUILD SUCCESSFUL
-
-- [ ] **Step 6: 커밋**
-
-```bash
-git add -u
-git add broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherContainer.java broker/src/main/java/org/mmmq/broker/BrokerConfiguration.java broker/src/main/java/org/mmmq/broker/persistence/PersistenceProperties.java broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherContainerTest.java
-git commit -F - <<'MSGEOF'
-refactor: Dispatcher 소유권을 DispatcherContainer로 이전
-
-- 런타임에 추가한 Dispatcher는 빈이 될 수 없어 생성 경로가 둘로 갈리던 문제를 해결.
-- 컨테이너가 dispatchers.json을 직접 읽어 Dispatcher를 만들도록 바꾸고 DispatcherBeanRegistrar를 제거.
-- 레지스트라 때문에 필요했던 PersistenceProperties.bind 우회도 함께 제거.
-
-Co-authored-by: songsunkook <songsunkook@gmail.com>
-MSGEOF
-```
-
----
-
-## Task 11: DispatcherController
+## Task 8: DispatcherController
 
 엔드포인트 4개와 상태 코드 매핑을 붙인다. 전역 `@RestControllerAdvice`는 쓰지 않는다. broker는 라이브러리라 호스트 애플리케이션의 다른 컨트롤러 예외까지 가로챈다.
 
 broker에는 `@SpringBootConfiguration`이 없어 `@WebMvcTest`를 쓸 수 없다. standalone MockMvc로 검증한다.
+
+`IllegalArgumentException` → 400 매핑은 `rejectsInvalidConsumerIdInPath`가 목 없이 실제 입력으로 지나가므로, 목이 예외를 던지게 만드는 별도 케이스는 두지 않는다. 예외 핸들러는 컨트롤러 단위라 어느 엔드포인트로 들어와도 같은 코드다. 같은 이유로 `DispatcherNotFoundException` → 404도 PUT에서만 확인한다. DELETE로 한 번 더 들어가도 지나는 핸들러가 같고, `remove`가 없는 id에서 던진다는 것은 `DispatcherContainerTest.rejectsUnknownConsumerId`가 본다.
 
 **Files:**
 - Create: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherController.java`
@@ -2160,7 +1357,6 @@ broker에는 `@SpringBootConfiguration`이 없어 `@WebMvcTest`를 쓸 수 없�
 package org.mmmq.broker.dispatcher;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -2221,19 +1417,6 @@ class DispatcherControllerTest {
     }
 
     @Test
-    @DisplayName("POST에서 잘못된 입력은 400을 돌려준다")
-    void postReturnsBadRequestOnInvalidInput() throws Exception {
-        when(container.add(any())).thenThrow(new IllegalArgumentException("host must not be blank"));
-
-        mockMvc.perform(post("/mmmq/dispatchers")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"consumerId":"order-created","host":"","pattern":"order.*"}
-                                """))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
     @DisplayName("POST에서 중복 consumerId는 409를 돌려준다")
     void postReturnsConflictOnDuplicate() throws Exception {
         when(container.add(any()))
@@ -2281,16 +1464,6 @@ class DispatcherControllerTest {
     void deleteReturnsNoContent() throws Exception {
         mockMvc.perform(delete("/mmmq/dispatchers/order-created"))
                 .andExpect(status().isNoContent());
-    }
-
-    @Test
-    @DisplayName("DELETE에서 없는 consumerId는 404를 돌려준다")
-    void deleteReturnsNotFound() throws Exception {
-        doThrow(new DispatcherNotFoundException(new ConsumerId("absent")))
-                .when(container).remove(any());
-
-        mockMvc.perform(delete("/mmmq/dispatchers/absent"))
-                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -2383,44 +1556,36 @@ public class DispatcherController {
 }
 ```
 
+409·404를 예외 클래스의 `@ResponseStatus`로 대신하지 않는 이유: `ResponseStatusExceptionResolver.applyStatusAndReason`은 `reason`이 비어도 `setStatus`가 아니라 `response.sendError(statusCode)`를 부른다(spring-webmvc 6.1.1 바이트코드 확인). 서블릿 컨테이너의 에러 페이지 디스패치가 돌아서 응답 본문은 호스트 애플리케이션의 `/error` 처리(기본은 Boot의 에러 JSON, 커스텀 에러 뷰가 있으면 그쪽)가 만든다. 라이브러리가 응답을 통째로 남의 설정에 넘기게 되고, 400만 예외 메시지를 돌려주는 비대칭도 생긴다. 세 핸들러를 컨트롤러 안에 두면 이 API의 실패 응답이 브로커 안에서 끝난다.
+
 - [ ] **Step 4: 테스트 통과 확인**
 
 Run: `./gradlew :broker:test --tests "org.mmmq.broker.dispatcher.DispatcherControllerTest"`
-Expected: PASS (9 tests)
+Expected: PASS (7 tests)
 
 - [ ] **Step 5: 전체 테스트 확인**
 
 Run: `./gradlew test`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 6: 커밋**
-
-```bash
-git add broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherController.java broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherControllerTest.java
-git commit -F - <<'MSGEOF'
-feat: 런타임 Dispatcher 관리 엔드포인트 추가
-
-- 재기동 없이 Dispatcher를 추가·수정·삭제·조회할 수 있도록 /mmmq/dispatchers를 노출.
-- 라이브러리 모듈이 호스트 애플리케이션의 예외까지 가로채지 않도록 컨트롤러 내부 @ExceptionHandler로 한정.
-
-Co-authored-by: songsunkook <songsunkook@gmail.com>
-MSGEOF
-```
-
 ---
 
-## Task 12: CLAUDE.md 갱신
+## Task 9: 문서 갱신
 
-`Broker Dispatcher Registration` 절이 삭제된 `DispatcherBeanRegistrar`와 옛 파일 포맷을 설명하고 있다.
+`CLAUDE.md`의 `Broker Dispatcher Registration` 절이 삭제된 `DispatcherBeanRegistrar`와 옛 파일 포맷을 설명하고 있다. 문서 사이트의 `docs/index.html`·`docs/quickstart.html`도 중첩 host 포맷을 그대로 보여주는데, 이 포맷은 새 `DispatcherDefinition`에 바인딩되지 않아 그대로 따라 쓰면 브로커가 뜨지 못한다.
+
+`docs/docs/0.0.2/broker.html`은 릴리스 스냅샷이라 손대지 않는다.
 
 **Files:**
 - Modify: `CLAUDE.md`
+- Modify: `docs/index.html`
+- Modify: `docs/quickstart.html`
 
 - [ ] **Step 1: Broker Dispatcher Registration 절 교체**
 
 `CLAUDE.md`의 `## Broker Dispatcher Registration` 절 전체를 아래로 교체:
 
-```markdown
+````markdown
 ## Broker Dispatcher Registration
 
 Dispatchers are defined in a JSON file at `{mmmq.broker.persistence.root-dir}/dispatchers.json` (root-dir default `./mmmq`); the path is fixed and not individually configurable. `DispatcherContainer` reads it at construction and owns every `Dispatcher` instance — Dispatchers are not Spring beans. The top level is an array; one entry maps to exactly one `consumerId` and one pattern (1 id = 1 Dispatcher = 1 HE).
@@ -2435,7 +1600,7 @@ Dispatchers are defined in a JSON file at `{mmmq.broker.persistence.root-dir}/di
 ]
 ```
 
-`host` is an absolute URL; the scheme must be `http` or `https` (case-insensitive) and the port falls back to the scheme default (80/443) when omitted. When the file is absent, an empty `[]` file is created and the broker boots with no dispatchers. Invalid definitions — duplicate `consumerId`, unsupported scheme, malformed JSON — fail context startup (fail-fast). Each Dispatcher gets its own `<consumerId>.checkpoint` file under the per-topic storage directory.
+`host` is an absolute URL; the scheme must be `http` or `https` (case-insensitive) and the port is required — a consumer usually listens on a non-standard port, so a missing port is rejected instead of silently falling back to 80/443. When the file is absent, an empty `[]` file is created and the broker boots with no dispatchers. Invalid definitions — duplicate `consumerId`, unsupported scheme, malformed JSON — fail context startup (fail-fast). Each Dispatcher gets its own `<consumerId>.checkpoint` file under the per-topic storage directory.
 
 ### Runtime management
 
@@ -2451,7 +1616,7 @@ DELETE /mmmq/dispatchers/{consumerId}  204 / 404
 PUT takes only `host` and `pattern` in the body — `consumerId` is the identifier, not a mutable field. Mutations are serialized by a single `ReentrantLock` inside `DispatcherContainer`; the message hot path (`getSubscribers`) stays lock-free.
 
 A new subscription starts at the log **tail**, so attaching a consumer at runtime does not replay the existing backlog. When a subscription ends — dispatcher deleted, or pattern narrowed so a topic drops out — its `<consumerId>.checkpoint` is deleted too.
-```
+````
 
 - [ ] **Step 2: Message Flow 절의 Bootstrap 문장 갱신**
 
@@ -2469,20 +1634,35 @@ Bootstrap: `DispatcherContainer` reads `dispatchers.json` in its constructor and
 - **Uniqueness on both sides:** Consumer rejects duplicate HE ids at registration (`HandlerExecutionContainer.add`). Broker rejects duplicate consumerIds when `DispatcherContainer` loads the file and on every runtime addition (`DuplicateConsumerIdException`).
 ```
 
-- [ ] **Step 4: 문서가 코드와 맞는지 확인**
+- [ ] **Step 4: 문서 사이트의 dispatchers.json 예시 교체**
 
-Run: `grep -n "DispatcherBeanRegistrar\|HostDefinition" CLAUDE.md`
-Expected: 출력 없음
+`docs/index.html`의 `dispatchers.json` 코드 블록에서 host 줄을 아래로 교체한다.
 
-- [ ] **Step 5: 커밋**
+```html
+  <span class="tk-str">"host"</span>: <span class="tk-str">"http://consumer-host:8080"</span>,
+```
+
+`docs/quickstart.html`의 `dispatchers.json` 코드 블록에서 host 줄을 아래로 교체한다(들여쓰기가 한 단 더 깊다).
+
+```html
+    <span class="tk-str">"host"</span>: <span class="tk-str">"http://localhost:8082"</span>,
+```
+
+- [ ] **Step 5: 문서가 코드와 맞는지 확인**
+
+Run: `grep -n "DispatcherBeanRegistrar\|HostDefinition" CLAUDE.md; grep -n '"protocol"' docs/index.html docs/quickstart.html`
+Expected: 두 grep 모두 출력 없음 (첫 grep이 빈 결과로 종료 코드 1을 내므로 `&&`로 잇지 않는다)
+
+- [ ] **Step 6: 커밋**
 
 ```bash
-git add CLAUDE.md
+git add CLAUDE.md docs/index.html docs/quickstart.html
 git commit -F - <<'MSGEOF'
-docs: CLAUDE.md의 Dispatcher 등록 설명을 새 구조에 맞게 갱신
+docs: Dispatcher 등록 설명을 새 구조에 맞게 갱신
 
 - 삭제된 DispatcherBeanRegistrar와 옛 중첩 host 포맷 설명을 걷어내고 URL 문자열 포맷으로 교체.
 - 런타임 관리 엔드포인트와 tail 시작·체크포인트 삭제 규칙을 추가.
+- 그대로 따라 쓰면 브로커가 뜨지 못하는 문서 사이트의 dispatchers.json 예시도 함께 교체.
 
 Co-authored-by: songsunkook <songsunkook@gmail.com>
 MSGEOF
@@ -2493,5 +1673,6 @@ MSGEOF
 ## 완료 확인
 
 - [ ] `./gradlew build` — BUILD SUCCESSFUL
-- [ ] `git log --oneline -12` — 태스크별 커밋 12개
+- [ ] `git status -s` — Task 1~8의 코드 변경이 커밋되지 않은 채 남아 있다 (문서 커밋 1개만 존재)
 - [ ] `grep -rn "DispatcherBeanRegistrar\|HostDefinition" --include="*.java" broker core` — 출력 없음
+- [ ] `grep -rn '"protocol"' CLAUDE.md docs/index.html docs/quickstart.html` — 출력 없음 (옛 중첩 host 포맷 잔존 확인)
