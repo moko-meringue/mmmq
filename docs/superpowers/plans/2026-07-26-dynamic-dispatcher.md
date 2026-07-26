@@ -1,6 +1,8 @@
 # 런타임 Dispatcher 관리 API Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to work through this plan task-by-task, and superpowers:test-driven-development within each task — every task is written as 실패 테스트 → 구현 → 통과 확인 and must be executed in that order. Do not write the implementation before its test fails for the stated reason. Steps use checkbox (`- [ ]`) syntax for tracking.
+>
+> **커밋만 예외다.** 아래 "커밋 정책"이 실행 스킬의 태스크별 커밋 지시를 덮어쓴다.
 
 **Goal:** 브로커가 도는 중에 HTTP API로 Dispatcher를 추가·수정·삭제·조회할 수 있게 하고, 그 변경이 `dispatchers.json`에 원자적으로 반영돼 재기동 후에도 유지되게 한다.
 
@@ -33,12 +35,12 @@
 
 | 경로 | 변경 |
 |---|---|
-| `core/src/main/java/org/mmmq/core/Host.java` | `InetAddress` → 원본 주소 문자열, 아무도 쓰지 않는 `equals`/`hashCode` 제거 |
+| `core/src/main/java/org/mmmq/core/Host.java` | `InetAddress` → 원본 주소 문자열, 필드 `private final`, 아무도 쓰지 않는 `equals`/`hashCode` 제거 |
 | `broker/.../topicqueue/storage/SegmentFileChain.java` | `tailOffset()` |
 | `broker/.../topicqueue/storage/CheckpointFile.java` | `delete()`, MOKO 주석 제거 |
 | `broker/.../topicqueue/storage/CheckpointDirectory.java` | `deregister(name)` |
 | `broker/.../topicqueue/TopicQueue.java` | `subscribe`가 신규 구독을 tail로 초기화, `unsubscribe(name)` |
-| `broker/.../dispatcher/Dispatcher.java` | `host()`·`pattern()` 접근자, `@PreDestroy` 제거 |
+| `broker/.../dispatcher/Dispatcher.java` | `host()`·`pattern()` 접근자, `@PreDestroy` 제거, `destroyed` 가드 |
 | `broker/.../dispatcher/DispatcherDefinition.java` | host를 URL 문자열로, `from(Dispatcher)`, `HostDefinition` 삭제 |
 | `broker/.../dispatcher/DispatcherContainer.java` | 소유·뮤테이션·영속화 |
 | `broker/src/main/java/org/mmmq/broker/BrokerConfiguration.java` | `@Import(DispatcherBeanRegistrar.class)` 제거 |
@@ -153,7 +155,7 @@ Expected: PASS (3 tests)
 Run: `./gradlew test`
 Expected: BUILD SUCCESSFUL
 
-`SenderTest`와 `GatewayTest`는 `RestClient`의 baseUrl과 `requestTo(...)` 양쪽에 같은 `host.toUri()`를 쓰기 때문에 `"http://127.0.0.1:8080"`이 `"http://localhost:8080"`으로 바뀌어도 함께 움직여 통과한다. `HostDefinitionTest`는 주소를 이미 `"127.0.0.1"`로 주고 있어 기대 문자열이 그대로 성립한다. `equals`/`hashCode` 제거는 어느 테스트도 건드리지 않는다 — `ProducerTest`의 `mock(Host.class)`는 Mockito가 `equals`를 목으로 넘기지 않아 동일성 비교 그대로다.
+`SenderTest`와 `GatewayTest`는 `RestClient`의 baseUrl과 `requestTo(...)` 양쪽에 같은 `host.toUri()`를 쓰기 때문에 `"http://127.0.0.1:8080"`이 `"http://localhost:8080"`으로 바뀌어도 함께 움직여 통과한다. `HostDefinitionTest`는 주소를 이미 `"127.0.0.1"`로 주고 있어 기대 문자열이 그대로 성립한다. `equals`/`hashCode` 제거로 깨지는 테스트도 없다 — `Host`를 비교하는 유일한 곳인 `GatewayTest`의 `assertThat(gateway.host).isEqualTo(host)`는 같은 인스턴스를 넘겨 동일성 비교로 통과하고, `ProducerTest`의 `mock(Host.class)`도 Mockito가 `equals`를 목으로 넘기지 않아 그대로다.
 
 ---
 
@@ -1370,7 +1372,7 @@ public class DispatcherContainer {
 
 **검증하지 않는 것:** 수정·삭제 시 옛 Dispatcher의 워커가 실제로 종료됐는지는 테스트로 확인하지 않는다. 인스턴스를 팩토리가 만들기 때문에 스파이를 끼울 수 없고, `ThreadPoolExecutor`의 종료 여부를 밖에서 관찰할 통로도 없다. `previous.destroy()`·`dispatcher.destroy()` 호출 경로는 코드 리뷰로 확인한다.
 
-같은 이유로 테스트에 `@AfterEach container.destroy()`를 두지 않는다. `WorkerPool`은 `dispatch`의 `computeIfAbsent`에서만 채워지는데 이 파일의 9개 테스트 중 `dispatch`를 부르는 것이 없어 풀이 언제나 비어 있고, 그래서 `destroy()`가 아무 일도 하지 않는다.
+같은 이유로 테스트에 `@AfterEach container.destroy()`를 두지 않는다. `WorkerPool`은 `dispatch`의 `computeIfAbsent`에서만 채워지는데 이 파일의 10개 테스트 중 `dispatch`를 부르는 것이 없어 풀이 언제나 비어 있고, 그래서 `destroy()`가 아무 일도 하지 않는다.
 
 형식 검증(`not-a-url` 같은 입력) 실패 시 파일이 바뀌지 않는다는 케이스도 따로 두지 않는다. `add`가 파일에 쓰는 값이 `DispatcherDefinition.from(dispatcher)`라서 `dispatcherFile.write`의 인자를 만들려면 `DispatcherFactory.create`가 먼저 성공해야 하고, 그래서 이 순서는 구조적으로 뒤집힐 수 없다. "거절 시 파일 무변경"이라는 성질 자체는 `rejectsDuplicateConsumerId`가 같은 세 단 구조로 붙든다.
 

@@ -12,7 +12,7 @@
 
 ## 목표
 
-애플리케이션이 도는 중에 HTTP API로 Dispatcher를 추가·수정·삭제한다. 파일 기반 관리는 그대로 두고, 런타임 변경이 파일에도 반영돼 재기동 후에도 남는다.
+애플리케이션이 도는 중에 HTTP API로 Dispatcher를 추가·수정·삭제·조회한다. 파일 기반 관리는 그대로 두고, 런타임 변경이 파일에도 반영돼 재기동 후에도 남는다.
 
 - 추가: `consumerId`·`host`·`pattern`을 본문으로 받아 등록
 - 수정: `consumerId`는 경로 변수, 본문에는 새 `host`·`pattern`만
@@ -51,9 +51,9 @@
 
 기존 `{ "protocol": "HTTP", "address": "...", "port": 8080 }` 중첩 구조를 대체한다. 마이그레이션은 제공하지 않는다(pre-1.0). 이 형태가 곧 POST 요청 본문이자 GET 응답 본문이라, 같은 개념을 두 가지 모양으로 유지할 일이 없다.
 
-host는 `scheme://address:port` 세 성분만 받는다. 경로·query·userInfo·fragment가 붙으면 거절한다. `Host`가 그 세 성분만 들어 왕복에서 나머지가 소실되는데, 경로는 무해하게 사라지지 않기 때문이다 — `RestClient`의 baseUrl 경로에 `/mmmq/messages`가 덧붙으므로(spring-web 6.1.1 실측), 경로를 보존하면 라우팅이 달라지고 버리면 사용자가 지정한 프리픽스를 무시하고 다른 엔드포인트로 보낸다. userInfo는 인증 정보가 조용히 사라지는 같은 부류다. 포트를 필수로 요구한 것과 같은 논리다.
-
 포트는 생략할 수 없다. 소비자는 대개 8080 같은 비표준 포트에 있어서, 스킴 기본값으로 대체하면 포트를 빼먹은 등록이 조용히 80으로 향한다. 빠뜨렸으면 등록 시점에 거절하는 쪽이 낫고, `Host`가 포트를 필수로 들고 있어 저장·응답 형태도 입력과 같은 모양으로 유지된다.
+
+host는 `scheme://address:port` 세 성분만 받는다. 경로·query·userInfo·fragment가 붙으면 거절한다. `Host`가 그 세 성분만 들어 왕복에서 나머지가 소실되는데, 경로는 무해하게 사라지지 않기 때문이다 — `RestClient`의 baseUrl 경로에 `/mmmq/messages`가 덧붙으므로(spring-web 6.1.1 실측), 경로를 보존하면 라우팅이 달라지고 버리면 사용자가 지정한 프리픽스를 무시하고 다른 엔드포인트로 보낸다. userInfo는 인증 정보가 조용히 사라지는 같은 부류다. 포트를 필수로 요구한 것과 같은 논리다.
 
 ## 컴포넌트
 
@@ -223,8 +223,6 @@ DELETE /mmmq/dispatchers/{consumerId}  204 / 400 / 404
 버려진 Dispatcher에 늦은 `dispatch`가 들어오는 창이 있다 — 메시지 스레드가 `getSubscribers(queue)`의 리스트를 잡은 뒤 `rematchAll`이 그 리스트를 교체하는 경우다. `WorkerPool`의 `DiscardPolicy`는 이걸 막지 못한다. `shutdownAll()`이 `pool.clear()`까지 하므로 뒤이은 `submit`의 `computeIfAbsent`가 **인터럽트되지 않은 새 executor**를 만들고, 버려진 Dispatcher의 `subscriptions` 맵에 큐가 그대로 남아 있어 기존 가드도 통과한다. 그러면 `drain`의 `while (true)`가 로그 끝까지 돌아 삭제된 소비자나 옛 host로 꼬리 전체가 간다.
 
 그래서 `Dispatcher`에 `volatile boolean destroyed`를 두고 `destroy()`가 그것을 먼저 세운 뒤 `dispatch`의 가드에서 확인한다. `dispatch`가 `submit`의 유일한 경로라 워커 자체가 생기지 않고, 그래서 `drain` 루프에는 체크가 필요 없다.
-
-이미 진행 중인 drain이 한 건을 더 보내는 것은 남는다. `awaitTermination`을 쓰지 않기로 했으므로(`Sender`에 타임아웃이 없어 API 요청을 무한정 붙잡는다) 여기까지는 at-least-once의 범위로 받아들인다.
 
 낙오한 워커가 삭제된 체크포인트에 `commit`을 부르면 `checkpointDirectory.get`이 `null`이라 `IllegalStateException`이 나고 드레인 루프가 로그를 남기며 끝난다. 어차피 멈춰야 할 루프라 결과는 맞고, `commit`은 `register`가 아니라 `get`을 쓰므로 지워진 파일이 되살아나지도 않는다.
 
