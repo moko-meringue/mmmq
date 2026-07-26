@@ -248,6 +248,10 @@ Dispatcher가 사라졌는데 그 `consumerId`의 읽기 위치가 디스크에 
 - Modify: `broker/src/main/java/org/mmmq/broker/topicqueue/storage/CheckpointDirectory.java`
 - Create: `broker/src/test/java/org/mmmq/broker/topicqueue/storage/CheckpointDirectoryTest.java`
 
+경로를 지역변수로 뽑아 `deregister` **전에** `exists()`로 고정한다. 프로덕션의 `SUBDIRECTORY_NAME`·`EXTENSION`이 둘 다 `private`이라, 그 값이 바뀌면 `doesNotExist()`가 존재한 적 없는 경로를 보게 되어 `delete()`를 아예 지운 구현에서도 통과한다. 첫 단정(`get`이 `null`)은 맵만 보므로 파일 삭제 성질을 대신 붙들지 못한다. 경로를 고정하면 이름이 무엇으로 바뀌든 "`register`가 만든 그 파일이 사라진다"를 붙들고, `register`가 파일을 만들지 않는 변형까지 죽인다.
+
+`close()`는 try-with-resources로 처리한다. 이 패키지 테스트 5개 파일에서 `.close()` 직접 호출은 0회, `try (` 블록은 31회다. 그리고 `exists()` 선단정이 실패하면 `deregister`에 도달하지 못해 `register`가 연 채널이 열린 채 남는 실패 경로가 실재한다. 디렉터리 이름은 단일 사용이라 리터럴로 둔다.
+
 `CheckpointFile.delete()`에는 단독 케이스를 두지 않는다. `deregister`가 유일한 호출자라 `delete()`를 깨는 변경은 아래 `deregisterRemovesCheckpoint`에서 먼저 터지고, 핸들을 먼저 닫는지는 POSIX에서 어느 테스트도 관찰할 수 없다(열린 파일도 unlink된다).
 
 - [ ] **Step 1: 실패하는 테스트 작성 (CheckpointDirectory)**
@@ -267,28 +271,27 @@ import org.junit.jupiter.api.io.TempDir;
 
 class CheckpointDirectoryTest {
 
-    private static final String SUBDIRECTORY_NAME = "checkpoints";
-
     @Test
     @DisplayName("deregister하면 get이 null이고 파일도 사라진다")
     void deregisterRemovesCheckpoint(@TempDir Path tempDir) {
-        CheckpointDirectory directory = CheckpointDirectory.open(tempDir);
-        directory.register("dispatcher-a");
+        try (CheckpointDirectory directory = CheckpointDirectory.open(tempDir)) {
+            Path checkpoint = tempDir.resolve("checkpoints").resolve("dispatcher-a.checkpoint");
+            directory.register("dispatcher-a");
+            assertThat(checkpoint).exists();
 
-        directory.deregister("dispatcher-a");
+            directory.deregister("dispatcher-a");
 
-        assertThat(directory.get("dispatcher-a")).isNull();
-        assertThat(tempDir.resolve(SUBDIRECTORY_NAME).resolve("dispatcher-a.checkpoint")).doesNotExist();
-        directory.close();
+            assertThat(directory.get("dispatcher-a")).isNull();
+            assertThat(checkpoint).doesNotExist();
+        }
     }
 
     @Test
     @DisplayName("없는 이름으로 deregister해도 아무 일도 없다")
     void deregisterUnknownNameIsNoop(@TempDir Path tempDir) {
-        CheckpointDirectory directory = CheckpointDirectory.open(tempDir);
-
-        assertThatCode(() -> directory.deregister("absent")).doesNotThrowAnyException();
-        directory.close();
+        try (CheckpointDirectory directory = CheckpointDirectory.open(tempDir)) {
+            assertThatCode(() -> directory.deregister("absent")).doesNotThrowAnyException();
+        }
     }
 }
 ```
@@ -344,6 +347,19 @@ Expected: PASS (2 tests)
 ## Task 4: TopicQueue의 구독 시작점
 
 신규 구독은 tail부터 시작한다. 이미 체크포인트가 있으면 손대지 않으므로 재기동은 영향이 없다. `register`가 `computeIfAbsent`라 새로 만든 건지 알 수 없어서 `get`이 `null`인지로 신규를 판별한다.
+
+**신규 구독은 fsync를 두 번 한다.** `CheckpointFile.open`이 빈 파일에 `write(0L)`을 하고, 곧바로 `subscribe`가 `write(tailOffset())`으로 그 값을 덮어쓴다. `FileHandle`의 `FlushMode.FSYNC`가 `channel.force(true)`를 부르므로 서로 다른 값이 두 번 영속화된다. 실측치(같은 파일 300회 반복, darwin):
+
+| 연산 | 측정 |
+|---|---|
+| `write(FSYNC)` | 4.033 ms/call |
+| 같은 8바이트를 `FlushMode.NONE`으로 | 0.0087 ms/call |
+| 신규 구독의 추가분 | fsync 1회 = **약 4.0 ms** |
+| 비교: 메시지 1건 처리 | `append` 8.073 ms(2 fsync) + `commit` 4.033 ms(1 fsync) = 약 12.1 ms |
+
+추가 4.0 ms는 메시지 1건 fsync 비용의 1/3이고, 메시지당이 아니라 **(dispatcher × topic) 구독당 1회**다. `subscribe`는 `register`·`add`·`modify` 경로에서만 불리고 핫패스가 아니다.
+
+**그래도 `open`의 0 초기화를 조건부로 만들지 않는다.** `CheckpointFile.read()`가 `size < 8`이면 `StorageException`을 던지므로, 0 초기화를 없애면 "체크포인트 파일은 항상 8바이트"라는 불변식이 `open`에서 사라진다. 파일을 만든 직후 `write(tail)` 전에 프로세스가 죽으면 0바이트 파일이 남고, 다음 기동의 `bootstrap` → `openAll` → `open`이 그걸 맵에 올려 이후 `read()`가 터진다. 스펙이 "`size == 0 → write(0L)`은 유지한다. 그건 파일을 유효한 상태로 만드는 일"이라고 결정한 이유가 이것이다.
 
 **이 태스크는 기존 테스트 6개를 깨뜨린다.** `TopicQueueTest`에서 4개(`peekReturnsFirstMessage`·`commitAdvancesOffset`·`resumesFromCommittedOffsetAfterRestart`·`redeliversAfterCrashBeforeCommit`)가 "offer 먼저, subscribe 나중" 순서라 tail이 0이 아니게 되어 깨진다. `peekWithoutCommitReturnsSameMessage`는 `offer`가 1건이라 tail=1에서 두 `peek`이 모두 `null`을 돌려주고 `null == null`로 조용히 통과하지만 아무것도 검증하지 못하게 되므로 같이 순서를 뒤집는다. 순서를 뒤집는 것이 새 의미론에 맞는 표현이다.
 
