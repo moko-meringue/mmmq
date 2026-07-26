@@ -51,6 +51,8 @@
 
 기존 `{ "protocol": "HTTP", "address": "...", "port": 8080 }` 중첩 구조를 대체한다. 마이그레이션은 제공하지 않는다(pre-1.0). 이 형태가 곧 POST 요청 본문이자 GET 응답 본문이라, 같은 개념을 두 가지 모양으로 유지할 일이 없다.
 
+host는 `scheme://address:port` 세 성분만 받는다. 경로·query·userInfo·fragment가 붙으면 거절한다. `Host`가 그 세 성분만 들어 왕복에서 나머지가 소실되는데, 경로는 무해하게 사라지지 않기 때문이다 — `RestClient`의 baseUrl 경로에 `/mmmq/messages`가 덧붙으므로(spring-web 6.1.1 실측), 경로를 보존하면 라우팅이 달라지고 버리면 사용자가 지정한 프리픽스를 무시하고 다른 엔드포인트로 보낸다. userInfo는 인증 정보가 조용히 사라지는 같은 부류다. 포트를 필수로 요구한 것과 같은 논리다.
+
 포트는 생략할 수 없다. 소비자는 대개 8080 같은 비표준 포트에 있어서, 스킴 기본값으로 대체하면 포트를 빼먹은 등록이 조용히 80으로 향한다. 빠뜨렸으면 등록 시점에 거절하는 쪽이 낫고, `Host`가 포트를 필수로 들고 있어 저장·응답 형태도 입력과 같은 모양으로 유지된다.
 
 ## 컴포넌트
@@ -152,7 +154,9 @@ PUT 본문 전용. `record DispatcherRoute(String host, String pattern)`.
 1. 아직 뜨지 않아 DNS에 없는 소비자를 미리 등록할 수 없으면, "운영 중에 소비자를 새로 붙인다"는 이 기능의 핵심 용례가 막힌다.
 2. 등록 후 소비자 IP가 바뀌어도 브로커가 재기동 전까지 옛 IP로 계속 보내던 문제도 같이 사라진다.
 
-`equals`/`hashCode`는 고치지 않고 지운다. 지금 구현은 `address`만 비교해서 포트가 달라도 같다고 나오는데, 이 저장소에서 `Host`를 비교하는 코드가 없다 — `Sender.from`·`Gateway`는 `toUri()`만 쓰고, `Dispatcher`는 필드로만 들고, 맵·셋의 키는 `TopicQueue`와 `ConsumerId`다. 새로 들어오는 컨테이너·`rematchAll`도 `ConsumerId` 기준으로 비교한다. 틀린 비교를 남기는 것보다 없는 편이 안전하고, 필요해지는 날 전 필드로 넣으면 된다.
+`equals`/`hashCode`는 고치지 않고 지운다. 지금 구현은 `address`만 비교해서 포트가 달라도 같다고 나오는데, 프로덕션에서 `Host`를 비교하는 코드가 없다 — `Sender.from`·`Gateway`는 `toUri()`만 쓰고, `Dispatcher`는 필드로만 들고, 맵·셋의 키는 `TopicQueue`와 `ConsumerId`다. 새로 들어오는 컨테이너·`rematchAll`도 `ConsumerId` 기준으로 비교한다. 비교하는 곳은 `GatewayTest`의 `assertThat(gateway.host).isEqualTo(host)` 한 줄뿐이고 같은 인스턴스를 넘기므로 제거 후 동일성 비교로 통과한다. 틀린 비교를 남기는 것보다 없는 편이 안전하고, 필요해지는 날 전 필드로 넣으면 된다.
+
+필드는 `private final`로 바꾼다. 클래스 밖에서 읽는 코드가 없다.
 
 주소 형식 검증은 `DispatcherFactory`의 URL 파싱이 맡는다. 다만 `Host`는 core의 공개 타입이라 라이브러리 사용자가 직접 생성하므로, 생성자에 빈 주소와 포트 범위(1~65535) 확인은 인라인으로 남긴다.
 
@@ -214,7 +218,13 @@ DELETE /mmmq/dispatchers/{consumerId}  204 / 400 / 404
 
 **삭제 (DELETE)**
 
-수정과 삭제 모두 옛 Dispatcher의 `destroy()`를 `rematchAll()` **앞**에 둔다. 인터럽트를 먼저 던져야 낙오한 워커가 체크포인트 삭제 뒤에 `commit`을 부를 확률이 줄어든다. 그 사이 이미 죽은 워커에 `dispatch`가 들어갈 수는 있지만 `WorkerPool`의 `DiscardPolicy`가 조용히 버린다.
+수정과 삭제 모두 옛 Dispatcher의 `destroy()`를 `rematchAll()` **앞**에 둔다. 인터럽트를 먼저 던져야 낙오한 워커가 체크포인트 삭제 뒤에 `commit`을 부를 확률이 줄어든다.
+
+버려진 Dispatcher에 늦은 `dispatch`가 들어오는 창이 있다 — 메시지 스레드가 `getSubscribers(queue)`의 리스트를 잡은 뒤 `rematchAll`이 그 리스트를 교체하는 경우다. `WorkerPool`의 `DiscardPolicy`는 이걸 막지 못한다. `shutdownAll()`이 `pool.clear()`까지 하므로 뒤이은 `submit`의 `computeIfAbsent`가 **인터럽트되지 않은 새 executor**를 만들고, 버려진 Dispatcher의 `subscriptions` 맵에 큐가 그대로 남아 있어 기존 가드도 통과한다. 그러면 `drain`의 `while (true)`가 로그 끝까지 돌아 삭제된 소비자나 옛 host로 꼬리 전체가 간다.
+
+그래서 `Dispatcher`에 `volatile boolean destroyed`를 두고 `destroy()`가 그것을 먼저 세운 뒤 `dispatch`의 가드에서 확인한다. `dispatch`가 `submit`의 유일한 경로라 워커 자체가 생기지 않고, 그래서 `drain` 루프에는 체크가 필요 없다.
+
+이미 진행 중인 drain이 한 건을 더 보내는 것은 남는다. `awaitTermination`을 쓰지 않기로 했으므로(`Sender`에 타임아웃이 없어 API 요청을 무한정 붙잡는다) 여기까지는 at-least-once의 범위로 받아들인다.
 
 낙오한 워커가 삭제된 체크포인트에 `commit`을 부르면 `checkpointDirectory.get`이 `null`이라 `IllegalStateException`이 나고 드레인 루프가 로그를 남기며 끝난다. 어차피 멈춰야 할 루프라 결과는 맞고, `commit`은 `register`가 아니라 `get`을 쓰므로 지워진 파일이 되살아나지도 않는다.
 
@@ -256,7 +266,9 @@ broker는 `@SpringBootConfiguration`이 없어서 `@WebMvcTest`를 쓸 수 없�
 - 호스트만 바꾼 수정에서 오프셋 값 승계: 체크포인트 파일이 남았는지만 본다. 파일이 남아 있으면 값을 바꾸는 경로가 `commit`뿐이고, 기존 체크포인트를 tail로 덮어쓰지 않는다는 것은 `TopicQueueTest`가 본다.
 - 형식 검증 실패 시 파일 무변경: `add`가 파일에 쓰는 값이 생성된 `Dispatcher`에서 복원한 정의라, `file.write`가 구조적으로 `DispatcherFactory.create`보다 앞설 수 없다. "거절 시 파일이 바뀌지 않는다"는 성질은 중복 `consumerId` 케이스가 붙든다.
 - 동시성: 뮤테이션 락은 한 줄이고, 스레드를 여러 쌍 띄워 확인할 수 있는 것은 특정 인터리빙 한 번뿐이다. 뮤테이션이 만드는 최종 상태는 컨테이너 케이스들이 이미 본다.
-- 수정·삭제 시 옛 워커의 실제 종료: 인스턴스를 팩토리가 만들어 스파이를 끼울 수 없고, `ThreadPoolExecutor`의 종료 여부를 밖에서 관찰할 통로도 없다.
+- 수정·삭제 시 옛 워커의 실제 종료: 인스턴스를 팩토리가 만들어 스파이를 끼울 수 없고, `ThreadPoolExecutor`의 종료 여부를 밖에서 관찰할 통로도 없다. 대신 `destroyed` 플래그가 늦은 `dispatch`를 막는지는 `DispatcherTest`가 워커 풀이 비어 있는지로 결정적으로 관찰한다.
+- 성공 케이스의 `verify(container).add(...)`·`verify(container).modify(...)`: 스텁을 실인자로 주면 컨트롤러가 다른 값을 넘기는 순간 목이 `null`을 돌려주고 `jsonPath`가 깨지므로 같은 것을 두 번 단정하는 셈이다. 반환값이 없는 DELETE만 `verify`로 확인한다.
+- `BrokerTest`에 새 엔드포인트 추가: standalone MockMvc가 `@RequestMapping` 경로와 `@RestController` 본문 직렬화를 이미 보고, `BrokerTest`는 tempDir root-dir로 새 컨테이너·파일 부팅 경로를 이미 지난다. 컴포넌트 스캔이 이 패키지를 놓치면 같은 패키지의 `FrontDispatcher`가 없어 기존 케이스가 먼저 깨진다.
 - DELETE의 404: `@ExceptionHandler`는 컨트롤러 단위라 어느 엔드포인트로 들어와도 같은 코드를 지난다. PUT에서 한 번만 확인한다.
 - `deregister` 뒤의 `close()`가 터지지 않는다: `FileChannel.close`가 멱등이라 맵에서 빼든 안 빼든 통과해서, 어떤 구현에서도 지나가는 테스트가 된다. 맵에서 먼저 빼는 이유는 코드 옆 문장으로 남긴다.
 - `CheckpointFile.delete()` 단독 케이스: `deregister`가 유일한 호출자라 `CheckpointDirectory` 케이스가 같은 경로를 지나고, 핸들을 먼저 닫는지는 POSIX에서 관찰할 수 없다(열린 파일도 unlink된다).
@@ -268,6 +280,8 @@ broker는 `@SpringBootConfiguration`이 없어서 `@WebMvcTest`를 쓸 수 없�
 - `TopicQueueBootstrapperTest`: 2개가 같은 이유로 깨지지만, 둘 다 `getOrCreate`의 지연 생성 때문에 부트스트래퍼를 관찰하지 못하고 있어 고치는 대신 다르게 손본다. `restoresAllTopicsOnBoot`는 구독·`peek`을 걷어내고 목 `DispatcherContainer.register`가 받은 큐의 토픽을 단정해 처음으로 복원을 관찰한다. `resumesFromLastCommittedOffset`은 삭제한다 — 커밋 위치 재개는 `TopicQueueTest.resumesFromCommittedOffsetAfterRestart`가, `<root>/topics/<topic>` 경로 조합은 `DispatcherContainerTest`의 체크포인트 경로 단정이 본다
 - `HostTest`: "잘못된 호스트명이면 예외" 케이스는 성립하지 않으므로 제거. 빈 주소·포트 범위 케이스로 대체
 - `SenderTest`·`GatewayTest`: 양쪽 다 `host.toUri()`를 쓰고 있어 그대로 통과
+- `DispatcherTest`: 영향 없다(여섯 곳 모두 `subscribe`가 `offer`보다 앞이다). `destroyed` 플래그를 지키는 케이스 하나가 추가된다
+- `docs/index.html`: `dispatchers.json` 예시가 배열이 아니라 단일 객체라, host 줄만 고치면 여전히 `DispatcherDefinition[]` 역직렬화에 실패한다. 배열로 감싸는 것까지 함께 한다
 - `DispatcherTest`·`FrontDispatcherTest`: `Dispatcher` 생성자가 그대로라 영향 없음
 
 ## 문서
