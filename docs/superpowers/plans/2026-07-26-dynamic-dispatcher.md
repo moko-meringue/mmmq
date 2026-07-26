@@ -175,7 +175,7 @@ Expected: BUILD SUCCESSFUL
 
 로테이션 케이스 하나만 둔다. `startOffset`만 돌려주는 구현과 `count`만 돌려주는 구현을 둘 다 죽이고, 빈 체인이 0이라는 것과 append 개수만큼 늘어난다는 것은 Task 4의 `TopicQueueTest`가 같은 숫자로 붙든다 — 빈 큐에 `subscribe`한 뒤 `peek`하는 테스트들은 tail이 0이 아니면 전부 깨지고, `newSubscriptionStartsAtTail`은 `offer` 2건 뒤의 `subscribe`가 2를 돌려주는지 본다.
 
-**이 케이스가 못 잡는 변형이 하나 있다.** 임계 `1L`에서는 tail 세그먼트의 `count`가 항상 1이라 `startOffset + count`와 `startOffset + 1`이 구분되지 않는다. 뮤테이션 실측으로 확인했다 — `startOffset() + 1`은 이 케이스도, `rotatesAtThreshold`·cross-segment readAt·`loadsAllSegments`도 통과한다. 그 변형은 Task 4의 `newSubscriptionStartsAtTail`이 닫는다(기본 64MB에 `offer` 2건이면 단일 세그먼트 `start=0`·`count=2`라 tail이 `2`여야 하는데 `start + 1`은 `1`을 돌려준다). Task 2~3 동안은 그 뮤턴트가 스위트를 통과하는 상태로 남는다.
+**이 케이스가 못 잡는 변형이 하나 있다.** 임계 `1L`에서는 tail 세그먼트의 `count`가 항상 1이라 `startOffset + count`와 `startOffset + 1`이 구분되지 않는다. 뮤테이션 실측으로 확인했다 — `startOffset() + 1`은 이 케이스도, `rotatesAtThreshold`·cross-segment readAt·`loadsAllSegments`도 통과한다. 그 변형은 Task 4가 닫는다. 실측으로 확인했다 — Task 4 이후 같은 뮤턴트가 **9개 케이스로 죽는다.** 두 경로가 함께 발동한다: 빈 큐 tail=0 경로(`TopicQueueTest` 4개 + `DispatcherTest` 4개, 빈 체인에서 `0+1=1`이 되어 첫 메시지를 건너뛴다)와 `count` 항(`newSubscriptionStartsAtTail`이 기본 64MB 단일 세그먼트에서 `expected: 2L but was: 1L`). Task 2~3 동안만 그 뮤턴트가 스위트를 통과하는 상태로 남는다.
 
 ```java
     @Test
@@ -361,7 +361,9 @@ Expected: PASS (2 tests)
 
 **그래도 `open`의 0 초기화를 조건부로 만들지 않는다.** `CheckpointFile.read()`가 `size < 8`이면 `StorageException`을 던지므로, 0 초기화를 없애면 "체크포인트 파일은 항상 8바이트"라는 불변식이 `open`에서 사라진다. 파일을 만든 직후 `write(tail)` 전에 프로세스가 죽으면 0바이트 파일이 남고, 다음 기동의 `bootstrap` → `openAll` → `open`이 그걸 맵에 올려 이후 `read()`가 터진다. 스펙이 "`size == 0 → write(0L)`은 유지한다. 그건 파일을 유효한 상태로 만드는 일"이라고 결정한 이유가 이것이다.
 
-**이 태스크는 기존 테스트 6개를 깨뜨린다.** `TopicQueueTest`에서 4개(`peekReturnsFirstMessage`·`commitAdvancesOffset`·`resumesFromCommittedOffsetAfterRestart`·`redeliversAfterCrashBeforeCommit`)가 "offer 먼저, subscribe 나중" 순서라 tail이 0이 아니게 되어 깨진다. `peekWithoutCommitReturnsSameMessage`는 `offer`가 1건이라 tail=1에서 두 `peek`이 모두 `null`을 돌려주고 `null == null`로 조용히 통과하지만 아무것도 검증하지 못하게 되므로 같이 순서를 뒤집는다. 순서를 뒤집는 것이 새 의미론에 맞는 표현이다.
+**이 태스크는 기존 테스트 6개를 깨뜨린다.** `TopicQueueTest`에서 4개(`peekReturnsFirstMessage`·`commitAdvancesOffset`·`resumesFromCommittedOffsetAfterRestart`·`redeliversAfterCrashBeforeCommit`)가 "offer 먼저, subscribe 나중" 순서라 tail이 0이 아니게 되어 깨진다. 순서를 뒤집는 것이 새 의미론에 맞는 표현이다.
+
+`peekWithoutCommitReturnsSameMessage`는 **삭제한다.** 순서를 뒤집으면 통과하지만 단정이 `f(x) == f(x)`라 여전히 공허하다 — `peek(Offset)`은 넘겨받은 오프셋만 읽는 순수 함수이고 내부 커서가 없어서 어떤 변형으로도 이 단정을 깨뜨릴 수 없다. 파괴적 읽기가 되려면 시그니처부터 달라야 한다. 입력 순서를 고쳐도 공허한 단정은 판별력을 얻지 못한다. 그 성질은 `redeliversAfterCrashBeforeCommit`(재기동 후 0에서 같은 메시지)과 `commitAdvancesOffset`이 더 강하게 붙든다.
 
 `TopicQueueBootstrapperTest`도 2개가 같은 이유로 깨지는데, 둘 다 `TopicQueueBootstrapper`를 관찰하지 못하고 있어서 고치는 대신 다르게 손본다. `TopicQueueContainer.getOrCreate`가 `computeIfAbsent`로 같은 토픽 디렉터리를 지연 생성하므로, `afterSingletonsInstantiated()`를 통째로 지워도 두 테스트의 단정이 그대로 성립한다.
 
@@ -373,15 +375,16 @@ Expected: PASS (2 tests)
 - Modify: `broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueTest.java`
 - Modify: `broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueBootstrapperTest.java`
 
-- [ ] **Step 1: 기존 테스트 5개의 subscribe 위치를 옮기고 신규 1개 추가**
+- [ ] **Step 1: 기존 테스트 4개의 subscribe 위치를 옮기고 1개를 삭제하고 신규 1개 추가**
 
-`broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueTest.java`에서 아래 다섯 테스트의 `queue.subscribe("dispatcher-1")` 줄을 그 테스트의 첫 `queue.offer(...)` 줄 위로 옮긴다. 옮기는 것 말고는 어느 줄도 건드리지 않는다 — 구독이 0에서 출발하므로 기존 기대값은 모두 그대로 성립한다.
+`broker/src/test/java/org/mmmq/broker/topicqueue/TopicQueueTest.java`에서 아래 네 테스트의 `queue.subscribe("dispatcher-1")` 줄을 그 테스트의 첫 `queue.offer(...)` 줄 위로 옮긴다. 옮기는 것 말고는 어느 줄도 건드리지 않는다 — 구독이 0에서 출발하므로 기존 기대값은 모두 그대로 성립한다.
 
 - `peekReturnsFirstMessage`
-- `peekWithoutCommitReturnsSameMessage`
 - `commitAdvancesOffset`
 - `resumesFromCommittedOffsetAfterRestart`
 - `redeliversAfterCrashBeforeCommit`
+
+그리고 `peekWithoutCommitReturnsSameMessage` 케이스 전체를 삭제한다.
 
 이 파일의 지역변수 `final` 28개는 그대로 둔다. 프로젝트 규칙에는 어긋나지만, 걷어내면 이 변경의 diff가 tail 의미론과 무관한 28줄을 더 들고 `BrokerTest`(4개)·`SegmentFileChainTest`(9개)·`SegmentFileTest`(2개)는 그대로 남아 반쪽 정리가 된다. 아래 신규 테스트는 규칙대로 `final`을 쓰지 않으므로 한동안 한 파일에 두 스타일이 섞인다.
 
@@ -400,7 +403,6 @@ Expected: PASS (2 tests)
         Offset offset = queue.subscribe("late-dispatcher");
 
         assertThat(offset.value()).isEqualTo(2L);
-        assertThat(queue.peek(offset)).isNull();
     }
 ```
 
@@ -429,7 +431,7 @@ Expected: `newSubscriptionStartsAtTail` 실패 — 현행 `subscribe`가 `regist
 - [ ] **Step 4: 테스트 통과 확인**
 
 Run: `./gradlew :broker:test --tests "org.mmmq.broker.topicqueue.TopicQueueTest"`
-Expected: PASS (7 tests)
+Expected: PASS (6 tests)
 
 - [ ] **Step 5: TopicQueueBootstrapperTest가 부팅을 관찰하게 고치기**
 
@@ -451,14 +453,18 @@ Expected: PASS (7 tests)
 
         ArgumentCaptor<TopicQueue> restored = ArgumentCaptor.forClass(TopicQueue.class);
         verify(dispatcherContainer, times(2)).register(restored.capture());
-        assertThat(restored.getAllValues()).extracting(TopicQueue::getTopic)
+        assertThat(restored.getAllValues())
+                .extracting(TopicQueue::getTopic)
                 .containsExactlyInAnyOrder(new Topic("topic-a"), new Topic("topic-b"));
+        assertThat(tempDir.resolve("topics").resolve("topic-a").resolve("checkpoints")).exists();
     }
 ```
 
 import 조정: `org.mockito.ArgumentCaptor`와 `static org.mockito.Mockito.times`·`static org.mockito.Mockito.verify`를 넣고, `java.util.Map`·`org.mmmq.broker.topicqueue.storage.CheckpointDirectory`·`org.mmmq.broker.topicqueue.storage.SegmentFileChain`·`org.mmmq.core.message.Message`를 뺀다. `java.io.IOException`·`java.nio.file.Files`는 그대로 쓴다.
 
 빈 토픽 디렉터리로 충분한 이유: `TopicQueueBootstrapper`가 보는 것은 `topics/` 아래 디렉터리의 존재뿐이고(`Files::isDirectory`), 세그먼트가 없어도 `SegmentFileChain.bootstrap`이 startOffset=0 세그먼트를 만들고 `CheckpointDirectory.open`이 `checkpoints/`를 만들어 `TopicQueueFactory.create`가 정상적으로 끝난다.
+
+체크포인트 디렉터리 존재를 함께 단정하는 이유: **삭제한 `resumesFromLastCommittedOffset`의 고유 성질은 커밋 위치 재개가 아니라 "`TopicQueueBootstrapper`가 스캔한 디렉터리를 `TopicQueueFactory`가 정확히 다시 연다"였다.** 그게 없으면 `TopicQueueFactory`의 `root.resolve(topic.name())`을 `root.resolve("mutated-" + topic.name())`으로 바꿔도 전체 스위트가 통과한다(실측 확인). `SegmentFile.openAll`이 19자리 숫자명 필터로 디렉터리를 걸러내므로 모든 토픽이 한 디렉터리를 공유한 채 조용히 동작하고, 로그가 섞인다. 캡처한 큐의 `getTopic`은 토픽 이름만 보므로 디렉터리 이름 변형을 구분하지 못한다. `checkpoints/`가 `topics/<topic>/` 아래에 있는지 보면 경로 조합이 고정되고, 방향이 `exists()`라 이름이 바뀌어도 조용히 통과하지 않는다.
 
 `register` 호출 수만 세지 않고 캡처한 큐의 토픽까지 단정하는 이유: `TopicQueueBootstrapper`의 로직은 디렉터리 필터와 디렉터리명 → `Topic` 매핑 두 줄뿐인데, `times(2)`만으로는 매핑이 망가진 경우(예: `new Topic(path.toString())`은 절대경로를 이름으로 삼고 `root.resolve`가 같은 디렉터리로 되돌아온다)를 구분하지 못한다.
 
