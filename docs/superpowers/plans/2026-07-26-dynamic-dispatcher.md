@@ -173,11 +173,13 @@ Expected: BUILD SUCCESSFUL
 
 `SegmentFileChainTest`의 마지막 `@Test` 뒤에 아래를 추가한다. 필요한 import(`Message`, `Topic`, `Map`, `TempDir`, `assertThat`)는 이미 파일에 있다.
 
-로테이션 케이스 하나만 둔다. `startOffset`과 `count` 두 항이 모두 걸리는 유일한 케이스이고, 빈 체인이 0이라는 것과 append 개수만큼 늘어난다는 것은 Task 4의 `TopicQueueTest`가 같은 숫자로 붙든다 — 빈 큐에 `subscribe`한 뒤 `peek`하는 테스트들은 tail이 0이 아니면 전부 깨지고, `newSubscriptionStartsAtTail`은 `offer` 2건 뒤의 `subscribe`가 2를 돌려주는지 본다.
+로테이션 케이스 하나만 둔다. `startOffset`만 돌려주는 구현과 `count`만 돌려주는 구현을 둘 다 죽이고, 빈 체인이 0이라는 것과 append 개수만큼 늘어난다는 것은 Task 4의 `TopicQueueTest`가 같은 숫자로 붙든다 — 빈 큐에 `subscribe`한 뒤 `peek`하는 테스트들은 tail이 0이 아니면 전부 깨지고, `newSubscriptionStartsAtTail`은 `offer` 2건 뒤의 `subscribe`가 2를 돌려주는지 본다.
+
+**이 케이스가 못 잡는 변형이 하나 있다.** 임계 `1L`에서는 tail 세그먼트의 `count`가 항상 1이라 `startOffset + count`와 `startOffset + 1`이 구분되지 않는다. 뮤테이션 실측으로 확인했다 — `startOffset() + 1`은 이 케이스도, `rotatesAtThreshold`·cross-segment readAt·`loadsAllSegments`도 통과한다. 그 변형은 Task 4의 `newSubscriptionStartsAtTail`이 닫는다(기본 64MB에 `offer` 2건이면 단일 세그먼트 `start=0`·`count=2`라 tail이 `2`여야 하는데 `start + 1`은 `1`을 돌려준다). Task 2~3 동안은 그 뮤턴트가 스위트를 통과하는 상태로 남는다.
 
 ```java
     @Test
-    @DisplayName("세그먼트가 로테이션돼도 tailOffset은 전체 개수를 반영한다")
+    @DisplayName("segment가 rotate돼도 tailOffset은 전체 개수를 반영한다")
     void tailOffsetSpansRotatedSegments(@TempDir Path tempDir) {
         try (SegmentFileChain chain = SegmentFileChain.open(tempDir, 1L)) {
             chain.append(new Message(new Topic("topic"), Map.of("seq", 1)));
@@ -188,6 +190,17 @@ Expected: BUILD SUCCESSFUL
         }
     }
 ```
+
+그리고 기존 `rotatesAtThreshold`의 마지막 단정 뒤에 한 줄을 더한다.
+
+```java
+            assertThat(directory.readAt(2L)).isNull();
+            assertThat(tempDir.resolve("0000000000000000001.mmm")).exists();
+```
+
+**로테이션이 실제로 일어나는지 지금 아무 테스트도 보지 않는다.** 뮤테이션 실측으로 확인했다 — `nextOffset`을 `tailSegmentFile.startOffset()`으로 바꿔 모든 메시지가 세그먼트 0에 쌓이게 해도, `reaches`를 항상 `false`로 만들어 로테이션을 없애도 이 파일 7개가 다 통과한다. 절대 오프셋 기준 `readAt`이 전부 맞기 때문이다. 즉 `mmmq.broker.persistence.segment.max-bytes`가 아무 일도 하지 않게 되는 변형을 아무도 못 본다.
+
+한 줄이 두 성질을 겸한다 — 두 번째 세그먼트가 실제로 만들어지는 것과 19자리 제로패딩 파일명 규칙(`SegmentFile`의 `OFFSET_DIGITS = Long.toString(Long.MAX_VALUE).length()`)이다. 후자도 지금 아무 테스트가 보지 않는다. `Files.list(tempDir).count()`로 세는 형태는 3줄이면서 파일명 규칙을 못 붙들어 쓰지 않는다.
 
 - [ ] **Step 2: 테스트가 실패하는지 확인**
 
@@ -214,6 +227,10 @@ Expected: 컴파일 실패 — `cannot find symbol: method tailOffset()`
         return tailSegmentFile.startOffset() + tailSegmentFile.count();
     }
 ```
+
+`append`가 `lastEntry()`를 두 번 조회하게 되지만 두 번째는 로테이션 분기 안이라 메시지당이 아니라 세그먼트당 한 번이다(기본 64MB마다).
+
+**두 조회가 같은 세그먼트를 본다는 근거는 코드가 아니라 호출자다.** `append`에는 락이 없고 맵은 `ConcurrentSkipListMap`이라, 두 스레드가 같은 체인에 `append`하면 첫 조회와 두 번째 조회가 다른 세그먼트를 볼 수 있다. 그런 구성이 없다는 것이 근거다 — 운영 호출자는 `TopicQueue.offer` 하나뿐이고 `writeLock`으로 감싸며, 체인은 `TopicQueueFactory.create`가 TopicQueue마다 새로 만들고 TopicQueue는 `TopicQueueContainer.queues.computeIfAbsent`로 토픽당 하나다. 옛 코드도 동시 `append`에서는 이미 깨졌다(존재하는 세그먼트 파일을 다시 열어 맵 엔트리를 교체한다). 이 변경이 동시성 성질을 바꾸지는 않는다.
 
 - [ ] **Step 4: 테스트 통과 확인**
 
