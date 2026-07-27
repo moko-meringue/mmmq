@@ -100,6 +100,32 @@
                 </p>
             </section>
 
+            <section id="flow">
+                <h2>모듈 간 통신 흐름</h2>
+                <p>producer가 보낸 메시지는 broker를 거쳐 consumer에 도달합니다. 각 단계는 서로 다른 프로토콜과 책임을 가집니다.</p>
+
+                <div class="code-block">
+                    <div class="code-block__head">
+                        <span class="code-block__lang">producer → broker → consumer</span>
+                        <button class="code-block__copy" type="button">복사</button>
+                    </div>
+                    <pre>┌──────────┐   POST /mmmq/messages      ┌───────────────────────────┐   POST /mmmq/messages       ┌──────────┐
+│ producer │ ─────────────────────────▶ │           broker           │ ────────────────────────▶  │ consumer │
+└──────────┘        Message             │                             │  Message + mmmq-consumer-id └──────────┘
+     ▲                                  │ 1. 디스크에 기록 후 ACK/NACK  │        헤더로 라우팅              │
+     │            ACK / NACK            │ 2. 토픽 패턴 매칭 → Dispatcher│                                 │
+     └──────────────────────────────────│ 3. Dispatcher별 독립 재전송   │◀────────────────────────────────┘
+                                         └───────────────────────────┘        ACK / NACK</pre>
+                </div>
+
+                <p>
+                    <code>producer</code>는 <code>Message</code>를 broker로 보내고, broker의 ACK/NACK 응답만 확인합니다. consumer가 실제로 처리를 마쳤는지는 기다리지 않습니다. <br>
+                    broker는 수신한 메시지를 디스크에 기록해 응답한 뒤, 토픽 패턴이 일치하는 모든 <code>Dispatcher</code>를 통해 각자 독립적으로 consumer에게 전송합니다. <br>
+                    consumer는 요청 헤더의 <code>mmmq-consumer-id</code>로 등록된 핸들러를 찾아 동기적으로 실행하고, 성공하면 ACK, 실패하면 NACK으로 응답합니다. <br>
+                    consumer가 NACK을 보내거나 응답하지 않으면, 해당 <code>Dispatcher</code>가 재시도합니다 — 다른 <code>Dispatcher</code>나 다른 consumer의 소비에는 영향을 주지 않습니다.
+                </p>
+            </section>
+
             <section id="modules">
                 <h2>모듈</h2>
                 <p>각 모듈은 Spring Boot 애플리케이션에 의존성으로 추가하는 라이브러리입니다. core는 공통 타입을 제공하며, producer · broker · consumer는 각각의
@@ -159,6 +185,7 @@
             <div class="docs-toc__head">문서</div>
             <ol>
                 <li><a href="#top">개요</a></li>
+                <li><a href="#flow">모듈 간 통신 흐름</a></li>
                 <li><a href="#modules">모듈</a></li>
             </ol>
         </aside>
