@@ -439,7 +439,7 @@ Expected: PASS (6 tests)
 
 ```java
     @Test
-    @DisplayName("topics 디렉토리에 존재하는 토픽들이 부팅 시 모두 복원된다")
+    @DisplayName("topics 디렉터리에 존재하는 토픽들이 부팅 시 모두 복원된다")
     void restoresAllTopicsOnBoot(@TempDir Path tempDir) throws IOException {
         Files.createDirectories(tempDir.resolve("topics").resolve("topic-a"));
         Files.createDirectories(tempDir.resolve("topics").resolve("topic-b"));
@@ -755,6 +755,8 @@ Expected: BUILD SUCCESSFUL
 
 `createsRootDirWhenMissing`이 root-dir까지 없는 상태를 보므로 "파일만 없는 상태"는 따로 두지 않는다 — `read()`의 같은 분기이고 `Files.createDirectories`는 이미 있는 디렉터리에 무해하다. 쓰기 후 `.tmp`가 남지 않는다는 것도 `Files.move`의 `ATOMIC_MOVE` 계약이라 케이스를 두지 않는다. 이동이 실패하면 `roundTrips`가 `IllegalStateException`으로 먼저 깨진다.
 
+**원자성 자체는 테스트로 붙들지 않는다.** temp + `ATOMIC_MOVE`를 `Files.write(path, ...)` 한 줄로 바꾼 뮤턴트는 세 케이스를 전부 통과한다. 확인된 공백이지만 메울 대상이 아니다 — 반쯤 쓰인 파일이 최종 경로에 보이는 순간을 관측하려면 쓰기 도중 다른 스레드가 읽어야 하고, 그건 타이밍에 기대는 테스트다. `Files.move`의 계약에 맡긴다. `roundTrips`가 사는 값은 따로 있다: `write`를 관측하는 유일한 케이스이고(없으면 `write`가 no-op이어도 Task 7까지 아무도 모른다) 정의 2건의 순서와 직렬화 왕복을 붙든다. 경로 조합은 못 붙든다 — write와 read가 같은 필드를 쓰므로 경로가 틀려도 대칭으로 통과한다. 그 자리는 `createsRootDirWhenMissing`의 `exists()`와 `PersistencePropertiesTest.resolvesDispatchersFile`이 맡는다.
+
 **Files:**
 - Create: `broker/src/main/java/org/mmmq/broker/dispatcher/DispatcherFile.java`
 - Create: `broker/src/test/java/org/mmmq/broker/dispatcher/DispatcherFileTest.java`
@@ -815,6 +817,7 @@ class DispatcherFileTest {
         assertThat(file.read()).isEmpty();
 
         assertThat(absentRoot.resolve(FILE_NAME)).exists();
+        assertThat(file.read()).isEmpty();
     }
 
     @Test
@@ -828,7 +831,9 @@ class DispatcherFileTest {
 }
 ```
 
-**빈 파일은 `"not json"`과 다른 분기를 지난다.** Task 5에서 지운 `DispatcherBeanRegistrarTest.failsOnEmptyFile`이 보던 자리인데, `"not json"`은 `Files.exists`가 참이고 내용도 있는 경로인 반면 빈 파일은 존재하면서 내용만 비어 Jackson이 EOF로 실패한다. 동작은 `IOException` → `IllegalStateException`으로 같지만 이 스위트에 단정이 없다. `rejectsMalformedJson`의 픽스처를 빈 문자열로 바꾸는 것으로는 `"not json"` 쪽을 잃으니, 필요하다면 케이스를 하나 더 두는 쪽이다. Task 6 리뷰에서 판정한다.
+**빈 파일 케이스는 두지 않는다.** Task 5에서 지운 `DispatcherBeanRegistrarTest.failsOnEmptyFile`이 보던 자리라 후보로 올렸다가 실측으로 접었다. 빈 파일도 존재하므로 `"not json"`과 **완전히 같은 문장열**(`exists`=true → `readAllBytes` → `readValue` → `catch (IOException)`)을 지난다. `read()`의 절을 하나씩 뒤집어 두 입력의 반응을 대조했는데 — 조건 반전, 분기 삭제, `readAllBytes` 치환, 부모 경로 변형 — 네 경우 모두 갈리지 않았다. 새로 죽이는 뮤턴트가 없다. (등가성의 범위는 현재 코드의 절을 변형하는 뮤턴트까지다. `if (bytes.length == 0)` 같은 절을 나중에 *더하면* 두 입력이 갈리므로 그때 다시 본다.)
+
+**`createsRootDirWhenMissing`이 `read()`를 두 번 부르는 이유는 만든 파일이 유효한지 보기 위해서다.** 두 단정은 각각 다른 것을 붙든다 — 첫 `isEmpty()`는 반환값(`return List.of()`를 `return null`로 바꾸면 여기만 죽는다), `exists()`는 부작용(`writeString`을 지우면 여기만 죽는다). 그런데 둘 다 **내용**을 안 본다. `EMPTY_ARRAY`를 `""`로 바꾼 뮤턴트가 그 틈으로 살아남는데, 증상이 조용하고 고약하다 — 브로커가 **다음 부팅을 깨뜨리는 파일**을 만들어 놓고 이번 부팅은 성공한다. 둘째 `read()`가 `exists`=true 분기를 지나 그 파일을 실제로 파싱하면서 뮤턴트를 죽인다. 리터럴 `"[]"`를 단정하던 옛 방식보다 낫다 — 포맷이 아니라 "자기가 만든 파일을 자기가 다시 읽을 수 있다"를 보므로 pretty-print 들여쓰기가 바뀌어도 안 깨진다.
 
 - [ ] **Step 2: 테스트가 실패하는지 확인**
 
@@ -871,7 +876,7 @@ public class DispatcherFile {
     public List<DispatcherDefinition> read() {
         try {
             if (!Files.exists(path)) {
-                Files.createDirectories(path.toAbsolutePath().getParent());
+                Files.createDirectories(path.getParent());
                 Files.writeString(path, EMPTY_ARRAY);
                 log.info("Dispatcher file not found. Created empty file at {}.", path);
                 return List.of();
@@ -895,6 +900,10 @@ public class DispatcherFile {
 ```
 
 `JsonProcessingException`은 `IOException`의 하위 타입이라 catch 하나로 충분하다.
+
+`getParent()`에 `toAbsolutePath()`를 붙이지 않는다. `dispatchersFile()`이 언제나 `Path.of(rootDir).resolve("dispatchers.json")`이라 원소가 둘 이상이고, `rootDir`이 비면 compact constructor가 `./mmmq`로 채우므로 부모가 `null`이 될 수 있는 입력이 없다(`"./mmmq"`·`"mmmq"`·`"."`·`"/var/mmmq"`·기본값으로 확인). `Files.createDirectories`는 상대경로로도 같은 디렉터리를 만든다. 삭제되는 `DispatcherBeanRegistrar`에 그 호출이 있었지만 거기서도 죽은 방어였다.
+
+**파일 내용이 최상위 `null`(`"null"`)이거나 원소가 `null`(`"[null]"`)이면 맨 `NullPointerException`이 샌다.** `readValue`가 `null`을 돌려주거나 `List.of(E...)`가 `null` 원소를 거부하는데, 둘 다 `catch (IOException)`에 안 걸려 감싸이지 않는다(cause도 없다). 막지 않는다 — 프로덕션의 `read()` 호출자는 `DispatcherContainer` 생성자 하나뿐이라 이 입력은 어차피 컨텍스트 기동을 막고, 예외 타입이 뭐든 결과는 같은 fail-fast다. HTTP 응답 표면이 없으므로 Task 5에서 팩토리의 NPE를 막았던 논거(400이어야 할 입력이 500이 된다)가 여기엔 적용되지 않는다. `definitions == null ? List.of() : ...`로 흘리는 쪽은 **손상된 파일을 조용히 빈 설정으로 받아들이는** 것이라 오히려 나쁘다. `write`는 배열만 쓰고 `ATOMIC_MOVE`라 이 내용은 손편집으로만 생긴다. 실제로 보고되면 코드 한 줄과 케이스 한 줄이 같이 들어오면 된다.
 
 빈 파일 생성 로그는 삭제되는 `DispatcherBeanRegistrar`에 있던 것을 옮긴 것이다. 사용자가 직접 편집할 파일을 브로커가 root-dir 아래에 만들었다는 사실은 조용히 넘길 값이 아니고, 파일·큐 생성 순간을 남기는 것이 broker의 관용이다(`TopicQueueContainer`의 "Topic queue created"). 로거 선언은 UPPER_SNAKE 상수 뒤, 인스턴스 필드 앞에 둔다. `write` 성공 로그는 붙이지 않는다 — 런타임 뮤테이션은 이미 HTTP 응답으로 관측된다.
 
