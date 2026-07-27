@@ -27,7 +27,7 @@
 |---|---|
 | Dispatcher 소유권 | `DispatcherContainer`가 직접 소유. `DispatcherBeanRegistrar` 삭제 |
 | 파일 host 포맷 | URL 문자열 하나로 통일 (API 요청 형태와 동일) |
-| Dispatcher 생성 | `DispatcherFactory`가 `DispatcherDefinition`을 받아 생성 |
+| Dispatcher 생성 | `DispatcherDefinition.toDispatcher()` — 정의가 양방향 변환을 소유 |
 | 역방향 변환 | `DispatcherDefinition.from(Dispatcher)` |
 | `Host`의 주소 표현 | `InetAddress` 즉시 해석을 그만두고 원본 문자열 보존 |
 | 새 구독의 시작 오프셋 | 로그의 tail |
@@ -59,15 +59,21 @@ host는 `scheme://address:port` 세 성분만 받는다. 경로·query·userInfo
 
 ### 신규
 
-**`DispatcherFactory`** (`org.mmmq.broker.dispatcher`)
+**`Host.from(String url)`** (`org.mmmq.core`)
 
-`DispatcherDefinition`을 받아 `Dispatcher`를 만든다. 문자열 → `Host`·`ConsumerId`·`TopicPattern` 변환과 검증이 전부 여기 모인다.
+URL 문자열을 해석해 `Host`를 만든다. "무엇이 유효한 host URL인가"라는 지식이 전부 여기 있다.
 
-상태가 없어 `create`는 정적 메서드다. 빈으로 만들면 컨테이너가 필드와 생성자 인자를 하나 더 들어야 하는데, 호출자는 `DispatcherContainer` 하나뿐이고 대체 구현이나 목이 필요한 곳이 없다. `SegmentFileChain.open`·`Sender.from`처럼 이 저장소에 이미 있는 정적 팩토리와 같은 모양이다. 클래스와 메서드 모두 package-private다 — 호출자가 전부 같은 패키지 안이고, Dispatcher를 만드는 경로가 파일 하나로 모인다는 결정과 노출 범위가 맞는다.
-
-`create(definition)`은 host 문자열을 `URI.create`로 파싱해 스킴·호스트·포트를 확인한 뒤 `Host`·`ConsumerId`·`TopicPattern`을 만든다.
+`Host`가 이 일을 갖는 이유는 대칭이다. `toUri()`(내보내기)와 `from()`(되받기)은 같은 문자열 포맷에 대한 앞뒤 연산인데, 하나는 core에 있고 하나는 broker에 있을 이유가 없다. 같은 패키지의 `WebProtocol`이 이미 `getScheme()`/`from(String)` 양방향을 다 갖고 있다. 그리고 이 포맷 규칙("경로를 붙일 수 없다")은 broker 고유 규칙이 아니라 **`Host`가 `RestClient`의 baseUrl로 쓰인다는 계약**에서 나온다 — producer의 `Gateway`도 같은 방식으로 쓴다.
 
 `URI.create("garbage")`는 예외를 던지지 않고 scheme이 `null`인 URI를 만들기 때문에 scheme·host를 명시적으로 확인해야 한다. 밑줄이 든 호스트명(`consumer_host`)도 `getHost()`가 `null`이라 여기서 걸린다.
+
+**검증 절의 순서가 성능이 아니라 정확성을 좌우한다.** `blank` 검사가 `URI.create`보다 앞서야 하고(`URI.create(null)`은 NPE), scheme·host 검사가 path 검사보다 앞서야 한다 — opaque URI(`consumer-host:8080`)는 `getHost()`와 `getPath()`가 **둘 다 `null`**이라 순서가 뒤집히면 400이어야 할 입력이 NPE로 500이 된다.
+
+`Host` 생성자의 빈 주소·포트 범위 검사는 그대로 남는다. `from`은 그 생성자를 부르므로 검증이 우회되지 않고, `Host`는 core의 공개 타입이라 라이브러리 사용자가 3인자 생성자로 직접 만드는 경로가 계속 살아 있다.
+
+**`TopicPattern`** (`org.mmmq.core.message`)
+
+compact constructor에서 빈 값을 거절한다. 이전에는 broker의 팩토리가 대신 지켜 줬는데, 그러면 `TopicPattern`을 직접 만드는 다른 경로가 방어를 못 받는다. `ConsumerId`가 정규식으로 자기를 지키는 것과 같은 모양이다.
 
 **`DispatcherFile`** (`org.mmmq.broker.dispatcher`, `@Component`)
 
@@ -77,6 +83,16 @@ host는 `scheme://address:port` 세 성분만 받는다. 경로·query·userInfo
 - `write(definitions)`: 같은 디렉터리의 `dispatchers.json.tmp`에 전체를 쓰고 `ATOMIC_MOVE`로 교체한다.
 
 `ObjectMapper`는 주입받지 않고 클래스 상수로 직접 만든다. broker는 라이브러리라, 호스트 애플리케이션의 `ObjectMapper` 커스터마이징에 파일 포맷이 휘둘리면 안 된다.
+
+**`TopicQueueRegistrar`** (`org.mmmq.broker.topicqueue`)
+
+`void register(TopicQueue topicQueue)` 하나짜리 인터페이스다. `DispatcherContainer`가 구현하고 `TopicQueueContainer`가 이 타입으로 주입받는다.
+
+**패키지 순환을 끊기 위한 것이다.** 그 전에는 `TopicQueueContainer`(저장소 계층)가 `DispatcherContainer`(업무 계층)를 직접 import했고, 반대로 `dispatcher`의 세 파일이 `topicqueue`를 import해서 두 패키지가 서로를 알았다. 인터페이스를 호출자 쪽 패키지에 두면 컴파일 의존이 `dispatcher → topicqueue` 한 방향만 남는다.
+
+메서드 이름을 `register`로 둔 이유는 `DispatcherContainer`가 이미 그 이름·그 시그니처의 메서드를 갖고 있어서다. `@Override`만 붙으면 되고 새로 쓸 코드가 없다. `onCreate` 같은 이벤트 이름을 새로 지으면 같은 일을 가리키는 진입점이 둘이 된다.
+
+큐 생성 경로가 `TopicQueueContainer.getOrCreate` 하나로 수렴하므로(부팅 복원의 `TopicQueueBootstrapper`, 런타임 도착의 `FrontDispatcher` 둘 다) 이 인터페이스가 두 경로를 빠짐없이 덮는다.
 
 **`DispatcherRoute`** (record)
 
@@ -94,12 +110,15 @@ PUT 본문 전용. `record DispatcherRoute(String host, String pattern)`.
 
 **`DispatcherDefinition`**
 
-레코드 컴포넌트는 `consumerId`·`host`·`pattern` 세 문자열이고, `from(Dispatcher)`가 `host().toUri()`로 host를 되돌린다. 중첩 `HostDefinition` 레코드와 `toHost()`는 삭제한다. `Host`가 원본 주소 문자열을 보존하게 되면서 `Dispatcher` → 정의 복원이 무손실이 된다. 덕분에 컨테이너가 런타임 객체와 정의를 두 벌로 들 필요가 없다.
+레코드 컴포넌트는 `consumerId`·`host`·`pattern` 세 문자열이고, **양방향 변환을 이 타입이 소유한다** — `from(Dispatcher)`가 `host().toUri()`로 host를 되돌리고, `toDispatcher()`가 `Host.from(host)`로 런타임 객체를 만든다. 방향을 여기 모으는 이유는 의존이 한쪽으로만 흐르게 하기 위해서다. `Dispatcher`에 `toDefinition()`을 두면 도메인 객체가 와이어 타입을 알게 되어 JSON 스키마가 바뀔 때마다 dispatch 로직 파일이 열리고, 두 타입이 서로를 아는 순환이 생긴다. 주변적이고 교체 가능한 표현(정의)이 중심적이고 안정적인 개념(Dispatcher)을 아는 방향이 맞다.
+
+소속 판정 `matches(ConsumerId)`와 `(ConsumerId, DispatcherRoute)` 부생성자도 여기 둔다. 앞은 `DispatcherContainer`의 `modify`·`remove`가 각자 `.value()`로 문자열 비교를 반복하던 것이고, 뒤는 `modify`가 정의를 손으로 재조립하던 것이다. 중첩 `HostDefinition` 레코드와 `toHost()`는 삭제한다. `Host`가 원본 주소 문자열을 보존하게 되면서 `Dispatcher` → 정의 복원이 무손실이 된다. 덕분에 컨테이너가 런타임 객체와 정의를 두 벌로 들 필요가 없다.
 
 **`Dispatcher`**
 
-- 생성자 시그니처는 그대로 `(Host, ConsumerId, TopicPattern)`. 와이어 포맷을 모른다.
-- `host()`, `pattern()` 접근자 추가 (`consumerId()`는 이미 있음).
+- 공개 생성자는 `(Host, ConsumerId, TopicPattern)`. **와이어 포맷을 끝까지 모른다** — `DispatcherDefinition`을 import하지 않는다.
+- 협력자 주입용 package-private 4인자 생성자를 두고 공개 생성자가 거기 위임한다. `sender`가 `private final`이 되어 완성된 객체의 협력자를 밖에서 갈아 끼울 수 없다.
+- `consumerId()`·`host()`·`pattern()` 접근자는 전부 package-private이다. 셋 다 패키지 밖 호출자가 없고, 식별자가 밖으로 나가는 통로는 `DispatcherDefinition`이며 그것도 같은 패키지다.
 - `destroy()`에서 `@PreDestroy` 제거. 더 이상 빈이 아니므로 컨테이너가 생명주기를 책임진다.
 
 **`DispatcherContainer`**
@@ -113,7 +132,7 @@ PUT 본문 전용. `record DispatcherRoute(String host, String pattern)`.
 
 공개 메서드: `register(TopicQueue)`, `getSubscribers(TopicQueue)`, `definitions()`, `add(DispatcherDefinition)`, `modify(ConsumerId, DispatcherRoute)`, `remove(ConsumerId)`.
 
-내부 `match(TopicQueue)`가 패턴이 맞는 Dispatcher를 골라 그 큐를 구독시키고(현행 `register`의 본문 그대로다), `rematchAll()`이 `subscriptions`의 모든 큐에 `match`를 다시 돌려 구독 리스트를 갈아치우면서 이번에 빠진 짝은 `TopicQueue.unsubscribe`로 끊는다. 세 뮤테이션이 이 둘을 공유한다.
+내부 `match(TopicQueue)`가 패턴이 맞는 Dispatcher를 고르고(순수 질의), `subscribeMatched(TopicQueue)`가 그 결과를 구독시킨다(부작용). 둘을 가른 이유는 이름이 하는 일과 맞지 않아서다 — 매칭 알고리즘이 바뀌는 이유와 새 구독이 체크포인트를 만드는 이유는 다르다. `rematchAll()`이 `subscriptions`의 모든 큐에 `match`를 다시 돌려 구독 리스트를 갈아치우면서 이번에 빠진 짝은 `TopicQueue.unsubscribe`로 끊는다. 세 뮤테이션이 이 둘을 공유한다.
 
 `Dispatcher.subscribe`가 `computeIfAbsent`라 이미 구독한 큐를 다시 매칭해도 아무 일도 일어나지 않는다.
 
@@ -123,11 +142,11 @@ PUT 본문 전용. `record DispatcherRoute(String host, String pattern)`.
 
 **`TopicQueue`**
 
-`subscribe(name)`은 체크포인트가 없을 때만 `segmentFileChain.tailOffset()`을 써서 새로 만든다. 기존 체크포인트는 손대지 않으므로 재기동 동작은 그대로다.
+`subscribe(ConsumerId)`는 체크포인트가 없을 때만 `segmentFileChain.tailOffset()`을 써서 새로 만든다. 기존 체크포인트는 손대지 않으므로 재기동 동작은 그대로다.
 
 `register`가 `computeIfAbsent`라 새로 만든 건지 알 수 없어서, `get`이 `null`인지로 신규를 판별한다. 경쟁은 없다 — `subscribe`에 닿는 경로는 `register`·`add`·`modify` 셋뿐이고 전부 뮤테이션 락 안이다. `CheckpointDirectory.open`이 디스크의 체크포인트 파일을 전부 맵에 올려두므로, 재기동 후 첫 `subscribe`에서도 `get`이 `null`이 아니고 tail로 덮어쓰지 않는다.
 
-구독을 끊는 `unsubscribe(name)`도 추가한다. `checkpointDirectory.deregister(name)`를 부르고 `StorageException`은 삼켜 로그만 남긴다. 이 호출은 `rematchAll`이 여러 토픽을 돌며 일어나는데, 한 토픽의 파일 삭제 실패가 예외로 올라가면 `subscriptions`가 반쯤 갱신된 채 남는다. 지우다 실패한 체크포인트는 아무도 읽지 않는 파일로 남을 뿐이다.
+구독을 끊는 `unsubscribe(ConsumerId)`도 추가한다. `checkpointDirectory.deregister(consumerId.value())`를 부르고 `StorageException`은 삼켜 로그만 남긴다. 이 호출은 `rematchAll`이 여러 토픽을 돌며 일어나는데, 한 토픽의 파일 삭제 실패가 예외로 올라가면 `subscriptions`가 반쯤 갱신된 채 남는다. 지우다 실패한 체크포인트는 아무도 읽지 않는 파일로 남을 뿐이다.
 
 **`SegmentFileChain`**
 
@@ -158,7 +177,7 @@ PUT 본문 전용. `record DispatcherRoute(String host, String pattern)`.
 
 필드는 `private final`로 바꾼다. 클래스 밖에서 읽는 코드가 없다.
 
-주소 형식 검증은 `DispatcherFactory`의 URL 파싱이 맡는다. 다만 `Host`는 core의 공개 타입이라 라이브러리 사용자가 직접 생성하므로, 생성자에 빈 주소와 포트 범위(1~65535) 확인은 인라인으로 남긴다.
+URL 형식 검증은 `Host.from`이 맡는다. 다만 `Host`는 core의 공개 타입이라 라이브러리 사용자가 3인자 생성자로 직접 생성하므로, 생성자의 빈 주소와 포트 범위(1~65535) 확인은 인라인으로 남긴다.
 
 **`BrokerConfiguration`**
 
@@ -204,7 +223,7 @@ DELETE /mmmq/dispatchers/{consumerId}  204 / 400 / 404
 
 세 뮤테이션 모두 **검증 → 파일 → 메모리** 순서다. 검증에서 터지면 파일도 메모리도 안 건드리고, 파일이 넘어간 뒤 죽어도 재기동하면 파일 상태로 수렴한다.
 
-검증 안에서의 순서는 추가와 수정·삭제가 반대다. 추가는 `DispatcherFactory.create`가 중복 확인보다 앞서고(형식과 중복이 함께 어긋난 요청은 400), 수정·삭제는 존재 확인이 형식 검증보다 앞선다(없는 `consumerId`에 잘못된 host를 보내면 404).
+검증 안에서의 순서는 추가와 수정·삭제가 반대다. 추가는 `definition.toDispatcher()`가 중복 확인보다 앞서고(형식과 중복이 함께 어긋난 요청은 400), 수정·삭제는 존재 확인이 형식 검증보다 앞선다(없는 `consumerId`에 잘못된 host를 보내면 404).
 
 **추가 (POST)**
 
@@ -260,10 +279,10 @@ broker는 `@SpringBootConfiguration`이 없어서 `@WebMvcTest`를 쓸 수 없�
 **두지 않는 케이스와 이유**
 
 - 쓰기 후 `.tmp`가 남지 않는다: `Files.move`의 `ATOMIC_MOVE` 계약이고, 이동이 실패하면 쓰기 자체가 예외로 끝난다.
-- 컨테이너 부트스트랩의 파일 없음·깨진 JSON·미지원 스킴·잘못된 `consumerId`: 앞의 둘은 `DispatcherFileTest`가, 뒤의 둘은 `DispatcherFactoryTest`가 이미 같은 코드를 본다. 생성자는 그 둘을 잇는 7줄이라 컨테이너 수준에서는 와이어링(순서)과 유일한 분기(중복 `consumerId`)만 확인한다.
-- `DispatcherDefinition.from`의 단독 왕복: 세 필드를 그대로 옮기는 매핑이라 분기가 없고, 컨테이너의 추가 케이스가 파일 내용을 완전한 정의로 단정해 `create` → `from` → Jackson 왕복을 통째로 지난다. 호스트 이름이 IP로 바뀌지 않는다는 회귀는 `DispatcherFactoryTest`·`HostTest`가 `toUri()`로 잡는다.
+- 컨테이너 부트스트랩의 파일 없음·깨진 JSON·미지원 스킴·잘못된 `consumerId`: 앞의 둘은 `DispatcherFileTest`가, 뒤의 둘은 `HostTest`·`DispatcherDefinitionTest`가 이미 같은 코드를 본다. 생성자는 그 둘을 잇는 7줄이라 컨테이너 수준에서는 와이어링(순서)과 유일한 분기(중복 `consumerId`)만 확인한다.
+- `DispatcherDefinition.from`의 단독 왕복: 세 필드를 그대로 옮기는 매핑이라 분기가 없고, 컨테이너의 추가 케이스가 파일 내용을 완전한 정의로 단정해 `toDispatcher` → `from` → Jackson 왕복을 통째로 지난다. 호스트 이름이 IP로 바뀌지 않는다는 회귀는 `HostTest`가 `toUri()`로 잡는다.
 - 호스트만 바꾼 수정에서 오프셋 값 승계: 체크포인트 파일이 남았는지만 본다. 파일이 남아 있으면 값을 바꾸는 경로가 `commit`뿐이고, 기존 체크포인트를 tail로 덮어쓰지 않는다는 것은 `TopicQueueTest`가 본다.
-- 형식 검증 실패 시 파일 무변경: `add`가 파일에 쓰는 값이 생성된 `Dispatcher`에서 복원한 정의라, `file.write`가 구조적으로 `DispatcherFactory.create`보다 앞설 수 없다. "거절 시 파일이 바뀌지 않는다"는 성질은 중복 `consumerId` 케이스가 붙든다.
+- 형식 검증 실패 시 파일 무변경: `add`가 파일에 쓰는 값이 생성된 `Dispatcher`에서 복원한 정의라, `file.write`가 구조적으로 `definition.toDispatcher()`보다 앞설 수 없다. "거절 시 파일이 바뀌지 않는다"는 성질은 중복 `consumerId` 케이스가 붙든다.
 - 동시성: 뮤테이션 락은 한 줄이고, 스레드를 여러 쌍 띄워 확인할 수 있는 것은 특정 인터리빙 한 번뿐이다. 뮤테이션이 만드는 최종 상태는 컨테이너 케이스들이 이미 본다.
 - 수정·삭제 시 옛 워커의 실제 종료: 인스턴스를 팩토리가 만들어 스파이를 끼울 수 없고, `ThreadPoolExecutor`의 종료 여부를 밖에서 관찰할 통로도 없다. 대신 `destroyed` 플래그가 늦은 `dispatch`를 막는지는 `DispatcherTest`가 워커 풀이 비어 있는지로 결정적으로 관찰한다.
 - 성공 케이스의 `verify(container).add(...)`·`verify(container).modify(...)`: 스텁을 실인자로 주면 컨트롤러가 다른 값을 넘기는 순간 목이 `null`을 돌려주고 `jsonPath`가 깨지므로 같은 것을 두 번 단정하는 셈이다. 반환값이 없는 DELETE만 `verify`로 확인한다.

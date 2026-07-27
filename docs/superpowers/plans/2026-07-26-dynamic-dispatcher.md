@@ -1869,3 +1869,50 @@ MSGEOF
 - [ ] `git status -s` — Task 1~8의 코드 변경이 커밋되지 않은 채 남아 있다 (문서 커밋 1개만 존재)
 - [ ] `grep -rn "DispatcherBeanRegistrar\|HostDefinition" --include="*.java" broker core` — 출력 없음
 - [ ] `grep -rn '"protocol"' CLAUDE.md docs/index.html docs/quickstart.html` — 출력 없음 (옛 중첩 host 포맷 잔존 확인)
+
+---
+
+## 후속: 설계 재작업 라운드
+
+아홉 태스크가 끝난 뒤 사용자가 `DispatcherFactory.create`를 지적했다 — `definition.host()`를 6번, `definition.pattern()`을 3번 꺼내 검증을 전부 팩토리가 하는 feature envy다.
+
+**진단은 리뷰 구성 자체에 있었다.** 아홉 라운드의 리뷰 렌즈가 과설계·사실·테스트·저장소 규칙 넷이었고, 그중 **책임 배치를 보는 렌즈가 없었다.** 그래서 "이 지식이 여기 있는 게 맞나"를 아무도 묻지 않았다. 계획서에 남은 "포트 검증 2단 구조" 표(Task 5)가 그 증상이다 — 같은 개념의 검증이 두 타입에 나뉜 것을 설계 문제가 아니라 실측 결과로 기록했다.
+
+이 라운드에서는 **과설계 렌즈를 껐다.** 구현체 하나짜리 인터페이스도 허용하기로 하고, 객체지향·책임분리·모듈화·추상화 네 렌즈를 새로 세워 3라운드 토론시켰다. `ponytail`은 회귀 감시자로만 썼다(이미 다른 이유로 거절된 것의 부활, 실측 사실 파괴 두 축).
+
+### 바뀐 것
+
+| 항목 | 전 | 후 |
+|---|---|---|
+| URL 파싱·검증 | `DispatcherFactory`(broker) | `Host.from(String)`(core) |
+| 빈 패턴 거절 | `DispatcherFactory` | `TopicPattern` compact constructor |
+| 정의 → Dispatcher | `DispatcherFactory.create` | `DispatcherDefinition.toDispatcher()` |
+| `DispatcherFactory` | 37줄 | **삭제** |
+| `Dispatcher` 접근자 | `consumerId()` public, `host()`·`pattern()` public | 셋 다 package-private |
+| `Dispatcher.sender` | 가변 package 필드 | `private final` + package-private 4인자 생성자 |
+| `TopicQueue` 구독 API | `String name` | `ConsumerId` |
+| `topicqueue` ↔ `dispatcher` | 양방향 import(순환) | `TopicQueueRegistrar`로 단방향 |
+
+### 이 라운드가 아니면 못 봤을 것
+
+- **패키지 순환.** `TopicQueueContainer`가 `DispatcherContainer`를 import하고 `dispatcher`의 세 파일이 `topicqueue`를 import했다. 아홉 라운드 동안 아무도 못 봤다 — 모듈 경계를 보는 렌즈가 없었기 때문이다.
+- **`Dispatcher.host()`·`pattern()`이 DTO 전용이었다.** Task 5의 Step 4가 "`DispatcherDefinition.from`이 두 값을 읽어야 한다"로 그 접근자를 추가한 이유를 명시하고 있었는데, 그게 유일한 호출자로 남은 것을 아무도 다시 세지 않았다.
+- **`register`의 구독 부작용이 무관측이었다.** `match`/`subscribeMatched` 분리가 **만든** 결함이 아니라 **드러낸** 결함이다. `DispatcherContainerTest` 10케이스가 전부 큐 먼저·Dispatcher 나중이라 `register`의 구독 루프가 언제나 no-op이었고, 프로덕션의 진짜 경로(이미 Dispatcher가 있는 상태에서 새 토픽 도착)는 한 번도 실행되지 않았다. 분리 전에는 두 호출부를 독립적으로 뮤테이트할 수 없어 가려져 있었다.
+
+  **`getSubscribers` 단정으로는 원리적으로 못 잡는다.** `match`가 같은 리스트를 돌려주므로 `subscriptions` 맵 단정은 구독 부작용을 볼 수 없고, 유일한 관측점은 체크포인트 파일이다. `registerSubscribesExistingDispatcherToNewQueue`의 `exists()` 줄이 그 자리다 — 그 한 줄을 빼면 뮤턴트가 다시 살아난다(실측).
+
+### 뒤집힌 확정 결정
+
+**결정 2의 후반부**("생성은 `DispatcherFactory.create`")를 뒤집었다. 전반부("`Dispatcher`는 `DispatcherDefinition`을 모른다")는 그대로다 — 오히려 더 엄격해졌다. `Dispatcher`는 `DispatcherDefinition`을 import하지 않는다.
+
+그 결정이 뒤집힌 이유는 근거가 과설계 렌즈에 기대고 있었기 때문이다. `ponytail`이 그 사실을 스스로 인정했다: "`Host.from` 신설을 내가 Task 5 표적 목록에 올렸던 건 **복잡도 사유**라 이번 라운드엔 무효다."
+
+### 검증 결과
+
+`facts`가 실측 사실 여섯을 재확인했다 — opaque URI 방어(순서 뮤턴트에서 NPE 재현), `URI.create(null)` 방어, `Host` 생성자 검증 2절 보존, HTTP 상태 매핑 7입력 동일, Jackson canonical 생성자 무충돌, 패키지 순환 0건.
+
+`ConsumerId.toString()`을 다른 값으로 바꾼 뮤턴트가 전체 스위트를 SURVIVE한다. 그게 **체크포인트 파일명이 `toString`에 안 기댄다는 증거**다 — 파일명 경계는 `.value()`를 쓰고 로그·예외 메시지만 객체를 그대로 넘긴다.
+
+`Host.from`의 포트 가드와 `getHost() == null` 절은 각각 지워도 스위트가 통과하는 **등가 뮤턴트**다. 두 절이 사는 값은 거절이 아니라 400 본문의 메시지 품질이고, Task 5에서 확인한 "둘을 **함께** 지우면 NPE"는 그대로 유효하다.
+
+**123 → 126 케이스 green.**
