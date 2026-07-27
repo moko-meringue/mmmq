@@ -63,7 +63,7 @@ host는 `scheme://address:port` 세 성분만 받는다. 경로·query·userInfo
 
 `DispatcherDefinition`을 받아 `Dispatcher`를 만든다. 문자열 → `Host`·`ConsumerId`·`TopicPattern` 변환과 검증이 전부 여기 모인다.
 
-상태가 없어 `create`는 정적 메서드다. 빈으로 만들면 컨테이너가 필드와 생성자 인자를 하나 더 들어야 하는데, 호출자는 `DispatcherContainer` 하나뿐이고 대체 구현이나 목이 필요한 곳이 없다. `SegmentFileChain.open`·`Sender.from`처럼 이 저장소에 이미 있는 정적 팩토리와 같은 모양이다.
+상태가 없어 `create`는 정적 메서드다. 빈으로 만들면 컨테이너가 필드와 생성자 인자를 하나 더 들어야 하는데, 호출자는 `DispatcherContainer` 하나뿐이고 대체 구현이나 목이 필요한 곳이 없다. `SegmentFileChain.open`·`Sender.from`처럼 이 저장소에 이미 있는 정적 팩토리와 같은 모양이다. 클래스와 메서드 모두 package-private다 — 호출자가 전부 같은 패키지 안이고, Dispatcher를 만드는 경로가 파일 하나로 모인다는 결정과 노출 범위가 맞는다.
 
 `create(definition)`은 host 문자열을 `URI.create`로 파싱해 스킴·호스트·포트를 확인한 뒤 `Host`·`ConsumerId`·`TopicPattern`을 만든다.
 

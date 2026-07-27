@@ -481,7 +481,7 @@ Expected: BUILD SUCCESSFUL
 
 파일과 API가 같은 모양을 쓰도록 host를 URL 문자열 하나로 합친다. 문자열 → `Host`·`ConsumerId`·`TopicPattern` 변환과 검증은 `DispatcherFactory` 한 곳으로 모으고, 역방향은 `DispatcherDefinition.from(Dispatcher)`가 맡는다. `Host`가 주소 문자열을 보존하게 됐으므로 이 왕복은 무손실이다.
 
-`DispatcherFactory.create`는 정적 메서드다. 상태가 없고 호출자는 `DispatcherContainer` 하나뿐이라 빈으로 만들면 컨테이너의 필드와 생성자 인자, 테스트의 필드만 늘어난다.
+`DispatcherFactory.create`는 정적 메서드다. 상태가 없고 호출자는 `DispatcherContainer` 하나뿐이라 빈으로 만들면 컨테이너의 필드와 생성자 인자, 테스트의 필드만 늘어난다. 클래스와 메서드 모두 package-private다. Task 8까지의 호출자(`DispatcherContainer`, `DispatcherController`)가 전부 `org.mmmq.broker.dispatcher` 안에 있고, "Dispatcher의 유일한 출처는 파일"이라는 결정과 노출 범위가 맞는다. 유틸 클래스 관용구인 private 생성자는 두지 않는다 — 저장소에 전례가 없다.
 
 **포트는 필수로 요구한다.** 스킴 기본값(80/443)으로 대체하면 8080에 있는 소비자를 등록할 때 포트를 빼먹은 요청이 조용히 80으로 향한다. 등록 시점에 거절하는 편이 낫고, 저장·응답 형태가 입력과 같은 모양으로 유지된다.
 
@@ -536,6 +536,9 @@ class DispatcherFactoryTest {
         assertThat(dispatcher.host().toUri()).isEqualTo("https://consumer-host:8443");
         assertThat(dispatcher.consumerId()).isEqualTo(new ConsumerId("order-created"));
         assertThat(dispatcher.pattern()).isEqualTo(new TopicPattern("order.created"));
+        assertThat(DispatcherFactory.create(
+                new DispatcherDefinition("a", "HTTP://consumer-host:8080", "**")).host().toUri())
+                .isEqualTo("http://consumer-host:8080");
     }
 
     @Test
@@ -547,7 +550,7 @@ class DispatcherFactoryTest {
     }
 
     @Test
-    @DisplayName("호스트를 못 뽑는 문자열은 예외를 던진다")
+    @DisplayName("host를 못 뽑는 문자열은 예외를 던진다")
     void rejectsUrlWithoutHost() {
         assertThatThrownBy(() -> DispatcherFactory.create(
                 new DispatcherDefinition("a", "consumer-host:8080", "**")))
@@ -555,7 +558,7 @@ class DispatcherFactoryTest {
     }
 
     @Test
-    @DisplayName("경로·query·userInfo·fragment가 붙은 host는 예외를 던진다")
+    @DisplayName("path·query·userInfo·fragment가 붙은 host는 예외를 던진다")
     void rejectsUrlWithExtraComponents() {
         assertThatThrownBy(() -> DispatcherFactory.create(
                 new DispatcherDefinition("a", "http://consumer-host:8080/foo", "**")))
@@ -592,18 +595,14 @@ class DispatcherFactoryTest {
                 new DispatcherDefinition("a", "http://consumer-host:8080", " ")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
-
-    @Test
-    @DisplayName("consumerId가 regex에 어긋나면 예외를 던진다")
-    void rejectsInvalidConsumerId() {
-        assertThatThrownBy(() -> DispatcherFactory.create(
-                new DispatcherDefinition("invalid id!", "http://consumer-host:8080", "**")))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
 }
 ```
 
 `host`는 `toUri()` 문자열로 단정한다. Task 1에서 `Host.equals`를 없앴고, 파싱 결과가 실제로 쓰이는 형태가 그 문자열이다.
+
+`parsesUrlIntoHost`의 마지막 단정이 대문자 스킴을 함께 보는 이유: **`DispatcherBeanRegistrarTest`를 지우면서 `WebProtocol.from`의 대소문자 무관 동작을 붙들던 유일한 자리가 사라졌다.** 삭제되는 `HostDefinitionTest.convertsToHostCaseInsensitively`는 이름과 달리 입력이 소문자 `"http"`였고, 실제 소유자는 JSON 픽스처가 `"protocol":"HTTP"`였던 레지스트라 테스트였다. 두 상태에서 `equalsIgnoreCase` → `equals` 뮤턴트를 돌려 확인했다 — 이 줄이 없으면 SURVIVED, 있으면 `parsesUrlIntoHost`가 단독으로 KILL한다(`Unknown scheme: HTTP`). `URI.getScheme()`이 대소문자를 보존하므로(실측) 팩토리 경로에서도 그 관용이 실제로 필요하다.
+
+`consumerId` 형식 위반 케이스는 두지 않는다. `create`가 `new ConsumerId(...)`를 부르는 한 컴파일되는 어떤 구현도 그 검증을 지나므로 깨뜨릴 변형이 없다. 그 성질의 소유자는 `DispatcherTest`의 `ConsumerId` 단독 케이스다.
 
 - [ ] **Step 2: 테스트가 실패하는지 확인**
 
@@ -700,9 +699,9 @@ import org.mmmq.core.WebProtocol;
 import org.mmmq.core.identifier.ConsumerId;
 import org.mmmq.core.message.TopicPattern;
 
-public class DispatcherFactory {
+class DispatcherFactory {
 
-    public static Dispatcher create(DispatcherDefinition definition) {
+    static Dispatcher create(DispatcherDefinition definition) {
         if (definition.host() == null || definition.host().isBlank()) {
             throw new IllegalArgumentException("host must not be blank");
         }
@@ -719,7 +718,8 @@ public class DispatcherFactory {
         if (!uri.getPath().isEmpty() || uri.getQuery() != null
                 || uri.getUserInfo() != null || uri.getFragment() != null) {
             throw new IllegalArgumentException(
-                    "host must be scheme://address:port only, but was: " + definition.host());
+                    "host must be scheme://address:port only, but was: " + definition.host()
+            );
         }
         return new Dispatcher(
                 new Host(WebProtocol.from(uri.getScheme()), uri.getHost(), uri.getPort()),
@@ -731,6 +731,8 @@ public class DispatcherFactory {
 ```
 
 `URI.create("consumer-host:8080")`은 예외를 던지지 않는다 — scheme이 `consumer-host`, host가 `null`인 opaque URI가 된다. 밑줄이 든 호스트명도 `getHost()`가 `null`이다. 그래서 host를 뽑을 수 있는지 명시적으로 확인해야 한다.
+
+**검증 다섯 절은 하나도 합치거나 지우지 않는다.** `getHost() == null`과 `getPort() == -1`은 각각 하나만 지우면 다른 하나가 잡아 성질이 유지되지만, **둘을 함께 지우면 무너진다** — opaque URI는 `getPath()`가 `null`이라 다섯째 절에서 NPE가 나고, 400이어야 할 입력이 500이 된다(실측 확인). query·fragment 절의 단독 뮤턴트는 살아남지만 절을 지우지 않는다. 테스트는 입력 열거가 아니라 위험을 담고, 그 절이 막는 것은 "사용자가 지정한 성분이 저장 왕복에서 조용히 사라지는" 부류다.
 
 경로·query·userInfo·fragment를 거절하는 이유는 포트 필수와 같다. `Host.toUri()`가 `%s://%s:%d`뿐이라 그 성분들은 저장·응답 왕복에서 소실되는데, 경로는 무해하게 사라지지 않는다 — `RestClient`의 baseUrl 경로에 `/mmmq/messages`가 **덧붙기 때문에**(spring-web 6.1.1 실측: `DefaultUriBuilderFactory("http://h:8080/foo").uriString("/mmmq/messages")` → `http://h:8080/foo/mmmq/messages`) 경로를 보존하면 라우팅이 달라지고, 버리면 사용자가 지정한 경로를 무시하고 다른 엔드포인트로 보낸다. userInfo는 인증 정보가 조용히 사라지는 같은 부류다. 후행 슬래시(`http://h:8080/`)도 거절되며, 예외 메시지가 허용 모양을 그대로 알려주므로 조용한 실패가 아니다.
 
@@ -825,6 +827,8 @@ class DispatcherFileTest {
     }
 }
 ```
+
+**빈 파일은 `"not json"`과 다른 분기를 지난다.** Task 5에서 지운 `DispatcherBeanRegistrarTest.failsOnEmptyFile`이 보던 자리인데, `"not json"`은 `Files.exists`가 참이고 내용도 있는 경로인 반면 빈 파일은 존재하면서 내용만 비어 Jackson이 EOF로 실패한다. 동작은 `IOException` → `IllegalStateException`으로 같지만 이 스위트에 단정이 없다. `rejectsMalformedJson`의 픽스처를 빈 문자열로 바꾸는 것으로는 `"not json"` 쪽을 잃으니, 필요하다면 케이스를 하나 더 두는 쪽이다. Task 6 리뷰에서 판정한다.
 
 - [ ] **Step 2: 테스트가 실패하는지 확인**
 
@@ -1187,6 +1191,8 @@ class DispatcherContainerTest {
     }
 }
 ```
+
+`failsOnDuplicateConsumerIdInFile`과 `rejectsDuplicateConsumerId`가 되찾는 공백이 있다. **지금 저장소에서는 `DispatcherContainer`의 중복 `consumerId` 검증 블록을 통째로 지운 뮤턴트가 SURVIVED다** — 그 규칙을 붙드는 테스트가 하나도 없다. 두 케이스가 실제로 그 블록을 죽이는지 이 태스크의 리뷰에서 뮤테이션으로 확인한다.
 
 - [ ] **Step 3: 테스트가 실패하는지 확인**
 
