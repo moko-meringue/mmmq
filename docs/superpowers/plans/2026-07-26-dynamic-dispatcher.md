@@ -1556,16 +1556,17 @@ class DispatcherControllerTest {
     @Test
     @DisplayName("POST 성공 시 201과 등록된 정의를 돌려준다")
     void postReturnsCreated() throws Exception {
-        when(container.add(new DispatcherDefinition("order-created", HOST, "order.*")))
+        when(container.add(new DispatcherDefinition("order-created", "HTTP://consumer-host:8080", "order.*")))
                 .thenReturn(new DispatcherDefinition("order-created", HOST, "order.*"));
 
         mockMvc.perform(post("/mmmq/dispatchers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"consumerId":"order-created","host":"http://consumer-host:8080","pattern":"order.*"}
+                                {"consumerId":"order-created","host":"HTTP://consumer-host:8080","pattern":"order.*"}
                                 """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.consumerId").value("order-created"));
+                .andExpect(jsonPath("$.consumerId").value("order-created"))
+                .andExpect(jsonPath("$.host").value(HOST));
     }
 
     @Test
@@ -1585,10 +1586,12 @@ class DispatcherControllerTest {
     @Test
     @DisplayName("PUT 성공 시 200과 바뀐 정의를 돌려준다")
     void putReturnsOk() throws Exception {
-        when(container.modify(new ConsumerId("order-created"), new DispatcherRoute("http://moved-host:9090", "order.*")))
-                .thenReturn(new DispatcherDefinition("order-created", "http://moved-host:9090", "order.*"));
+        when(container.modify(
+                new ConsumerId("order-shipped"),
+                new DispatcherRoute("http://moved-host:9090", "order.*")
+        )).thenReturn(new DispatcherDefinition("order-shipped", "http://moved-host:9090", "order.*"));
 
-        mockMvc.perform(put("/mmmq/dispatchers/order-created")
+        mockMvc.perform(put("/mmmq/dispatchers/order-shipped")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"host":"http://moved-host:9090","pattern":"order.*"}
@@ -1645,6 +1648,7 @@ import java.util.List;
 import org.mmmq.core.identifier.ConsumerId;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -1690,8 +1694,8 @@ public class DispatcherController {
         return ResponseEntity.noContent().build();
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<String> handleBadRequest(IllegalArgumentException exception) {
+    @ExceptionHandler({IllegalArgumentException.class, HttpMessageNotReadableException.class})
+    public ResponseEntity<String> handleBadRequest(Exception exception) {
         return ResponseEntity.badRequest()
                 .body(exception.getMessage());
     }
@@ -1712,6 +1716,16 @@ public class DispatcherController {
 
 409·404를 예외 클래스의 `@ResponseStatus`로 대신하지 않는 이유: `ResponseStatusExceptionResolver.applyStatusAndReason`은 `reason`이 비어도 `setStatus`가 아니라 `response.sendError(statusCode)`를 부른다(spring-webmvc 6.1.1 바이트코드 확인). 서블릿 컨테이너의 에러 페이지 디스패치가 돌아서 응답 본문은 호스트 애플리케이션의 `/error` 처리(기본은 Boot의 에러 JSON, 커스텀 에러 뷰가 있으면 그쪽)가 만든다. 라이브러리가 응답을 통째로 남의 설정에 넘기게 되고, 400만 예외 메시지를 돌려주는 비대칭도 생긴다. 세 핸들러를 컨트롤러 안에 두면 이 API의 실패 응답이 브로커 안에서 끝난다.
 
+**`handleBadRequest`가 `HttpMessageNotReadableException`까지 잡는 이유는 정확히 같다.** 깨진 JSON 본문은 `IllegalArgumentException`이 아니라 이 타입으로 올라와 `DefaultHandlerExceptionResolver`에 잡히는데, 그 클래스의 `handleErrorResponse`도 `sendError(I)V`를 부른다(같은 바이트코드 확인). 상태 코드는 400으로 우연히 맞지만 **본문이 0바이트로 나가고 실제 배포에서는 호스트의 `/error`로 디스패치된다** — `@ResponseStatus`를 거절한 그 누수가 다른 문으로 들어오는 것이다. 타입 하나를 배열에 더하는 것으로 막는다. 핸들러를 셋으로 유지하는 판정과 모순되지 않는다 — 이건 **타입이 아니라 상태로 묶는 것**이고, 예외 타입 → 핸들러 선택을 `instanceof` 사다리로 다시 짜는 것과는 방향이 반대다. 케이스는 두지 않는다. 새로 지나는 코드가 클래스 리터럴 라우팅뿐이라 컴파일이 검증하고, 지금 상태를 단정하면 스프링 기본 동작을 테스트하는 케이스가 된다.
+
+세 핸들러가 실제로 `sendError`를 타지 않는 것은 `MockHttpServletResponse`로 확인했다 — 409·400·200 모두 `errorMessage=null`이고 본문이 채워져 있다.
+
+`postReturnsCreated`의 요청 본문이 **대문자 스킴**이고 스텁 반환값이 소문자인 이유: 둘을 같은 값으로 두면 `container.add`를 부르되 **응답 본문으로 요청을 그대로 되돌려주는** 변형을 스위트 전체가 구분하지 못한다(실측: 7개 전부 통과). 단정을 세 필드로 늘려도 소용없다 — 세 값이 모두 같기 때문이다. 실제 `add`는 `DispatcherDefinition.from(dispatcher)`, 즉 정규화된 정의를 돌려주므로 스텁이 요청과 같은 값을 주는 것 자체가 현실과 다르다. 대문자 요청 + 소문자 반환 + `$.host` 단정으로 "응답은 등록된 정의이지 요청 그대로가 아니다"가 붙들린다.
+
+`putReturnsOk`가 `order-shipped`를 쓰는 이유: `deleteReturnsNoContent`와 같은 `consumerId`를 쓰면, 경로 변수를 무시하고 그 값을 상수로 넘기는 구현과 구분되지 않는다. 그 상태에서는 경로 바인딩 방어를 `rejectsInvalidConsumerIdInPath` 하나가 지고, 그 케이스는 "값이 무엇이든 `new ConsumerId(...)`를 지난다"만 본다. 둘을 갈라 놓으면 PUT이 JSON 단정으로, DELETE가 Mockito 인자 검증으로 각자 독립으로 죽는다.
+
+`WebProtocol.from`의 예외 메시지를 `"scheme must be http or https, but was: "`로 바꾼다. 이 메시지는 `handleBadRequest`를 통해 400 본문에 그대로 실리는데, 저장소의 인자 검증 메시지가 12:1로 `"X must …, but was: …"` 계열이고 이 한 줄만 달랐다. broker의 문구를 맞추려고 core를 고치는 것이 아니다 — 스킴 지식을 core에 두기로 한 이상 broker가 core 문구를 내보내는 건 확정된 구조이고, 이건 core가 자기 문자열을 자기 관용에 맞추는 일이다. 이 문자열을 단정하는 테스트는 없다.
+
 - [ ] **Step 4: 테스트 통과 확인**
 
 Run: `./gradlew :broker:test --tests "org.mmmq.broker.dispatcher.DispatcherControllerTest"`
@@ -1730,10 +1744,13 @@ Expected: BUILD SUCCESSFUL
 
 **`docs/index.html`의 예시는 배열이 아니라 단일 객체다.** host 줄만 고치면 여전히 동작하지 않는다 — `readValue(..., DispatcherDefinition[].class)`가 `MismatchedInputException`("Cannot deserialize value of type `DispatcherDefinition[]` from Object value")을 던진다. 배열로 감싸는 것까지 함께 해야 한다. `docs/quickstart.html`은 이미 배열이라 host 줄만 바꾸면 된다.
 
-`docs/docs/0.0.2/broker.html`은 릴리스 스냅샷이라 손대지 않는다.
+**`README.md`도 같은 문제를 갖고 있다.** 저장소 첫 화면인데 옛 중첩 host 포맷을 그대로 보여주고("`"host": { "protocol": "HTTP", ... }`"), 그 JSON을 붙여 넣으면 `IllegalStateException: Failed to read dispatcher file`로 브로커가 뜨지 못한다. "부팅 시 각 정의가 스프링 빈으로 등록됩니다"도 거짓이 됐고(컨테이너가 생성자에서 만들어 소유한다), `protocol` 필드 설명은 필드 자체가 사라졌다. 런타임 관리 엔드포인트 언급도 없다.
+
+`docs/docs/0.0.2/broker.html`은 릴리스 스냅샷이라 손대지 않는다. `docs/index.html`·`docs/quickstart.html`에는 런타임 관리 엔드포인트를 더하지 않는다 — 각각 흐름 소개와 hello-world 안내라 API 레퍼런스가 아니고, 그 자리는 다음 릴리스의 버전 문서다.
 
 **Files:**
 - Modify: `CLAUDE.md`
+- Modify: `README.md`
 - Modify: `docs/index.html`
 - Modify: `docs/quickstart.html`
 
@@ -1744,7 +1761,7 @@ Expected: BUILD SUCCESSFUL
 ````markdown
 ## Broker Dispatcher Registration
 
-Dispatchers are defined in a JSON file at `{mmmq.broker.persistence.root-dir}/dispatchers.json` (root-dir default `./mmmq`); the path is fixed and not individually configurable. `DispatcherContainer` reads it at construction and owns every `Dispatcher` instance — Dispatchers are not Spring beans. The top level is an array; one entry maps to exactly one `consumerId` and one pattern (1 id = 1 Dispatcher = 1 HE).
+Dispatchers are defined in a JSON file at `{mmmq.broker.persistence.root-dir}/dispatchers.json` (root-dir default `./mmmq`); the path is fixed and not individually configurable. `DispatcherContainer` reads it at construction and owns every `Dispatcher` instance — Dispatchers are not Spring beans. The top level is an array; one entry maps to exactly one `consumerId` and one pattern.
 
 ```json
 [
@@ -1756,7 +1773,7 @@ Dispatchers are defined in a JSON file at `{mmmq.broker.persistence.root-dir}/di
 ]
 ```
 
-`host` is an absolute URL; the scheme must be `http` or `https` (case-insensitive) and the port is required — a consumer usually listens on a non-standard port, so a missing port is rejected instead of silently falling back to 80/443. When the file is absent, an empty `[]` file is created and the broker boots with no dispatchers. Invalid definitions — duplicate `consumerId`, unsupported scheme, malformed JSON — fail context startup (fail-fast). Each Dispatcher gets its own `<consumerId>.checkpoint` file under the per-topic storage directory.
+`host` is an absolute URL of the form `scheme://address:port` and nothing else. The scheme must be `http` or `https` (case-insensitive) and the port is required — a consumer usually listens on a non-standard port, so a missing port is rejected instead of silently falling back to 80/443. A path, query, userInfo, or fragment is rejected too: `Host.toUri()` only round-trips `scheme://address:port`, and a path would not vanish harmlessly — `RestClient` appends `/mmmq/messages` to its baseUrl path, so keeping it would change routing and dropping it would silently ignore what the user wrote. When the file is absent, an empty `[]` file is created and the broker boots with no dispatchers. Invalid definitions — duplicate `consumerId`, unsupported scheme, malformed JSON — fail context startup (fail-fast). Each Dispatcher gets its own `<consumerId>.checkpoint` file under the per-topic storage directory.
 
 ### Runtime management
 
@@ -1789,6 +1806,18 @@ Bootstrap: `DispatcherContainer` reads `dispatchers.json` in its constructor and
 ```markdown
 - **Uniqueness on both sides:** Consumer rejects duplicate HE ids at registration (`HandlerExecutionContainer.add`). Broker rejects duplicate consumerIds when `DispatcherContainer` loads the file and on every runtime addition (`DuplicateConsumerIdException`).
 ```
+
+`- **HE-level proxy:**` 항목은 broker 문서에서 `HandlerExecution`을 주장하는데 broker 소스에 그 참조가 0건이다. 관측 가능한 사실로 바꾼다 — Dispatcher는 `(consumerId, host, pattern)` 세 값으로 한 소비자 엔드포인트에 보내는 **송신 단위**이고, 받은 쪽이 무엇을 하는지는 broker의 관심사 밖이다. 같은 이유로 `Atomicity & isolation`의 "failing or slow HE"도 "failing or slow Consumer"로, 등록 절의 "(1 id = 1 Dispatcher = 1 HE)"도 걷어낸다.
+
+`- **Pattern matching:**` 항목은 "Spring's `AntPathMatcher`"라고 적혀 있으나 코드는 `org.mmmq.core.util.PatternMatcher`(AntPathMatcher를 베껴 온 자체 구현)를 쓰고 `org.springframework.util.AntPathMatcher` import는 저장소에 0건이다. core가 스프링 의존을 갖지 않는다는 모듈 규칙과도 모순이라, 벤더링했다는 사실까지 함께 적는다.
+
+- [ ] **Step 3b: README.md의 Dispatcher 등록 절 교체**
+
+`#### Dispatcher 등록` 절이 옛 중첩 host 포맷을 보여 준다. 그대로 붙여 넣으면 Jackson이 객체를 `String`에 바인딩하지 못해 `IllegalStateException: Failed to read dispatcher file`로 기동이 실패한다. 함께 고칠 것 셋:
+
+- "부팅 시 각 정의가 **스프링 빈으로 등록**됩니다" → 거짓이다. `DispatcherContainer`가 생성자에서 만들어 소유하고 `Dispatcher`는 빈이 아니다.
+- "`protocol`은 `HTTP` 또는 `HTTPS`이며…" → `protocol` 필드 자체가 없어졌다. 스킴은 URL 안에 있다.
+- 런타임 관리 엔드포인트 언급이 없다. `#### 런타임 관리` 하위 절을 새로 둔다 — 표 하나, `curl` 예시 하나, tail 시작·체크포인트 삭제 한 문단.
 
 - [ ] **Step 4: 문서 사이트의 dispatchers.json 예시 교체**
 

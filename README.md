@@ -462,7 +462,9 @@ mmmq:
 
 #### Dispatcher 등록
 
-`Dispatcher`는 JSON 파일에 정의하며, 부팅 시 각 정의가 스프링 빈으로 등록됩니다. 파일 경로는 `{mmmq.broker.persistence.root-dir}/dispatchers.json`으로 고정됩니다(기본값 `./mmmq/dispatchers.json`). 별도 경로 설정은 지원하지 않습니다. 파일이 없으면 빈 배열(`[]`) 파일을 생성하고 Dispatcher 없이 기동합니다.
+`Dispatcher`는 JSON 파일에 정의합니다. 파일 경로는 `{mmmq.broker.persistence.root-dir}/dispatchers.json`으로 고정됩니다(기본값 `./mmmq/dispatchers.json`). 별도 경로 설정은 지원하지 않습니다. 파일이 없으면 빈 배열(`[]`) 파일을 생성하고 Dispatcher 없이 기동합니다.
+
+`DispatcherContainer`가 생성자에서 이 파일을 읽어 `Dispatcher`를 만들고 소유합니다. `Dispatcher`는 스프링 빈이 아니며, 태어나는 길은 이 파일 하나입니다.
 
 최상위는 정의 배열이며, 한 항목은 하나의 `consumerId`·하나의 패턴에 대응합니다. `consumerId`는 체크포인트 파일명으로 사용되므로 `[A-Za-z0-9._-]+` 패턴을 따라야 합니다.
 
@@ -470,18 +472,43 @@ mmmq:
 [
   {
     "consumerId": "order-created",
-    "host": { "protocol": "HTTP", "address": "consumer-host", "port": 8080 },
+    "host": "http://consumer-host:8080",
     "pattern": "order.created"
   },
   {
     "consumerId": "payment-success",
-    "host": { "protocol": "HTTP", "address": "consumer-host", "port": 8081 },
+    "host": "https://consumer-host:8443",
     "pattern": "payment.kakao.success"
   }
 ]
 ```
 
-`protocol`은 `HTTP` 또는 `HTTPS`이며 대소문자를 가리지 않습니다. 파일 내 `consumerId`가 중복되거나 알 수 없는 `protocol`·깨진 JSON 등 잘못된 정의가 있으면 컨텍스트 기동을 실패시킵니다.
+`host`는 절대 URL이며 스킴은 `http` 또는 `https`입니다(대소문자를 가리지 않습니다). **포트는 필수입니다** — 소비자는 보통 비표준 포트를 쓰기 때문에, 포트를 빠뜨린 주소를 80·443으로 조용히 돌리는 대신 거절합니다. 경로·query·userInfo·fragment는 붙일 수 없습니다. 그 성분들은 저장·응답 왕복에서 소실되는데, 특히 경로는 무해하게 사라지지 않고 소비자로 보내는 요청 경로를 바꿔 버립니다.
+
+파일 내 `consumerId`가 중복되거나 스킴이 지원되지 않거나 JSON이 깨져 있으면 컨텍스트 기동을 실패시킵니다.
+
+#### 런타임 관리
+
+브로커를 재시작하지 않고 Dispatcher를 추가·수정·삭제할 수 있습니다. 변경은 메모리를 건드리기 전에 `dispatchers.json`에 먼저 반영되므로(임시 파일에 쓴 뒤 `ATOMIC_MOVE`로 교체) 재시작해도 살아남습니다.
+
+| 메서드 | 경로 | 응답 |
+|---|---|---|
+| `GET` | `/mmmq/dispatchers` | `200` 현재 정의 목록 |
+| `POST` | `/mmmq/dispatchers` | `201` 등록된 정의 · `400` · `409` 중복 `consumerId` |
+| `PUT` | `/mmmq/dispatchers/{consumerId}` | `200` 바뀐 정의 · `400` · `404` |
+| `DELETE` | `/mmmq/dispatchers/{consumerId}` | `204` · `400` · `404` |
+
+`PUT`의 본문은 `host`와 `pattern`뿐입니다. `consumerId`는 식별자이지 바꿀 수 있는 값이 아닙니다.
+
+```bash
+curl -X POST localhost:8080/mmmq/dispatchers \
+  -H 'Content-Type: application/json' \
+  -d '{"consumerId":"order-created","host":"http://consumer-host:8080","pattern":"order.*"}'
+```
+
+변경은 `DispatcherContainer` 안의 단일 락으로 직렬화되고, 메시지 핫패스인 구독자 조회는 락을 잡지 않습니다.
+
+새 구독은 로그의 **tail**에서 시작합니다. 런타임에 소비자를 붙여도 쌓여 있던 메시지가 한꺼번에 재생되지 않습니다. 반대로 구독이 끝나면 — Dispatcher를 삭제했거나 패턴을 좁혀 토픽이 빠졌거나 — 그 토픽의 `<consumerId>.checkpoint`도 함께 지워집니다.
 
 ---
 
