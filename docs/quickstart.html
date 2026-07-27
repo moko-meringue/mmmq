@@ -68,7 +68,7 @@
 }
 
 <span class="tk-key">dependencies</span> {
-    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:broker:0.0.2"</span>
+    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:broker:0.0.3"</span>
 }</pre>
                     </div>
 
@@ -118,7 +118,7 @@
 }
 
 <span class="tk-key">dependencies</span> {
-    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:consumer:0.0.2"</span>
+    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:consumer:0.0.3"</span>
 }</pre>
                     </div>
 
@@ -171,7 +171,7 @@
 }
 
 <span class="tk-key">dependencies</span> {
-    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:producer:0.0.2"</span>
+    implementation <span class="tk-str">"com.github.moko-meringue.mmmq:producer:0.0.3"</span>
 }</pre>
                     </div>
 
@@ -194,9 +194,8 @@
 
     <span class="tk-key">@Bean</span>
     <span class="tk-fn">Producer</span> producer() {
-        <span class="tk-key">return</span> Producer.<span class="tk-fn">builder</span>(<span class="tk-key">new</span> Host(WebProtocol.HTTP, <span
-                                    class="tk-str">"localhost"</span>, <span class="tk-str">8080</span>))
-            .<span class="tk-fn">build</span>();
+        <span class="tk-key">return</span> <span class="tk-key">new</span> Producer(<span class="tk-key">new</span> Host(WebProtocol.HTTP, <span
+                                    class="tk-str">"localhost"</span>, <span class="tk-str">8080</span>));
     }
 }</pre>
                     </div>
