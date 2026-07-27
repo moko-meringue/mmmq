@@ -142,11 +142,13 @@ producer.<span class="tk-fn">produce</span>(message);</pre>
                                 <span class="code-block__lang">dispatchers.json</span>
                                 <button class="code-block__copy" type="button">복사</button>
                             </div>
-                            <pre>{
-  <span class="tk-str">"consumerId"</span>: <span class="tk-str">"order-created"</span>,
-  <span class="tk-str">"host"</span>: { <span class="tk-str">"protocol"</span>: <span class="tk-str">"HTTP"</span>, <span class="tk-str">"address"</span>: <span class="tk-str">"consumer-host"</span>, <span class="tk-str">"port"</span>: <span class="tk-str">8080</span> },
-  <span class="tk-str">"pattern"</span>: <span class="tk-str">"order.created"</span>
-}</pre>
+                            <pre>[
+  {
+    <span class="tk-str">"consumerId"</span>: <span class="tk-str">"order-created"</span>,
+    <span class="tk-str">"host"</span>: <span class="tk-str">"http://consumer-host:8080"</span>,
+    <span class="tk-str">"pattern"</span>: <span class="tk-str">"order.created"</span>
+  }
+]</pre>
                         </div>
                     </article>
 

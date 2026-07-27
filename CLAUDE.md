@@ -63,7 +63,7 @@ Producer.produce(message)
         → On communication failure: exponential backoff (1s → 2s → ... → 60s, infinite retry)
 ```
 
-Bootstrap: `TopicQueueBootstrapper` (SmartInitializingSingleton) restores persisted topic queues at startup and calls `TopicQueueContainer.getOrCreate` for each, which in turn calls `DispatcherContainer.register(queue)` to bind matched Dispatchers.
+Bootstrap: `DispatcherContainer` reads `dispatchers.json` in its constructor and creates every `Dispatcher`. `TopicQueueBootstrapper` (SmartInitializingSingleton) then restores persisted topic queues at startup and calls `TopicQueueContainer.getOrCreate` for each, which in turn calls `DispatcherContainer.register(queue)` to bind matched Dispatchers.
 
 ## Key Design Points
 
@@ -71,7 +71,7 @@ Bootstrap: `TopicQueueBootstrapper` (SmartInitializingSingleton) restores persis
 - **Pattern matching:** `TopicPattern` uses Spring's `AntPathMatcher` (e.g. `order.*`, `**`). Each Dispatcher holds a single pattern; `Dispatcher.canDispatch(topic)` checks it. Consumer-side routing is by `consumerId` header only — no pattern matching on Consumer.
 - **Synchronous response:** Consumer Controller runs `HandlerExecution.execute(message)` directly on the Tomcat request thread. ACK/NACK in the same HTTP response. No queue/worker pool on Consumer.
 - **Atomicity & isolation:** A failing or slow HE only blocks its own Dispatcher's drain loop; other Dispatchers are independent threads.
-- **Uniqueness on both sides:** Consumer rejects duplicate HE ids at registration (`HandlerExecutionContainer.add`). Broker rejects duplicate consumerIds at `DispatcherContainer` construction.
+- **Uniqueness on both sides:** Consumer rejects duplicate HE ids at registration (`HandlerExecutionContainer.add`). Broker rejects duplicate consumerIds when `DispatcherContainer` loads the file and on every runtime addition (`DuplicateConsumerIdException`).
 - **Identifier:** `ConsumerId` is a `record` in `org.mmmq.core.identifier`, validated by regex `[A-Za-z0-9._-]+` in its compact constructor. Used everywhere (Dispatcher, Sender, HE, container) as a typed value object.
 - **Wire format:** `Metadata` (in `org.mmmq.core.metadata`) encapsulates HTTP header transport. Header name `mmmq-consumer-id` (lowercase per HTTP/2 spec).
 - **Thread model:** `Dispatcher.WorkerPool` creates one single-threaded `ThreadPoolExecutor` per (Dispatcher, TopicQueue). Consumer uses Tomcat's request thread pool directly.
@@ -106,19 +106,34 @@ Both forms require an explicit string `id` matching the regex `[A-Za-z0-9._-]+`.
 
 ## Broker Dispatcher Registration
 
-Dispatchers are defined in a JSON file read at startup; `DispatcherBeanRegistrar` (an `ImportBeanDefinitionRegistrar`) registers each entry as a Spring `Dispatcher` bean. The file lives at `{mmmq.broker.persistence.root-dir}/dispatchers.json` (root-dir default `./mmmq`); the path is fixed and not individually configurable. The top level is an array; one entry maps to exactly one `consumerId` and one pattern (1 id = 1 Dispatcher = 1 HE).
+Dispatchers are defined in a JSON file at `{mmmq.broker.persistence.root-dir}/dispatchers.json` (root-dir default `./mmmq`); the path is fixed and not individually configurable. `DispatcherContainer` reads it at construction and owns every `Dispatcher` instance — Dispatchers are not Spring beans. The top level is an array; one entry maps to exactly one `consumerId` and one pattern (1 id = 1 Dispatcher = 1 HE).
 
 ```json
 [
   {
     "consumerId": "order-created",
-    "host": { "protocol": "HTTP", "address": "consumer-host", "port": 8080 },
+    "host": "http://consumer-host:8080",
     "pattern": "order.created"
   }
 ]
 ```
 
-`protocol` is `HTTP`/`HTTPS` (case-insensitive). When the file is absent, an empty `[]` file is created and the broker boots with no dispatchers. Invalid definitions — duplicate `consumerId`, unknown `protocol`, malformed JSON — fail context startup (fail-fast). Each Dispatcher gets its own `<consumerId>.checkpoint` file under the per-topic storage directory.
+`host` is an absolute URL; the scheme must be `http` or `https` (case-insensitive) and the port is required — a consumer usually listens on a non-standard port, so a missing port is rejected instead of silently falling back to 80/443. When the file is absent, an empty `[]` file is created and the broker boots with no dispatchers. Invalid definitions — duplicate `consumerId`, unsupported scheme, malformed JSON — fail context startup (fail-fast). Each Dispatcher gets its own `<consumerId>.checkpoint` file under the per-topic storage directory.
+
+### Runtime management
+
+`DispatcherController` exposes CRUD over the same definitions. Changes are written to `dispatchers.json` (temp file + `ATOMIC_MOVE`) before the in-memory state is touched, so they survive a restart.
+
+```
+GET    /mmmq/dispatchers               200
+POST   /mmmq/dispatchers               201 / 400 / 409
+PUT    /mmmq/dispatchers/{consumerId}  200 / 400 / 404
+DELETE /mmmq/dispatchers/{consumerId}  204 / 400 / 404
+```
+
+PUT takes only `host` and `pattern` in the body — `consumerId` is the identifier, not a mutable field. Mutations are serialized by a single `ReentrantLock` inside `DispatcherContainer`; the message hot path (`getSubscribers`) stays lock-free.
+
+A new subscription starts at the log **tail**, so attaching a consumer at runtime does not replay the existing backlog. When a subscription ends — dispatcher deleted, or pattern narrowed so a topic drops out — its `<consumerId>.checkpoint` is deleted too.
 
 ## Code Style Guide
 
