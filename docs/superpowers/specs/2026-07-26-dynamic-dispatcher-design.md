@@ -244,6 +244,7 @@ DELETE /mmmq/dispatchers/{consumerId}  204 / 400 / 404
 
 - 뮤테이션 락 하나가 `register`·`add`·`modify`·`remove`·`definitions`를 감싼다. 뮤테이션은 초당 몇 번이 아니라 하루 몇 번짜리라 경합이 없다.
 - 핫패스인 `getSubscribers`는 락을 잡지 않는다. `ConcurrentHashMap` 읽기 그대로고 `FrontDispatcher`는 변경이 없다.
+- `rematchAll`의 `replaceAll`은 **맵 전체로는 원자적이지 않다**(실측). 그래서 재매칭 도중의 `getSubscribers`는 토픽에 따라 갱신 전/후가 섞인 상태를 볼 수 있다. 항목별로는 원자적이라 — 값이 불변 `List`의 참조 통째 교체라 — 찢긴 리스트는 보이지 않고, 관측되는 최악은 메시지 한 건이 갱신 직전 구독자 집합으로 배달되는 것이다. 삭제된 Dispatcher 쪽은 아래 `destroyed` 가드가 드레인을 막는다.
 - 데드락은 생기지 않는다. `register`는 `TopicQueueContainer.queues.computeIfAbsent` 안에서 불려서 `CHM bin lock → mutationLock` 순서인데, 뮤테이션 경로는 `mutationLock`을 잡은 채 `TopicQueueContainer`를 건드리지 않아 역순이 만들어질 수 없다.
 
 **교체·삭제 시 옛 워커의 종료를 기다리지 않는다.** `Sender`의 `RestClient`에 타임아웃 설정이 없어서, 소비자가 응답하지 않으면 `awaitTermination`이 API 요청을 무한정 붙잡는다.

@@ -992,10 +992,15 @@ package org.mmmq.broker.dispatcher;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -1010,8 +1015,6 @@ import org.mmmq.core.message.Topic;
 
 class DispatcherContainerTest {
 
-    private static final String CHECKPOINTS_DIR = "checkpoints";
-    private static final String FILE_NAME = "dispatchers.json";
     private static final String HOST = "http://consumer-host:8080";
 
     @TempDir
@@ -1055,7 +1058,7 @@ class DispatcherContainerTest {
     }
 
     @Test
-    @DisplayName("호스트만 바꾸면 체크포인트가 남고 파일에 새 host가 쓰인다")
+    @DisplayName("host만 바꾸면 체크포인트가 남고 파일에 새 host가 쓰인다")
     void modifyHostKeepsCheckpoint() {
         register(new Topic("order.created"));
         container.add(new DispatcherDefinition("order-created", HOST, "order.*"));
@@ -1079,6 +1082,7 @@ class DispatcherContainerTest {
 
         assertThat(container.getSubscribers(orderQueue)).hasSize(1);
         assertThat(container.getSubscribers(paymentQueue)).hasSize(1);
+        assertThat(checkpointOf("payment.done", "consumer")).exists();
         assertThat(paymentQueue.subscribe("consumer").value()).isEqualTo(1L);
     }
 
@@ -1114,7 +1118,7 @@ class DispatcherContainerTest {
     }
 
     @Test
-    @DisplayName("뮤테이션은 다른 Dispatcher의 정의와 구독을 건드리지 않는다")
+    @DisplayName("다른 Dispatcher의 정의와 구독은 그대로 남는다")
     void mutationLeavesOtherDispatcherIntact() {
         register(new Topic("stock.low"));
         container.add(new DispatcherDefinition("keeper", HOST, "stock.*"));
@@ -1145,6 +1149,20 @@ class DispatcherContainerTest {
                 .isInstanceOf(DispatcherNotFoundException.class);
         assertThatThrownBy(() -> container.remove(new ConsumerId("absent")))
                 .isInstanceOf(DispatcherNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("파일 쓰기가 실패하면 메모리에 등록되지 않는다")
+    void keepsMemoryIntactWhenWriteFails() {
+        DispatcherFile failing = mock(DispatcherFile.class);
+        when(failing.read()).thenReturn(List.of());
+        doThrow(new IllegalStateException("disk full")).when(failing).write(anyList());
+        DispatcherContainer failingContainer = new DispatcherContainer(failing);
+
+        assertThatThrownBy(() -> failingContainer.add(new DispatcherDefinition("order-created", HOST, "order.*")))
+                .isInstanceOf(IllegalStateException.class);
+
+        assertThat(failingContainer.definitions()).isEmpty();
     }
 
     @Test
@@ -1187,13 +1205,13 @@ class DispatcherContainerTest {
     private Path checkpointOf(String topicName, String consumerId) {
         return tempDir.resolve("topics")
                 .resolve(topicName)
-                .resolve(CHECKPOINTS_DIR)
+                .resolve("checkpoints")
                 .resolve(consumerId + ".checkpoint");
     }
 
     private void write(String json) {
         try {
-            Files.writeString(tempDir.resolve(FILE_NAME), json);
+            Files.writeString(tempDir.resolve("dispatchers.json"), json);
         } catch (IOException exception) {
             throw new IllegalStateException("Failed to write dispatcher file", exception);
         }
@@ -1257,7 +1275,9 @@ Expected: 컴파일 실패 — `DispatcherContainer` 생성자 인자 타입 불
     }
 ```
 
-`workerPool.pool`이 비어 있는지로 단정한다 — 같은 패키지라 접근할 수 있고, 플래그를 지우면 `computeIfAbsent`가 새 워커를 만들어 이 단정이 깨진다. `pool` 필드는 `private`이라 `WorkerPool`에서 package-private으로 낮춘다.
+`workerPool.pool`이 비어 있는지로 단정한다 — 같은 패키지라 접근할 수 있고, 플래그를 지우면 `computeIfAbsent`가 새 워커를 만들어 이 단정이 깨진다. `pool` 필드와 **`WorkerPool` 클래스 자체를** package-private으로 낮춘다. 필드만 낮추면 감싸는 클래스가 `private`이라 `WorkerPool.pool is defined in an inaccessible class`로 테스트 컴파일이 깨진다.
+
+이 파일은 "아무 일도 일어나지 않았음"을 동기적 상태 읽기로 본다 — `drainIgnoresUnsubscribedQueue`가 이미 `dispatcher.subscriptions`를 직접 읽고 있고, 이 단정은 같은 관용을 한 겹 깊이 적용한 것이다. latch로 부정 단정(`await(...)`가 `false`)을 하는 형태는 저장소에 전례가 0건이고 느린 기계에서 조용히 통과한다. 가시성의 잣대는 **같은 패키지 테스트의 결정적 관측은 정당한 필요**이고, 경계는 **프로덕션 API를 새로 만들면서까지 열지는 않는다**이다(`hasWorkers()` 같은 메서드 추가는 거절). 그래서 아무도 안 읽는 `host`·`consumerId`·`pattern`은 `private`으로 내려가고, `DispatcherTest`가 실제로 읽는 `sender`·`subscriptions`·`workerPool`은 package-private으로 남는다.
 
 - [ ] **Step 5: TopicQueue.unsubscribe와 DispatcherContainer 구현**
 
@@ -1436,18 +1456,28 @@ public class DispatcherContainer {
 
 `destroy()`는 워커만 종료하고 체크포인트는 건드리지 않는다. 애플리케이션 종료는 구독 해제가 아니다.
 
-**검증하지 않는 것:** 수정·삭제 시 옛 Dispatcher의 워커가 실제로 종료됐는지는 테스트로 확인하지 않는다. 인스턴스를 팩토리가 만들기 때문에 스파이를 끼울 수 없고, `ThreadPoolExecutor`의 종료 여부를 밖에서 관찰할 통로도 없다. `previous.destroy()`·`dispatcher.destroy()` 호출 경로는 코드 리뷰로 확인한다.
+**검증하지 않는 것:** 수정·삭제 시 옛 Dispatcher의 워커가 실제로 종료됐는지는 테스트로 확인하지 않는다. 인스턴스를 팩토리가 만들기 때문에 스파이를 끼울 수 없고, `ThreadPoolExecutor`의 종료 여부를 밖에서 관찰할 통로도 없다. `previous.destroy()`·`dispatcher.destroy()` 호출 경로는 코드 리뷰로 확인한다. **대신 `destroyed` 플래그가 늦은 `dispatch`를 막는지는 `DispatcherTest`가 워커 풀이 비어 있는지로 결정적으로 관찰한다** — 위 두 문장은 executor의 종료 상태를 말하는 것이고 플래그의 효과와는 다른 주제다.
 
-같은 이유로 테스트에 `@AfterEach container.destroy()`를 두지 않는다. `WorkerPool`은 `dispatch`의 `computeIfAbsent`에서만 채워지는데 이 파일의 10개 테스트 중 `dispatch`를 부르는 것이 없어 풀이 언제나 비어 있고, 그래서 `destroy()`가 아무 일도 하지 않는다.
+같은 이유로 테스트에 `@AfterEach container.destroy()`를 두지 않는다. `WorkerPool`은 `dispatch`의 `computeIfAbsent`에서만 채워지는데 이 파일의 테스트 중 `dispatch`를 부르는 것이 없어 풀이 언제나 비어 있고, 그래서 `destroy()`가 아무 일도 하지 않는다.
 
 형식 검증(`not-a-url` 같은 입력) 실패 시 파일이 바뀌지 않는다는 케이스도 따로 두지 않는다. `add`가 파일에 쓰는 값이 `DispatcherDefinition.from(dispatcher)`라서 `dispatcherFile.write`의 인자를 만들려면 `DispatcherFactory.create`가 먼저 성공해야 하고, 그래서 이 순서는 구조적으로 뒤집힐 수 없다. "거절 시 파일 무변경"이라는 성질 자체는 `rejectsDuplicateConsumerId`가 같은 세 단 구조로 붙든다.
 
-동시성 테스트도 두지 않는다. 뮤테이션 락은 한 줄이고, 스레드를 여러 쌍 띄워 확인할 수 있는 것은 특정 인터리빙 한 번뿐이다. 뮤테이션이 만드는 최종 상태는 위 10개가 이미 본다.
+**반대 방향인 "파일이 먼저"는 목으로 붙든다.** `keepsMemoryIntactWhenWriteFails`가 없으면 `add`의 `dispatcherFile.write`와 `dispatchers.put` 순서를 뒤집어도 스위트가 통과한다. 순서를 뒤집은 뮤턴트를 케이스 셋이 죽이긴 하는데 실패 이유가 전부 "파일 내용 불일치"다 — 원인은 `definitions()`가 `put`보다 먼저 불린다는 **표현 방식** 때문에 새 정의가 두 번 기록되는 것이지, 어떤 단정도 "파일이 먼저"를 보고 있어서가 아니다. `definitions()`를 지역변수로 미리 뽑는 자연스러운 정리만 해도 그 킬이 사라진다. 목 케이스는 순서를 **의미로** 붙들어 그 정리에도 살아남고, 실측에서 순서 뒤집기 뮤턴트를 단독으로 죽였다.
+
+동시성 테스트도 두지 않는다. 뮤테이션 락은 한 줄이고, 스레드를 여러 쌍 띄워 확인할 수 있는 것은 특정 인터리빙 한 번뿐이다. 뮤테이션이 만드는 최종 상태는 위 케이스들이 이미 본다.
+
+**뮤테이션으로 확인한 사실 세 가지.**
+
+- `wideningPatternSubscribesNewTopicAtTail`의 tail 단정은 **혼자서는 공허하다.** `TopicQueue.subscribe`가 없으면 만들고 tail을 쓰므로, `match`의 `subscribe` 호출을 지워도 그 단정 자신이 그 자리에서 tail 체크포인트를 만들어 통과한다. 앞에 둔 `checkpointOf(...).exists()`가 "rematch가 구독시켰다"와 "그 시점이 tail이다"를 갈라 둘 다 관측하게 만든다.
+- `Dispatcher.subscribe`의 `computeIfAbsent`를 `put`으로 바꾼 뮤턴트는 **살아남는다.** 재매칭이 반복돼도 기존 오프셋을 덮지 않는다는 성질을 지금 아무도 안 본다. 다만 도달 가능한 상태에서 의미가 같다 — `modify`가 인스턴스를 갈아치우므로 낡은 `subscriptions` 맵이 살아남는 경로가 없고, `TopicQueue.subscribe`의 기존-체크포인트 분기가 값을 보존한다. 두 계층이 겹쳐 상쇄되는 것이지 단정된 성질은 아니라는 뜻이라 기록만 한다.
+- `modifyHostKeepsCheckpoint`는 **단독 킬이 0이다.** 죽이는 뮤턴트 셋을 전부 `narrowingPatternDropsSubscriptionAndCheckpoint`가 함께 죽인다. 공허하지는 않다(파일에 새 host가 쓰이는지 보는 단정이 `narrowing`에 없고, 호스트만 바꾸는 수정이 스펙의 대표 PUT 시나리오다). 케이스를 줄여야 할 상황이 오면 여기가 유일한 후보다.
+
+`ConcurrentHashMap.replaceAll`은 **맵 전체로는 원자적이지 않다**(실측: 느린 매핑 함수로 도는 중 다른 스레드가 갱신 전/후가 섞인 스냅샷을 본다). `rematchAll` 도중의 `getSubscribers`는 토픽에 따라 옛 구독자 집합을 볼 수 있다. 항목별로는 원자적이라 — 값이 `match`가 만든 불변 `List`의 참조 통째 교체라 — 찢긴 리스트는 보이지 않고, 관측되는 최악은 "메시지 한 건이 갱신 직전 구독자 집합으로 배달"이다. 삭제된 Dispatcher 쪽은 `destroyed` 가드가 드레인을 막는다.
 
 - [ ] **Step 6: 테스트 통과 확인**
 
 Run: `./gradlew :broker:test --tests "org.mmmq.broker.dispatcher.DispatcherContainerTest"`
-Expected: PASS (10 tests)
+Expected: PASS (11 tests)
 
 - [ ] **Step 7: 전체 테스트로 회귀 확인**
 
