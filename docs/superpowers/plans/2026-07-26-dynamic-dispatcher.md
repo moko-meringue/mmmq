@@ -306,7 +306,7 @@ Expected: 컴파일 실패 — `cannot find symbol: method deregister(String)`
 `CheckpointFile.java`의 `write` 메서드 뒤, `close` 앞에 추가:
 
 ```java
-    public void delete() {
+    void delete() {
         close();
         try {
             Files.deleteIfExists(file);
@@ -315,6 +315,8 @@ Expected: 컴파일 실패 — `cannot find symbol: method deregister(String)`
         }
     }
 ```
+
+package-private이다. 호출자가 같은 패키지의 `CheckpointDirectory.deregister` 하나뿐이고, 이 클래스는 이미 계열이 갈려 있다 — `openAll`·`open`이 package-private이고, `read`·`write`가 public인 것은 다른 패키지의 `TopicQueue`가 쓰기 때문이며 `close`는 `Closeable` 의무다.
 
 같은 파일의 `open` 안에 있는 아래 주석을 제거한다. 신규 체크포인트를 tail에서 시작하기로 결정해 이 미결 사항이 해소됐다(결정은 스펙에 기록).
 
