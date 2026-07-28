@@ -27,8 +27,8 @@
 |---|---|
 | Dispatcher 소유권 | `DispatcherContainer`가 직접 소유. `DispatcherBeanRegistrar` 삭제 |
 | 파일 host 포맷 | URL 문자열 하나로 통일 (API 요청 형태와 동일) |
-| Dispatcher 생성 | `DispatcherDefinition.toDispatcher()` — 정의가 양방향 변환을 소유 |
-| 역방향 변환 | `DispatcherDefinition.from(Dispatcher)` |
+| Dispatcher 생성 | `DispatcherContainer`의 private 헬퍼. 와이어 타입은 변환을 모른다 |
+| 계층별 타입 | HTTP는 `api.DispatcherDefinition`, 파일은 `storage.DispatcherEntry` |
 | `Host`의 주소 표현 | `InetAddress` 즉시 해석을 그만두고 원본 문자열 보존 |
 | 새 구독의 시작 오프셋 | 로그의 tail |
 | 체크포인트 수명 | 구독이 끝나면 같이 지운다 (삭제·패턴 축소 모두) |
@@ -36,6 +36,27 @@
 | 동기화·동시성 | 뮤테이션 단일 락 + 파일 원자 교체, 읽기는 락을 잡지 않는다 |
 
 각 결정의 근거는 아래 해당 절에 적었다.
+
+## 계층별 타입과 패키지
+
+`dispatchers.json`의 한 행과 HTTP 본문은 **모양이 같지만 다른 타입**이다.
+
+```
+org.mmmq.broker.dispatcher
+├── Dispatcher · DispatcherContainer · FrontDispatcher   도메인
+├── api/       DispatcherController · DispatcherDefinition · DispatcherRoute
+├── storage/   DispatcherFile · DispatcherEntry
+├── exception/ DispatcherNotFoundException · DuplicateConsumerIdException
+└── sender/    Sender
+```
+
+**나누는 이유는 필드가 달라서가 아니라 변경 이유가 달라서다.** 하나의 클래스는 하나의 직렬화 정책만 가질 수 있는데, 공유하면 HTTP 계약 안정화를 위한 애노테이션(`@Valid`, `@JsonProperty`)이 디스크 포맷에도 새어 든다. 반대로 파일 포맷 변경이 API 계약을 깬다. 그리고 실제로 결합이 이미 있었다 — 분리 전에는 `DispatcherContainer.add`·`modify`·`remove`가 GET 응답용 목록을 그대로 파일 재작성 버퍼로 재사용했다.
+
+**두 타입 다 메서드가 0개고 `Dispatcher`를 import하지 않는다.** 변환은 전부 `DispatcherContainer`의 private 헬퍼가 한다. 이게 `Dispatcher`의 접근자 셋을 package-private으로 유지하는 유일한 길이다 — 변환이 DTO 쪽에 있으면 그 DTO가 사는 패키지에서 접근자가 보여야 하므로 표면을 넓혀야 한다.
+
+`DispatcherContainer.add`·`modify`는 원시 문자열이나 와이어 타입이 아니라 `(ConsumerId, Host, TopicPattern)`을 받는다. 컨트롤러가 경계에서 `Host.from(...)` 등으로 변환하며, 검증 실패는 기존 `@ExceptionHandler(IllegalArgumentException)`가 400으로 받는다. `DELETE`가 이미 `new ConsumerId(...)`를 경계에서 하고 있었으므로 오히려 일관성이 맞는다.
+
+**패키지 순환 판정 기준.** 양방향 import는 **양쪽이 상대의 구체 타입 위 행동을 호출할 때만** 순환으로 보고 인터페이스로 끊는다(`TopicQueueRegistrar` 참고). 한쪽이 상대의 메서드 없는 데이터 타입을 파라미터·반환 타입으로만 쓰는 경우는 정상적인 계층 의존이다. `dispatcher.api ↔ dispatcher`가 후자다 — 컨트롤러가 컨테이너의 행동을 호출하고, 컨테이너는 `DispatcherDefinition`을 `definitions()`의 반환 타입으로만 쓴다.
 
 ## 파일 포맷
 

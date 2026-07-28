@@ -1916,3 +1916,57 @@ MSGEOF
 `Host.from`의 포트 가드와 `getHost() == null` 절은 각각 지워도 스위트가 통과하는 **등가 뮤턴트**다. 두 절이 사는 값은 거절이 아니라 400 본문의 메시지 품질이고, Task 5에서 확인한 "둘을 **함께** 지우면 NPE"는 그대로 유효하다.
 
 **123 → 126 케이스 green.**
+
+---
+
+## 후속 2: 계층 타입 분리와 패키지 재구성
+
+첫 재설계 라운드 뒤 사용자가 다시 지적했다 — "`DispatcherDefinition`을 ui 계층에서 사용하면 안 될 것 같다. 전체적으로 책임과 연관성에 따른 패키지 분리 진행해."
+
+**첫 재설계가 이 문제를 악화시켰다.** `DispatcherDefinition`은 원래 셋을 겸했고(파일 스키마·POST 본문·GET 응답) 거기에 우리가 `toDispatcher()`를 얹어 넷이 됐다.
+
+### 결정적이었던 증거
+
+논쟁을 끝낸 건 필드 모양이 아니라 **행동 결합**이었다. `DispatcherContainer.add`·`modify`·`remove`가 `definitions()` — GET 응답이 쓰는 바로 그 메서드 — 를 **파일 재작성 버퍼로 재사용**하고 있었다. "언젠가 갈릴 수도 있다"가 아니라 이미 있던 결합이고, 첫 라운드에 "지금 분리하지 않는다"고 판정한 렌즈가 자기 트리거를 shape만 보고 behavior를 안 봤다며 정정했다.
+
+두 번째 근거는 타입 시스템 차원이다. **하나의 클래스는 하나의 직렬화 정책만 가질 수 있다.** HTTP 계약 안정화를 위한 애노테이션이 하나라도 붙는 순간 디스크 포맷에 새어 든다.
+
+### 교착을 푼 수
+
+네 렌즈가 한동안 갈렸다. DTO에 변환을 두면 그 DTO가 사는 패키지에서 `Dispatcher`의 접근자가 보여야 하는데, 접근자는 직전 라운드에 package-private으로 좁혔다. `api`로 빼면 다시 넓혀야 하고, 루트에 두면 패키지 분리가 안 된다.
+
+**해법은 DTO에서 변환을 아예 걷어내는 것이었다.** 변환을 `DispatcherContainer`(=`Dispatcher`와 같은 패키지)의 private 헬퍼로 옮기면 DTO가 순수 데이터가 되고, `Dispatcher`의 표면을 한 글자도 안 넓히면서 계층이 갈린다.
+
+### 최종 구조
+
+```
+org.mmmq.broker.dispatcher
+├── Dispatcher · DispatcherContainer · FrontDispatcher
+├── api/       DispatcherController · DispatcherDefinition · DispatcherRoute
+├── storage/   DispatcherFile · DispatcherEntry
+├── exception/ DispatcherNotFoundException · DuplicateConsumerIdException
+└── sender/    Sender
+```
+
+엣지: `api → root` / `root → api`(`definitions()` 반환 타입 하나) / `root → storage` / `storage → persistence`. `storage → Dispatcher` 0건, `DispatcherRoute`가 `api` 밖 0건.
+
+`add`·`modify`는 `(ConsumerId, Host, TopicPattern)`을 받는다. 컨트롤러가 경계에서 파싱하고, 검증 실패는 기존 핸들러가 400으로 받는다.
+
+### 기각한 것과 이유
+
+- **`Dispatcher`와 `DispatcherContainer`를 다른 패키지로**: 가르면 `subscribe(TopicQueue)`·`dispatch(TopicQueue)`가 public이 돼야 한다. 그 둘은 값 접근자가 아니라 **행동 트리거**라, 라이브러리 소비자가 `new Dispatcher(...)` 후 직접 호출해 구독 장부를 건너뛸 수 있게 된다.
+- **`Dispatcher.create(String, String, String)`**: 같은 타입 셋이 인접해 순서를 바꿔도 컴파일된다. 기존 3인자 생성자가 서로 다른 타입을 받아 그 오류를 컴파일 타임에 잡는다.
+- **wire 타입끼리 변환(`DispatcherDefinition.from(DispatcherEntry)`)**: 독립적으로 진화해야 할 두 계약이 직접 묶여, 타입만 하나 늘어난 채 같은 결합이 재현된다.
+- **`add`·`modify`를 `void`로 두고 컨트롤러가 응답을 재조립**: `Dispatcher` 생성자가 입력을 변형하지 않는다는 암묵적 불변식에 기댄다. 나중에 정규화가 붙으면 응답이 저장된 상태와 조용히 어긋난다.
+
+### 검증에서 드러난 것
+
+- **`toDefinition`의 host/pattern 자리 교환이 무관측이었다.** 모든 HTTP 응답의 두 필드가 뒤집혀 나가는데 125개가 전부 통과했다 — 컨트롤러 테스트는 컨테이너를 목으로 세우고, 컨테이너 테스트는 반환값을 버리고, 남은 케이스가 `consumerId`만 뽑는 삼중 사각이었다. 대칭인 `toEntry`는 이미 4건이 잡고 있었다. `loadsDefinitionsFromFile`의 단정을 완전한 정의로 바꿔 닫았다(줄 수 동일).
+- **컨테이너로 옮긴 검증 케이스가 무효였다.** 세 예외가 전부 인자 표현식에서 나와 `container.add`에 진입조차 하지 않는다. 그리고 "세 원인이 한 진입점에서 IAE"라는 성질 자체가 재구성 후 컨테이너에 없다 — 원시 문자열을 받는 곳이 컨트롤러로 옮겨갔고 거기는 이미 관측된다. 삭제했다.
+- **JSON 키는 바이트 단위로 호환된다.** 새 코드가 쓴 파일을 구 코드가 읽고 그 역도 되며 두 바이트열이 완전히 동일하다.
+
+### 남은 항목 (별건)
+
+**`Host`에 `equals`가 없다.** Task 1에서 "비교하는 코드가 없다"는 이유로 지웠는데, 이제 `Host`가 `add`·`modify`의 공개 시그니처에 있어 테스트가 실인자로 스텁할 수 없다(컴파일은 되고 런타임에 조용히 매칭 실패). `argThat`으로 우회했지만 저장소 값 타입 6개가 전부 record라 자동 equals로 단정하는 것이 지배적 방식이고 `Host`만 예외다. **`Host`를 record로 바꾸는 안**이 나왔다 — 저장소 값 타입이 6:1로 record이고 유일한 class가 `Host`다. 생성자 검증은 compact constructor로 옮겨지고 `from`은 정적 팩토리로 남는다.
+
+**124 케이스 green.**

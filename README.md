@@ -148,10 +148,10 @@ FrontDispatcher.dispatch(message)
 토픽 단위의 메시지 큐입니다. 메시지를 디스크에 영속화하고, Dispatcher별 오프셋 체크포인트를 관리합니다.
 
 ```
-TopicQueue.subscribe(dispatcherName)         // 체크포인트에서 다음 소비 오프셋 로드 (없으면 0L 초기화)
+TopicQueue.subscribe(consumerId)             // 체크포인트에서 다음 소비 오프셋 로드 (없으면 로그 tail로 초기화)
 TopicQueue.offer(message) → boolean          // 디스크 append + fsync. 실패 시 false
 TopicQueue.peek(offset) → Message            // 인덱스를 이용한 random access read
-TopicQueue.commit(dispatcherName, offset)    // 다음 소비 오프셋을 체크포인트에 fsync
+TopicQueue.commit(consumerId, offset)        // 다음 소비 오프셋을 체크포인트에 fsync
 TopicQueue.close()                           // 보유 자원(SegmentFileChain, CheckpointDirectory) 해제
 ```
 
@@ -204,7 +204,7 @@ TopicQueue.close()                           // 보유 자원(SegmentFileChain, 
 
 #### Dispatcher별 체크포인트
 
-각 Dispatcher는 `subscribe`로 토픽에 등록될 때 `checkpoints/{dispatcherName}.checkpoint` 파일을 생성/로드합니다. 매 메시지 전달 완료 시 `commit`이 다음 소비 오프셋을 fsync합니다. 새로 등록되는 Dispatcher는 0L에서 시작하여 토픽에 보존된 모든 메시지를 처음부터 catch-up합니다.
+각 Dispatcher는 `subscribe`로 토픽에 등록될 때 `checkpoints/{consumerId}.checkpoint` 파일을 생성/로드합니다. 매 메시지 전달 완료 시 `commit`이 다음 소비 오프셋을 fsync합니다. **새로 등록되는 Dispatcher는 로그의 tail에서 시작합니다** — 운영 중에 소비자를 붙여도 쌓여 있던 메시지가 한꺼번에 재생되지 않습니다. 구독이 끝나면(삭제하거나 패턴을 좁혀 토픽이 빠지면) 그 체크포인트 파일도 함께 지워집니다.
 
 | 클래스 | 설명 |
 |--------|------|
@@ -499,6 +499,10 @@ mmmq:
 | `DELETE` | `/mmmq/dispatchers/{consumerId}` | `204` · `400` · `404` |
 
 `PUT`의 본문은 `host`와 `pattern`뿐입니다. `consumerId`는 식별자이지 바꿀 수 있는 값이 아닙니다.
+
+HTTP가 주고받는 타입과 파일에 저장되는 타입은 **서로 다릅니다**. 컴포넌트는 같지만 의도적으로 나눠 둔 것이라, API를 위한 애노테이션이 디스크 포맷에 새어 들거나 파일 포맷 변경이 API 계약을 깨는 일이 없습니다. 둘 다 메서드가 없는 순수 record이고, 변환은 `DispatcherContainer`가 전담합니다.
+
+검증 실패 메시지는 `core` 값 타입이 던지는 것이라 **검증 대상 파라미터 이름**을 주어로 씁니다(`url must be an absolute URL, but was: ...`). 요청 본문의 필드명(`host`)과 다르지만 문제가 된 값이 그대로 실려 나오고, 이 방식이라야 `core`가 브로커의 와이어 스키마를 모른 채로 남습니다.
 
 ```bash
 curl -X POST localhost:8080/mmmq/dispatchers \

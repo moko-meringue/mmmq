@@ -118,11 +118,13 @@ Dispatchers are defined in a JSON file at `{mmmq.broker.persistence.root-dir}/di
 ]
 ```
 
-`host` is an absolute URL of the form `scheme://address:port` and nothing else. The scheme must be `http` or `https` (case-insensitive) and the port is required — a consumer usually listens on a non-standard port, so a missing port is rejected instead of silently falling back to 80/443. A path, query, userInfo, or fragment is rejected too: `Host.toUri()` only round-trips `scheme://address:port`, and a path would not vanish harmlessly — `RestClient` appends `/mmmq/messages` to its baseUrl path, so keeping it would change routing and dropping it would silently ignore what the user wrote. When the file is absent, an empty `[]` file is created and the broker boots with no dispatchers. Invalid definitions — duplicate `consumerId`, unsupported scheme, malformed JSON — fail context startup (fail-fast). Each Dispatcher gets its own `<consumerId>.checkpoint` file under the per-topic storage directory.
+`host` is an absolute URL of the form `scheme://address:port` and nothing else. The scheme must be `http` or `https` (case-insensitive) and the port is required — a consumer usually listens on a non-standard port, so a missing port is rejected instead of silently falling back to 80/443. A path, query, userInfo, or fragment is rejected too: `Host.toUri()` only round-trips `scheme://address:port`, and a path would not vanish harmlessly — `RestClient` appends `/mmmq/messages` to its baseUrl path, so keeping it would change routing and dropping it would silently ignore what the user wrote. When the file is absent, an empty `[]` file is created and the broker boots with no dispatchers. Invalid entries — duplicate `consumerId`, unsupported scheme, malformed JSON — fail context startup (fail-fast). Validation errors surface as `IllegalArgumentException` from the `core` value types, so the message names the *parameter* being validated (`url must be an absolute URL, but was: …`) rather than the JSON field (`host`); the offending value is echoed, and `core` stays ignorant of the Broker's wire schema. Each Dispatcher gets its own `<consumerId>.checkpoint` file under the per-topic storage directory.
 
 ### Runtime management
 
-`DispatcherController` exposes CRUD over the same definitions. Changes are written to `dispatchers.json` (temp file + `ATOMIC_MOVE`) before the in-memory state is touched, so they survive a restart.
+`DispatcherController` exposes CRUD over the same concept, but **not the same type**. The HTTP layer speaks `dispatcher.api.DispatcherDefinition`; the file speaks `dispatcher.storage.DispatcherEntry`. Both are method-less records with identical components — the duplication is deliberate, so an API-shaping annotation (`@Valid`, `@JsonProperty`) cannot leak into the on-disk format and a file-format change cannot break the HTTP contract. Neither imports `Dispatcher`; `DispatcherContainer` owns every conversion in private helpers, which is what lets `Dispatcher`'s accessors stay package-private.
+
+Changes are written to `dispatchers.json` (temp file + `ATOMIC_MOVE`) before the in-memory state is touched, so they survive a restart.
 
 ```
 GET    /mmmq/dispatchers               200
@@ -134,6 +136,19 @@ DELETE /mmmq/dispatchers/{consumerId}  204 / 400 / 404
 PUT takes only `host` and `pattern` in the body — `consumerId` is the identifier, not a mutable field. Mutations are serialized by a single `ReentrantLock` inside `DispatcherContainer`; the message hot path (`getSubscribers`) stays lock-free.
 
 A new subscription starts at the log **tail**, so attaching a consumer at runtime does not replay the existing backlog. When a subscription ends — dispatcher deleted, or pattern narrowed so a topic drops out — its `<consumerId>.checkpoint` is deleted too.
+
+### Package layout (broker)
+
+```
+org.mmmq.broker.dispatcher
+├── Dispatcher · DispatcherContainer · FrontDispatcher   domain
+├── api/       DispatcherController · DispatcherDefinition · DispatcherRoute
+├── storage/   DispatcherFile · DispatcherEntry
+├── exception/ DispatcherNotFoundException · DuplicateConsumerIdException
+└── sender/    Sender
+```
+
+Two-way imports between packages count as a cycle — and get broken with an interface owned by the depended-upon package (see `TopicQueueRegistrar`, which removed the `topicqueue ↔ dispatcher` cycle) — **only when both sides call behaviour on the other's concrete types**. A package that merely names the other's method-less data types in parameter or return positions is an ordinary layering dependency. `dispatcher.api ↔ dispatcher` is the second case: `DispatcherController` drives `DispatcherContainer` (behaviour), while `DispatcherContainer` names `DispatcherDefinition` only as the return type of `definitions()` (data shape).
 
 ## Code Style Guide
 
