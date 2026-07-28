@@ -1683,13 +1683,6 @@ code {
     visibility: hidden;
 }
 
-/* release.html: 버전 셀(버전 + latest 배지) 가로 정렬 */
-.release-version-cell {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--s-3);
-}
-
 /* =========================================================
    On-this-page TOC (우측 sticky 사이드바)
    ---------------------------------------------------------

@@ -102,20 +102,16 @@
 
             <section id="flow">
                 <h2>모듈 간 통신 흐름</h2>
-                <p>producer가 보낸 메시지는 broker를 거쳐 consumer에 도달합니다. 각 단계는 서로 다른 프로토콜과 책임을 가집니다.</p>
+                <p>producer가 보낸 메시지는 broker를 거쳐 consumer에 도달합니다. 두 구간 모두 <code>POST /mmmq/messages</code>를 쓰지만, 각 단계가 지는 책임은 다릅니다.</p>
 
                 <div class="code-block">
                     <div class="code-block__head">
                         <span class="code-block__lang">producer → broker → consumer</span>
                         <button class="code-block__copy" type="button">복사</button>
                     </div>
-                    <pre>┌──────────┐   POST /mmmq/messages      ┌───────────────────────────┐   POST /mmmq/messages       ┌──────────┐
-│ producer │ ─────────────────────────▶ │           broker           │ ────────────────────────▶  │ consumer │
-└──────────┘        Message             │                             │  Message + mmmq-consumer-id └──────────┘
-     ▲                                  │ 1. 디스크에 기록 후 ACK/NACK  │        헤더로 라우팅              │
-     │            ACK / NACK            │ 2. 토픽 패턴 매칭 → Dispatcher│                                 │
-     └──────────────────────────────────│ 3. Dispatcher별 독립 재전송   │◀────────────────────────────────┘
-                                         └───────────────────────────┘        ACK / NACK</pre>
+                    <pre style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">┌────────────┐                              ┌────────────┐                              ┌────────────┐
+│  producer  │ ───────────────────────────▶ │   broker   │ ───────────────────────────▶ │  consumer  │
+└────────────┘ ◀─────────────────────────── └────────────┘ ◀─────────────────────────── └────────────┘</pre>
                 </div>
 
                 <p>
