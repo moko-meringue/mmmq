@@ -142,13 +142,18 @@ A new subscription starts at the log **tail**, so attaching a consumer at runtim
 ```
 org.mmmq.broker.dispatcher
 ├── Dispatcher · DispatcherContainer · FrontDispatcher   domain
+├── DispatcherSnapshot                                   domain read model
 ├── api/       DispatcherController · DispatcherDefinition · DispatcherRoute
 ├── storage/   DispatcherFile · DispatcherEntry
 ├── exception/ DispatcherNotFoundException · DuplicateConsumerIdException
 └── sender/    Sender
 ```
 
-Two-way imports between packages count as a cycle — and get broken with an interface owned by the depended-upon package (see `TopicQueueRegistrar`, which removed the `topicqueue ↔ dispatcher` cycle) — **only when both sides call behaviour on the other's concrete types**. A package that merely names the other's method-less data types in parameter or return positions is an ordinary layering dependency. `dispatcher.api ↔ dispatcher` is the second case: `DispatcherController` drives `DispatcherContainer` (behaviour), while `DispatcherContainer` names `DispatcherDefinition` only as the return type of `definitions()` (data shape).
+Every package dependency runs one way: `api → dispatcher`, `dispatcher → storage`, `storage → persistence`. No package imports another that imports it back.
+
+`DispatcherSnapshot(ConsumerId, Host, TopicPattern)` is what makes that possible. `DispatcherContainer` returns it — never `api.DispatcherDefinition` — so the domain never names a UI type. Its components are **domain value objects, not strings**, which is what distinguishes it from the two wire records; a wire record cannot be mistaken for it and vice versa (the compiler enforces this).
+
+`api.DispatcherDefinition` owns `from(DispatcherSnapshot)` because the container cannot build it without acquiring the very dependency we removed. `storage.DispatcherEntry` stays method-less because the container *can* build it — writing the file is infrastructure the container owns.
 
 ## Code Style Guide
 

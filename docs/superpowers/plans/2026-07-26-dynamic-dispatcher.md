@@ -1972,3 +1972,43 @@ org.mmmq.broker.dispatcher
 검증 2절은 compact constructor로 옮겼고 `from`의 가드 5절은 개수·순서 그대로다. **전환의 실질 이득을 실측으로 확인했다** — `argThat` 둘이 `eq(Host.from(...))`로 돌아갔고, 경로 변수를 무시하는 뮤턴트가 **여전히 3건을 죽인다**(`DELETE 204`·`PUT 200`·`regex 400`). 판별력을 잃지 않고 우회를 걷어냈다. 저장소에 `argThat` 0건, 새로 열린 접근자 셋을 쓰는 코드도 0건이다.
 
 **124 케이스 green.**
+
+---
+
+## 후속 3: 도메인 읽기 모델
+
+패키지 재구성 직후 사용자가 `DispatcherController.postDispatcher`를 보고 지적했다 — "`DispatcherDefinition`은 ui 단의 코드인데 container가 반환하는 것도 이상해."
+
+**내 판정 오류였다.** `ponytail`이 `root → api` 엣지를 경고했을 때 나는 "반환 타입을 루트에 두면 HTTP 직렬화 지식이 두 패키지로 쪼개진다"는 논거를 받아 예외로 뒀다. 그게 틀렸다 — **필드 셋짜리 record라고 다 wire 타입이 아니다.** 도메인이 자기 상태를 스냅샷으로 내보내는 건 도메인 개념이지 HTTP 직렬화 지식이 아닌데, 나는 그 둘을 뭉뚱그렸다.
+
+### 해법
+
+```java
+public record DispatcherSnapshot(
+        ConsumerId consumerId,
+        Host host,
+        TopicPattern pattern
+) {
+}
+```
+
+컴포넌트가 **도메인 값 타입**인 것이 요점이다. 문자열 셋인 두 wire 타입과 컴파일러가 구분한다.
+
+`DispatcherContainer.add`·`modify`가 이걸 반환하고 `definitions()`는 `snapshots()`가 됐다. `import ...api.DispatcherDefinition`이 사라진 것이 이번 변경의 지표다.
+
+### 변환 소유자를 가르는 규칙
+
+**컨테이너가 만들어 줄 수 없는 타입만 자기 변환을 갖는다.**
+
+- `api.DispatcherDefinition.from(DispatcherSnapshot)` — 컨테이너가 만들면 지우려던 의존이 되살아난다.
+- `storage.DispatcherEntry`는 메서드 0개 — 파일 쓰기는 컨테이너가 소유한 인프라다. `DispatcherEntry.from(snapshot)`으로 옮기면 `storage → dispatcher` 엣지가 새로 생겨 문제가 자리만 옮긴다.
+
+결과: `api → dispatcher`, `dispatcher → storage`, `storage → persistence` 한 방향씩. 서로를 import하는 쌍이 0이다.
+
+### 부수 효과 — 관측이 따라왔다
+
+`DispatcherDefinition.from`의 host/pattern 뒤바꿈 뮤턴트가 **3건을 죽인다**(POST·GET·PUT). 재구성 전에는 변환이 컨테이너에 있어 컨트롤러 테스트의 목이 통째로 가로막았고 **컨트롤러 층 킬이 0건**이었다 — 직전 라운드에 `loadsDefinitionsFromFile`의 단정을 강화해 겨우 막은 자리다. 변환이 제자리를 찾으니 목이 스냅샷을 주고 컨트롤러가 진짜 변환을 지나게 됐다.
+
+그리고 이전 라운드의 "쌍둥이 record" 우려도 해소됐다. `DispatcherSnapshot`(도메인 값)과 `DispatcherEntry`(문자열)는 층위가 달라 한쪽만 고치면 컴파일이 깨진다.
+
+**124 케이스 green.**

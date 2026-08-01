@@ -44,6 +44,7 @@
 ```
 org.mmmq.broker.dispatcher
 ├── Dispatcher · DispatcherContainer · FrontDispatcher   도메인
+├── DispatcherSnapshot                                   도메인 읽기 모델
 ├── api/       DispatcherController · DispatcherDefinition · DispatcherRoute
 ├── storage/   DispatcherFile · DispatcherEntry
 ├── exception/ DispatcherNotFoundException · DuplicateConsumerIdException
@@ -56,7 +57,11 @@ org.mmmq.broker.dispatcher
 
 `DispatcherContainer.add`·`modify`는 원시 문자열이나 와이어 타입이 아니라 `(ConsumerId, Host, TopicPattern)`을 받는다. 컨트롤러가 경계에서 `Host.from(...)` 등으로 변환하며, 검증 실패는 기존 `@ExceptionHandler(IllegalArgumentException)`가 400으로 받는다. `DELETE`가 이미 `new ConsumerId(...)`를 경계에서 하고 있었으므로 오히려 일관성이 맞는다.
 
-**패키지 순환 판정 기준.** 양방향 import는 **양쪽이 상대의 구체 타입 위 행동을 호출할 때만** 순환으로 보고 인터페이스로 끊는다(`TopicQueueRegistrar` 참고). 한쪽이 상대의 메서드 없는 데이터 타입을 파라미터·반환 타입으로만 쓰는 경우는 정상적인 계층 의존이다. `dispatcher.api ↔ dispatcher`가 후자다 — 컨트롤러가 컨테이너의 행동을 호출하고, 컨테이너는 `DispatcherDefinition`을 `definitions()`의 반환 타입으로만 쓴다.
+**`DispatcherSnapshot`이 계층을 가른다.** `(ConsumerId, Host, TopicPattern)` record이고 컴포넌트가 **도메인 값 타입**이다 — 문자열 셋인 두 wire 타입과 컴파일러가 구분해 준다. `DispatcherContainer`는 이걸 반환하지 `api.DispatcherDefinition`을 반환하지 않는다. 도메인 오케스트레이터가 UI 타입을 아는 상태를 없애는 것이 이 타입의 존재 이유다.
+
+변환의 소유자를 가르는 규칙은 하나다 — **컨테이너가 만들어 줄 수 없는 타입만 자기 변환을 갖는다.** `api.DispatcherDefinition.from(DispatcherSnapshot)`이 그 경우다(컨테이너가 만들면 지우려던 의존이 되살아난다). `storage.DispatcherEntry`는 메서드가 없다 — 파일 쓰기는 컨테이너가 소유한 인프라라 컨테이너가 직접 만든다. `DispatcherEntry.from(snapshot)`으로 옮기면 `storage → dispatcher` 엣지가 새로 생겨 문제가 자리만 옮긴다.
+
+**패키지 의존은 전부 한 방향이다**: `api → dispatcher`, `dispatcher → storage`, `storage → persistence`. 서로를 import하는 쌍이 없다. `topicqueue ↔ dispatcher`는 `TopicQueueRegistrar` 인터페이스로 끊었다.
 
 ## 파일 포맷
 
