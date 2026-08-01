@@ -1,0 +1,17 @@
+# .understandignore — patterns for files/dirs to exclude from analysis
+# Syntax: same as .gitignore (globs, # comments, ! negation, trailing / for dirs)
+#
+# Built-in defaults (always excluded unless negated):
+#   node_modules/, .git/, dist/, build/, obj/, *.lock, *.min.js, etc.
+
+# --- Gradle build output ---
+
+build/
+
+# --- Tests: 이번 분석은 broker/src/main 구조 시각화가 목적이라 제외 ---
+
+src/test/
+
+# --- 도구 자체 산출물 ---
+
+.understand-anything/

@@ -49,7 +49,6 @@ public class CheckpointFile implements Closeable {
                     StandardOpenOption.WRITE
             );
             CheckpointFile checkpointFile = new CheckpointFile(file, name, fileHandle);
-            // MOKO: 새 Checkpoint 생성 시 처음부터 시작할지, 최신부터 시작할지 옵션 고려.
             if (fileHandle.size() == 0) {
                 checkpointFile.write(0L);
             }
@@ -81,6 +80,15 @@ public class CheckpointFile implements Closeable {
             fileHandle.writeFully(0, buffer, FlushMode.FSYNC);
         } catch (IOException exception) {
             throw new StorageException("Failed to write offset: " + file, exception);
+        }
+    }
+
+    void delete() {
+        close();
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException exception) {
+            throw new StorageException("Failed to delete offset checkpoint: " + file, exception);
         }
     }
 

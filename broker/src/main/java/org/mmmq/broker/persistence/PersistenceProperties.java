@@ -3,16 +3,18 @@ package org.mmmq.broker.persistence;
 import java.nio.file.Path;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.bind.Binder;
-import org.springframework.core.env.Environment;
 
-@ConfigurationProperties(PersistenceProperties.PREFIX)
+/**
+ * 브로커가 디스크에 쓰는 모든 것의 위치를 정하는 설정({@code mmmq.broker.persistence.*}).
+ *
+ * <p>경로 조립의 단일 출처다 — 설정 파일과 토픽 디렉터리 위치를 여기서만 만들기 때문에
+ * 쓰는 쪽이 {@code root-dir}에 무엇이 들어왔는지 알 필요가 없다. 값이 비면 기본값으로 채워 넣으므로 설정 없이도 기동한다.
+ */
+@ConfigurationProperties("mmmq.broker.persistence")
 public record PersistenceProperties(
         String rootDir,
         Segment segment
 ) {
-
-    public static final String PREFIX = "mmmq.broker.persistence";
 
     private static final String DEFAULT_ROOT_DIR = "./mmmq";
     private static final String DISPATCHERS_FILE_NAME = "dispatchers.json";
@@ -27,17 +29,11 @@ public record PersistenceProperties(
         }
     }
 
-    public static PersistenceProperties bind(Environment environment) {
-        return Binder.get(environment)
-                .bind(PREFIX, PersistenceProperties.class)
-                .orElseGet(() -> new PersistenceProperties(null, null));
-    }
-
-    public Path dispatchersFile() {
+    public Path dispatchersFilePath() {
         return Path.of(rootDir).resolve(DISPATCHERS_FILE_NAME);
     }
 
-    public Path topicsDir() {
+    public Path topicsDirPath() {
         return Path.of(rootDir).resolve(TOPICS_DIR_NAME);
     }
 

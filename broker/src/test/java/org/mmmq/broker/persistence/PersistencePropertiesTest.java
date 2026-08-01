@@ -38,17 +38,17 @@ class PersistencePropertiesTest {
 
     @Test
     @DisplayName("dispatchers.json 경로는 root-dir 바로 아래로 고정된다")
-    void resolvesDispatchersFile() {
+    void resolvesDispatchersFilePath() {
         PersistenceProperties properties = new PersistenceProperties("/var/mmmq", null);
 
-        assertThat(properties.dispatchersFile()).isEqualTo(Path.of("/var/mmmq/dispatchers.json"));
+        assertThat(properties.dispatchersFilePath()).isEqualTo(Path.of("/var/mmmq/dispatchers.json"));
     }
 
     @Test
     @DisplayName("토픽 데이터 경로는 root-dir/topics로 고정된다")
-    void resolvesTopicsDir() {
+    void resolvesTopicsDirPath() {
         PersistenceProperties properties = new PersistenceProperties("/var/mmmq", null);
 
-        assertThat(properties.topicsDir()).isEqualTo(Path.of("/var/mmmq/topics"));
+        assertThat(properties.topicsDirPath()).isEqualTo(Path.of("/var/mmmq/topics"));
     }
 }

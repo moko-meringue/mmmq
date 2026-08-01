@@ -1,0 +1,3300 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "c9c9aa0f0dd5469cef0cafdc22f7516e09cafb67",
+  "generatedAt": "2026-08-02T12:28:08.488Z",
+  "files": {
+    "build.gradle": {
+      "filePath": "build.gradle",
+      "contentHash": "5c87a884bcc20254eb2a2f81a2609700dfc1c478da22148f45fa95d9c74a945c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 22,
+      "hasStructuralAnalysis": false
+    },
+    "src/main/java/org/mmmq/broker/Broker.java": {
+      "filePath": "src/main/java/org/mmmq/broker/Broker.java",
+      "contentHash": "7078e738936025aa2f530241f8a5c46a684ffde7ee8183ac3357053c8198a745",
+      "functions": [
+        {
+          "name": "Broker",
+          "params": [
+            "frontDispatcher"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "postMessage",
+          "params": [
+            "message"
+          ],
+          "returnType": "ResponseEntity<BrokerAcknowledgement>",
+          "exported": true,
+          "lineCount": 5
+        }
+      ],
+      "classes": [
+        {
+          "name": "Broker",
+          "methods": [
+            "Broker",
+            "postMessage"
+          ],
+          "properties": [
+            "frontDispatcher"
+          ],
+          "exported": true,
+          "lineCount": 15
+        }
+      ],
+      "imports": [
+        {
+          "source": "org.mmmq.broker.subscription.FrontDispatcher",
+          "specifiers": [
+            "FrontDispatcher"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.acknowledgement.Acknowledgement",
+          "specifiers": [
+            "Acknowledgement"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.acknowledgement.BrokerAcknowledgement",
+          "specifiers": [
+            "BrokerAcknowledgement"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.Message",
+          "specifiers": [
+            "Message"
+          ]
+        },
+        {
+          "source": "org.springframework.http.ResponseEntity",
+          "specifiers": [
+            "ResponseEntity"
+          ]
+        },
+        {
+          "source": "org.springframework.web.bind.annotation.PostMapping",
+          "specifiers": [
+            "PostMapping"
+          ]
+        },
+        {
+          "source": "org.springframework.web.bind.annotation.RequestBody",
+          "specifiers": [
+            "RequestBody"
+          ]
+        },
+        {
+          "source": "org.springframework.web.bind.annotation.RestController",
+          "specifiers": [
+            "RestController"
+          ]
+        }
+      ],
+      "exports": [
+        "Broker",
+        "postMessage",
+        "Broker"
+      ],
+      "totalLines": 27,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/BrokerConfiguration.java": {
+      "filePath": "src/main/java/org/mmmq/broker/BrokerConfiguration.java",
+      "contentHash": "d7d0b08556ba9b91b52ed11aa88d8b8ce20379d0481a03a4fd7c39917408bae1",
+      "functions": [],
+      "classes": [
+        {
+          "name": "BrokerConfiguration",
+          "methods": [],
+          "properties": [],
+          "exported": false,
+          "lineCount": 6
+        }
+      ],
+      "imports": [
+        {
+          "source": "org.mmmq.broker.persistence.PersistenceProperties",
+          "specifiers": [
+            "PersistenceProperties"
+          ]
+        },
+        {
+          "source": "org.springframework.boot.autoconfigure.AutoConfiguration",
+          "specifiers": [
+            "AutoConfiguration"
+          ]
+        },
+        {
+          "source": "org.springframework.boot.context.properties.EnableConfigurationProperties",
+          "specifiers": [
+            "EnableConfigurationProperties"
+          ]
+        },
+        {
+          "source": "org.springframework.context.annotation.ComponentScan",
+          "specifiers": [
+            "ComponentScan"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/dispatcher/api/DispatcherController.java": {
+      "filePath": "src/main/java/org/mmmq/broker/dispatcher/api/DispatcherController.java",
+      "contentHash": "480b0181aa5a877f330079750c65b34ea5b406c0ed0ea3fbdfe886d37abe985b",
+      "functions": [
+        {
+          "name": "DispatcherController",
+          "params": [
+            "container"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "getDispatchers",
+          "params": [],
+          "returnType": "List<DispatcherDefinition>",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "postDispatcher",
+          "params": [
+            "definition"
+          ],
+          "returnType": "ResponseEntity<DispatcherDefinition>",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "putDispatcher",
+          "params": [
+            "consumerId",
+            "route"
+          ],
+          "returnType": "DispatcherDefinition",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "deleteDispatcher",
+          "params": [
+            "consumerId"
+          ],
+          "returnType": "ResponseEntity<Void>",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "handleBadRequest",
+          "params": [
+            "exception"
+          ],
+          "returnType": "ResponseEntity<String>",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "handleConflict",
+          "params": [
+            "exception"
+          ],
+          "returnType": "ResponseEntity<String>",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "handleNotFound",
+          "params": [
+            "exception"
+          ],
+          "returnType": "ResponseEntity<String>",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "handleUnexpected",
+          "params": [
+            "exception"
+          ],
+          "returnType": "ResponseEntity<String>",
+          "exported": true,
+          "lineCount": 6
+        }
+      ],
+      "classes": [
+        {
+          "name": "DispatcherController",
+          "methods": [
+            "DispatcherController",
+            "getDispatchers",
+            "postDispatcher",
+            "putDispatcher",
+            "deleteDispatcher",
+            "handleBadRequest",
+            "handleConflict",
+            "handleNotFound",
+            "handleUnexpected"
+          ],
+          "properties": [
+            "log",
+            "container"
+          ],
+          "exported": true,
+          "lineCount": 74
+        }
+      ],
+      "imports": [
+        {
+          "source": "java.util.List",
+          "specifiers": [
+            "List"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.dispatcher.DispatcherContainer",
+          "specifiers": [
+            "DispatcherContainer"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.dispatcher.DispatcherSnapshot",
+          "specifiers": [
+            "DispatcherSnapshot"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.dispatcher.exception.DispatcherNotFoundException",
+          "specifiers": [
+            "DispatcherNotFoundException"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.dispatcher.exception.DuplicateConsumerIdException",
+          "specifiers": [
+            "DuplicateConsumerIdException"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.Host",
+          "specifiers": [
+            "Host"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.identifier.ConsumerId",
+          "specifiers": [
+            "ConsumerId"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.TopicPattern",
+          "specifiers": [
+            "TopicPattern"
+          ]
+        },
+        {
+          "source": "org.slf4j.Logger",
+          "specifiers": [
+            "Logger"
+          ]
+        },
+        {
+          "source": "org.slf4j.LoggerFactory",
+          "specifiers": [
+            "LoggerFactory"
+          ]
+        },
+        {
+          "source": "org.springframework.http.HttpStatus",
+          "specifiers": [
+            "HttpStatus"
+          ]
+        },
+        {
+          "source": "org.springframework.http.ResponseEntity",
+          "specifiers": [
+            "ResponseEntity"
+          ]
+        },
+        {
+          "source": "org.springframework.http.converter.HttpMessageNotReadableException",
+          "specifiers": [
+            "HttpMessageNotReadableException"
+          ]
+        },
+        {
+          "source": "org.springframework.web.bind.annotation.DeleteMapping",
+          "specifiers": [
+            "DeleteMapping"
+          ]
+        },
+        {
+          "source": "org.springframework.web.bind.annotation.ExceptionHandler",
+          "specifiers": [
+            "ExceptionHandler"
+          ]
+        },
+        {
+          "source": "org.springframework.web.bind.annotation.GetMapping",
+          "specifiers": [
+            "GetMapping"
+          ]
+        },
+        {
+          "source": "org.springframework.web.bind.annotation.PathVariable",
+          "specifiers": [
+            "PathVariable"
+          ]
+        },
+        {
+          "source": "org.springframework.web.bind.annotation.PostMapping",
+          "specifiers": [
+            "PostMapping"
+          ]
+        },
+        {
+          "source": "org.springframework.web.bind.annotation.PutMapping",
+          "specifiers": [
+            "PutMapping"
+          ]
+        },
+        {
+          "source": "org.springframework.web.bind.annotation.RequestBody",
+          "specifiers": [
+            "RequestBody"
+          ]
+        },
+        {
+          "source": "org.springframework.web.bind.annotation.RequestMapping",
+          "specifiers": [
+            "RequestMapping"
+          ]
+        },
+        {
+          "source": "org.springframework.web.bind.annotation.RestController",
+          "specifiers": [
+            "RestController"
+          ]
+        }
+      ],
+      "exports": [
+        "DispatcherController",
+        "getDispatchers",
+        "postDispatcher",
+        "putDispatcher",
+        "deleteDispatcher",
+        "handleBadRequest",
+        "handleConflict",
+        "handleNotFound",
+        "handleUnexpected",
+        "DispatcherController"
+      ],
+      "totalLines": 110,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/dispatcher/api/DispatcherDefinition.java": {
+      "filePath": "src/main/java/org/mmmq/broker/dispatcher/api/DispatcherDefinition.java",
+      "contentHash": "17dc0793501ab247ceaba673f09e354b047eb4e0ec340c6bf9f1c684981f93c0",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "org.mmmq.broker.dispatcher.DispatcherSnapshot",
+          "specifiers": [
+            "DispatcherSnapshot"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 29,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/dispatcher/api/DispatcherRoute.java": {
+      "filePath": "src/main/java/org/mmmq/broker/dispatcher/api/DispatcherRoute.java",
+      "contentHash": "5afe725782f29c760dee6f26c26a8e38fe95c5120b12508faed7e0d5783a3f3c",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 14,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/dispatcher/Dispatcher.java": {
+      "filePath": "src/main/java/org/mmmq/broker/dispatcher/Dispatcher.java",
+      "contentHash": "c2d3ceaf51f1b422078878878fa612ba6be5ba4851e6e015e39a681dfca204a4",
+      "functions": [
+        {
+          "name": "Dispatcher",
+          "params": [
+            "host",
+            "consumerId",
+            "pattern"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "Dispatcher",
+          "params": [
+            "host",
+            "consumerId",
+            "pattern",
+            "sender"
+          ],
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "consumerId",
+          "params": [],
+          "returnType": "ConsumerId",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "host",
+          "params": [],
+          "returnType": "Host",
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "pattern",
+          "params": [],
+          "returnType": "TopicPattern",
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "canDispatch",
+          "params": [
+            "topic"
+          ],
+          "returnType": "boolean",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "send",
+          "params": [
+            "message"
+          ],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 22
+        }
+      ],
+      "classes": [
+        {
+          "name": "Dispatcher",
+          "methods": [
+            "Dispatcher",
+            "Dispatcher",
+            "consumerId",
+            "host",
+            "pattern",
+            "canDispatch",
+            "send"
+          ],
+          "properties": [
+            "MAX_NACK_RETRY_COUNT",
+            "INITIAL_BACKOFF_DELAY_MS",
+            "MAX_BACKOFF_DELAY_MS",
+            "BACKOFF_MULTIPLIER",
+            "log",
+            "host",
+            "consumerId",
+            "pattern",
+            "sender"
+          ],
+          "exported": true,
+          "lineCount": 70
+        }
+      ],
+      "imports": [
+        {
+          "source": "org.mmmq.broker.dispatcher.sender.Sender",
+          "specifiers": [
+            "Sender"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.Host",
+          "specifiers": [
+            "Host"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.identifier.ConsumerId",
+          "specifiers": [
+            "ConsumerId"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.Message",
+          "specifiers": [
+            "Message"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.Topic",
+          "specifiers": [
+            "Topic"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.TopicPattern",
+          "specifiers": [
+            "TopicPattern"
+          ]
+        },
+        {
+          "source": "org.slf4j.Logger",
+          "specifiers": [
+            "Logger"
+          ]
+        },
+        {
+          "source": "org.slf4j.LoggerFactory",
+          "specifiers": [
+            "LoggerFactory"
+          ]
+        }
+      ],
+      "exports": [
+        "Dispatcher",
+        "Dispatcher",
+        "consumerId",
+        "canDispatch",
+        "send",
+        "Dispatcher"
+      ],
+      "totalLines": 93,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/dispatcher/DispatcherContainer.java": {
+      "filePath": "src/main/java/org/mmmq/broker/dispatcher/DispatcherContainer.java",
+      "contentHash": "8fc45e892423107987a97eb49145d8ff74cb179f29225c46c576028aa2295ec2",
+      "functions": [
+        {
+          "name": "DispatcherContainer",
+          "params": [
+            "dispatchersFile",
+            "rematcher"
+          ],
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "snapshots",
+          "params": [],
+          "returnType": "List<DispatcherSnapshot>",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "add",
+          "params": [
+            "consumerId",
+            "host",
+            "pattern"
+          ],
+          "returnType": "DispatcherSnapshot",
+          "exported": true,
+          "lineCount": 15
+        },
+        {
+          "name": "modify",
+          "params": [
+            "consumerId",
+            "host",
+            "pattern"
+          ],
+          "returnType": "DispatcherSnapshot",
+          "exported": true,
+          "lineCount": 18
+        },
+        {
+          "name": "remove",
+          "params": [
+            "consumerId"
+          ],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 16
+        },
+        {
+          "name": "entries",
+          "params": [],
+          "returnType": "List<DispatcherEntry>",
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "toSnapshot",
+          "params": [
+            "dispatcher"
+          ],
+          "returnType": "DispatcherSnapshot",
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "toEntry",
+          "params": [
+            "dispatcher"
+          ],
+          "returnType": "DispatcherEntry",
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "toDispatcher",
+          "params": [
+            "record"
+          ],
+          "returnType": "Dispatcher",
+          "exported": false,
+          "lineCount": 7
+        }
+      ],
+      "classes": [
+        {
+          "name": "DispatcherContainer",
+          "methods": [
+            "DispatcherContainer",
+            "snapshots",
+            "add",
+            "modify",
+            "remove",
+            "entries",
+            "toSnapshot",
+            "toEntry",
+            "toDispatcher"
+          ],
+          "properties": [
+            "dispatchersFile",
+            "rematcher",
+            "dispatchers",
+            "mutationLock"
+          ],
+          "exported": true,
+          "lineCount": 113
+        }
+      ],
+      "imports": [
+        {
+          "source": "java.util.LinkedHashMap",
+          "specifiers": [
+            "LinkedHashMap"
+          ]
+        },
+        {
+          "source": "java.util.List",
+          "specifiers": [
+            "List"
+          ]
+        },
+        {
+          "source": "java.util.Map",
+          "specifiers": [
+            "Map"
+          ]
+        },
+        {
+          "source": "java.util.concurrent.locks.ReentrantLock",
+          "specifiers": [
+            "ReentrantLock"
+          ]
+        },
+        {
+          "source": "java.util.stream.Stream",
+          "specifiers": [
+            "Stream"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.dispatcher.exception.DispatcherNotFoundException",
+          "specifiers": [
+            "DispatcherNotFoundException"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.dispatcher.exception.DuplicateConsumerIdException",
+          "specifiers": [
+            "DuplicateConsumerIdException"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.dispatcher.storage.DispatcherEntry",
+          "specifiers": [
+            "DispatcherEntry"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.dispatcher.storage.DispatchersFile",
+          "specifiers": [
+            "DispatchersFile"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.Host",
+          "specifiers": [
+            "Host"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.identifier.ConsumerId",
+          "specifiers": [
+            "ConsumerId"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.TopicPattern",
+          "specifiers": [
+            "TopicPattern"
+          ]
+        },
+        {
+          "source": "org.springframework.stereotype.Component",
+          "specifiers": [
+            "Component"
+          ]
+        }
+      ],
+      "exports": [
+        "DispatcherContainer",
+        "snapshots",
+        "add",
+        "modify",
+        "remove",
+        "DispatcherContainer"
+      ],
+      "totalLines": 145,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/dispatcher/DispatcherRematcher.java": {
+      "filePath": "src/main/java/org/mmmq/broker/dispatcher/DispatcherRematcher.java",
+      "contentHash": "b667c39e173d2b7e6368f6eb72de3ccb456906d9ae640b2c84cbd03268b2f5da",
+      "functions": [],
+      "classes": [
+        {
+          "name": "DispatcherRematcher",
+          "methods": [
+            "rematchAll"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
+      "imports": [
+        {
+          "source": "java.util.List",
+          "specifiers": [
+            "List"
+          ]
+        }
+      ],
+      "exports": [
+        "DispatcherRematcher"
+      ],
+      "totalLines": 22,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/dispatcher/DispatcherSnapshot.java": {
+      "filePath": "src/main/java/org/mmmq/broker/dispatcher/DispatcherSnapshot.java",
+      "contentHash": "442e6ff4ebddd6344c2570214dda9cb50921408d7d018916c2bbcd5899e3369b",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "org.mmmq.core.Host",
+          "specifiers": [
+            "Host"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.identifier.ConsumerId",
+          "specifiers": [
+            "ConsumerId"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.TopicPattern",
+          "specifiers": [
+            "TopicPattern"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 23,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/dispatcher/exception/DispatcherNotFoundException.java": {
+      "filePath": "src/main/java/org/mmmq/broker/dispatcher/exception/DispatcherNotFoundException.java",
+      "contentHash": "450c368385e05232e8b13ce0b315349928650a57e4d9d318e6dc794f10c2fe8e",
+      "functions": [
+        {
+          "name": "DispatcherNotFoundException",
+          "params": [
+            "consumerId"
+          ],
+          "exported": true,
+          "lineCount": 3
+        }
+      ],
+      "classes": [
+        {
+          "name": "DispatcherNotFoundException",
+          "methods": [
+            "DispatcherNotFoundException"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 6
+        }
+      ],
+      "imports": [
+        {
+          "source": "org.mmmq.core.identifier.ConsumerId",
+          "specifiers": [
+            "ConsumerId"
+          ]
+        }
+      ],
+      "exports": [
+        "DispatcherNotFoundException",
+        "DispatcherNotFoundException"
+      ],
+      "totalLines": 16,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/dispatcher/exception/DuplicateConsumerIdException.java": {
+      "filePath": "src/main/java/org/mmmq/broker/dispatcher/exception/DuplicateConsumerIdException.java",
+      "contentHash": "8e4822ef8b9f35cb21ae3a87330f7225c4d3816187ad6da0ffeeb04dedd637d4",
+      "functions": [
+        {
+          "name": "DuplicateConsumerIdException",
+          "params": [
+            "consumerId"
+          ],
+          "exported": true,
+          "lineCount": 3
+        }
+      ],
+      "classes": [
+        {
+          "name": "DuplicateConsumerIdException",
+          "methods": [
+            "DuplicateConsumerIdException"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 6
+        }
+      ],
+      "imports": [
+        {
+          "source": "org.mmmq.core.identifier.ConsumerId",
+          "specifiers": [
+            "ConsumerId"
+          ]
+        }
+      ],
+      "exports": [
+        "DuplicateConsumerIdException",
+        "DuplicateConsumerIdException"
+      ],
+      "totalLines": 17,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/dispatcher/sender/Sender.java": {
+      "filePath": "src/main/java/org/mmmq/broker/dispatcher/sender/Sender.java",
+      "contentHash": "f1c93eec55b2eca8c461e7a5013eac5ffd32b947042b9ddeedd2492258850631",
+      "functions": [
+        {
+          "name": "Sender",
+          "params": [
+            "restClient"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "from",
+          "params": [
+            "host"
+          ],
+          "returnType": "Sender",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "send",
+          "params": [
+            "message",
+            "consumerId",
+            "maxRetryCount"
+          ],
+          "returnType": "boolean",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "post",
+          "params": [
+            "message",
+            "consumerId"
+          ],
+          "returnType": "ConsumerAcknowledgement",
+          "exported": false,
+          "lineCount": 12
+        }
+      ],
+      "classes": [
+        {
+          "name": "Sender",
+          "methods": [
+            "Sender",
+            "from",
+            "send",
+            "post"
+          ],
+          "properties": [
+            "restClient"
+          ],
+          "exported": true,
+          "lineCount": 43
+        }
+      ],
+      "imports": [
+        {
+          "source": "org.mmmq.core.Host",
+          "specifiers": [
+            "Host"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.acknowledgement.ConsumerAcknowledgement",
+          "specifiers": [
+            "ConsumerAcknowledgement"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.identifier.ConsumerId",
+          "specifiers": [
+            "ConsumerId"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.Message",
+          "specifiers": [
+            "Message"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.MessageDeliveryException",
+          "specifiers": [
+            "MessageDeliveryException"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.metadata.Metadata",
+          "specifiers": [
+            "Metadata"
+          ]
+        },
+        {
+          "source": "org.springframework.http.MediaType",
+          "specifiers": [
+            "MediaType"
+          ]
+        },
+        {
+          "source": "org.springframework.web.client.RestClient",
+          "specifiers": [
+            "RestClient"
+          ]
+        }
+      ],
+      "exports": [
+        "Sender",
+        "from",
+        "send",
+        "Sender"
+      ],
+      "totalLines": 55,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/dispatcher/storage/DispatcherEntry.java": {
+      "filePath": "src/main/java/org/mmmq/broker/dispatcher/storage/DispatcherEntry.java",
+      "contentHash": "cdd85cc911152ea796f04db12842f0fbb74220f5cb5a80ce96fe658ac2a119b8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 18,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/dispatcher/storage/DispatchersFile.java": {
+      "filePath": "src/main/java/org/mmmq/broker/dispatcher/storage/DispatchersFile.java",
+      "contentHash": "1a12d8898c86bf882e63cc195033334f692c69134c5d7aebb19fe21ebe469f26",
+      "functions": [
+        {
+          "name": "DispatchersFile",
+          "params": [
+            "properties"
+          ],
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "read",
+          "params": [],
+          "returnType": "List<DispatcherEntry>",
+          "exported": true,
+          "lineCount": 7
+        },
+        {
+          "name": "write",
+          "params": [
+            "records"
+          ],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 16
+        }
+      ],
+      "classes": [
+        {
+          "name": "DispatchersFile",
+          "methods": [
+            "DispatchersFile",
+            "read",
+            "write"
+          ],
+          "properties": [
+            "OBJECT_MAPPER",
+            "TEMP_SUFFIX",
+            "EMPTY_ARRAY",
+            "log",
+            "path"
+          ],
+          "exported": true,
+          "lineCount": 57
+        }
+      ],
+      "imports": [
+        {
+          "source": "com.fasterxml.jackson.databind.ObjectMapper",
+          "specifiers": [
+            "ObjectMapper"
+          ]
+        },
+        {
+          "source": "java.io.IOException",
+          "specifiers": [
+            "IOException"
+          ]
+        },
+        {
+          "source": "java.nio.file.Files",
+          "specifiers": [
+            "Files"
+          ]
+        },
+        {
+          "source": "java.nio.file.Path",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "java.nio.file.StandardCopyOption",
+          "specifiers": [
+            "StandardCopyOption"
+          ]
+        },
+        {
+          "source": "java.nio.file.StandardOpenOption",
+          "specifiers": [
+            "StandardOpenOption"
+          ]
+        },
+        {
+          "source": "java.util.List",
+          "specifiers": [
+            "List"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.persistence.PersistenceProperties",
+          "specifiers": [
+            "PersistenceProperties"
+          ]
+        },
+        {
+          "source": "org.slf4j.Logger",
+          "specifiers": [
+            "Logger"
+          ]
+        },
+        {
+          "source": "org.slf4j.LoggerFactory",
+          "specifiers": [
+            "LoggerFactory"
+          ]
+        },
+        {
+          "source": "org.springframework.stereotype.Component",
+          "specifiers": [
+            "Component"
+          ]
+        }
+      ],
+      "exports": [
+        "DispatchersFile",
+        "read",
+        "write",
+        "DispatchersFile"
+      ],
+      "totalLines": 88,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/persistence/PersistenceProperties.java": {
+      "filePath": "src/main/java/org/mmmq/broker/persistence/PersistenceProperties.java",
+      "contentHash": "5a3de416818aced35cc34f8e6f66e827cd38d6b3abe83d13b87885a9c8456663",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "java.nio.file.Path",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "org.springframework.boot.context.properties.ConfigurationProperties",
+          "specifiers": [
+            "ConfigurationProperties"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 53,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/subscription/FrontDispatcher.java": {
+      "filePath": "src/main/java/org/mmmq/broker/subscription/FrontDispatcher.java",
+      "contentHash": "212bfd98225f9900d684833a4fce5226892ac2b530af4776ef36a37f5f4eef0f",
+      "functions": [
+        {
+          "name": "FrontDispatcher",
+          "params": [
+            "container",
+            "subscriptionContainer"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "dispatch",
+          "params": [
+            "message"
+          ],
+          "returnType": "Acknowledgement",
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "classes": [
+        {
+          "name": "FrontDispatcher",
+          "methods": [
+            "FrontDispatcher",
+            "dispatch"
+          ],
+          "properties": [
+            "container",
+            "subscriptionContainer"
+          ],
+          "exported": true,
+          "lineCount": 20
+        }
+      ],
+      "imports": [
+        {
+          "source": "org.mmmq.broker.topicqueue.TopicQueue",
+          "specifiers": [
+            "TopicQueue"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.TopicQueueContainer",
+          "specifiers": [
+            "TopicQueueContainer"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.acknowledgement.Acknowledgement",
+          "specifiers": [
+            "Acknowledgement"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.Message",
+          "specifiers": [
+            "Message"
+          ]
+        },
+        {
+          "source": "org.springframework.stereotype.Component",
+          "specifiers": [
+            "Component"
+          ]
+        }
+      ],
+      "exports": [
+        "FrontDispatcher",
+        "dispatch",
+        "FrontDispatcher"
+      ],
+      "totalLines": 37,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/subscription/Subscription.java": {
+      "filePath": "src/main/java/org/mmmq/broker/subscription/Subscription.java",
+      "contentHash": "ca2ed2d451c78452701fd122c206db6361533363d7c154ef261cb217f8c0e496",
+      "functions": [
+        {
+          "name": "Subscription",
+          "params": [
+            "topicQueue",
+            "dispatcher",
+            "checkpointFile"
+          ],
+          "exported": false,
+          "lineCount": 11
+        },
+        {
+          "name": "open",
+          "params": [
+            "topicQueue",
+            "dispatcher",
+            "checkpointDirectory"
+          ],
+          "returnType": "Subscription",
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "dispatcher",
+          "params": [],
+          "returnType": "Dispatcher",
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "trigger",
+          "params": [],
+          "returnType": "void",
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "drain",
+          "params": [],
+          "returnType": "void",
+          "exported": false,
+          "lineCount": 27
+        },
+        {
+          "name": "close",
+          "params": [],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
+      "classes": [
+        {
+          "name": "Subscription",
+          "methods": [
+            "Subscription",
+            "open",
+            "dispatcher",
+            "trigger",
+            "drain",
+            "close"
+          ],
+          "properties": [
+            "log",
+            "topicQueue",
+            "dispatcher",
+            "checkpointFile",
+            "worker",
+            "offset"
+          ],
+          "exported": false,
+          "lineCount": 72
+        }
+      ],
+      "imports": [
+        {
+          "source": "java.io.Closeable",
+          "specifiers": [
+            "Closeable"
+          ]
+        },
+        {
+          "source": "java.util.concurrent.ArrayBlockingQueue",
+          "specifiers": [
+            "ArrayBlockingQueue"
+          ]
+        },
+        {
+          "source": "java.util.concurrent.ExecutorService",
+          "specifiers": [
+            "ExecutorService"
+          ]
+        },
+        {
+          "source": "java.util.concurrent.ThreadPoolExecutor",
+          "specifiers": [
+            "ThreadPoolExecutor"
+          ]
+        },
+        {
+          "source": "java.util.concurrent.TimeUnit",
+          "specifiers": [
+            "TimeUnit"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.dispatcher.Dispatcher",
+          "specifiers": [
+            "Dispatcher"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.Offset",
+          "specifiers": [
+            "Offset"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.TopicQueue",
+          "specifiers": [
+            "TopicQueue"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.storage.CheckpointDirectory",
+          "specifiers": [
+            "CheckpointDirectory"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.storage.CheckpointFile",
+          "specifiers": [
+            "CheckpointFile"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.storage.CorruptionException",
+          "specifiers": [
+            "CorruptionException"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.Message",
+          "specifiers": [
+            "Message"
+          ]
+        },
+        {
+          "source": "org.slf4j.Logger",
+          "specifiers": [
+            "Logger"
+          ]
+        },
+        {
+          "source": "org.slf4j.LoggerFactory",
+          "specifiers": [
+            "LoggerFactory"
+          ]
+        }
+      ],
+      "exports": [
+        "close"
+      ],
+      "totalLines": 104,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/subscription/SubscriptionContainer.java": {
+      "filePath": "src/main/java/org/mmmq/broker/subscription/SubscriptionContainer.java",
+      "contentHash": "747425efa07c2f7f455eea2b926d121e1294c5158ce61922d7a8e50c86c9a4dd",
+      "functions": [
+        {
+          "name": "SubscriptionContainer",
+          "params": [
+            "topicQueueFactory"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "register",
+          "params": [
+            "topicQueue"
+          ],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 13
+        },
+        {
+          "name": "rematchAll",
+          "params": [
+            "dispatchers"
+          ],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "trigger",
+          "params": [
+            "topicQueue"
+          ],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "close",
+          "params": [],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "matched",
+          "params": [
+            "topicQueue"
+          ],
+          "returnType": "List<Dispatcher>",
+          "exported": false,
+          "lineCount": 5
+        }
+      ],
+      "classes": [
+        {
+          "name": "SubscriptionContainer",
+          "methods": [
+            "SubscriptionContainer",
+            "register",
+            "rematchAll",
+            "trigger",
+            "close",
+            "matched"
+          ],
+          "properties": [
+            "log",
+            "topicQueueFactory",
+            "topicSubscriptions",
+            "mutationLock",
+            "dispatchers"
+          ],
+          "exported": true,
+          "lineCount": 63
+        }
+      ],
+      "imports": [
+        {
+          "source": "java.util.List",
+          "specifiers": [
+            "List"
+          ]
+        },
+        {
+          "source": "java.util.Map",
+          "specifiers": [
+            "Map"
+          ]
+        },
+        {
+          "source": "java.util.concurrent.ConcurrentHashMap",
+          "specifiers": [
+            "ConcurrentHashMap"
+          ]
+        },
+        {
+          "source": "java.util.concurrent.locks.ReentrantLock",
+          "specifiers": [
+            "ReentrantLock"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.dispatcher.Dispatcher",
+          "specifiers": [
+            "Dispatcher"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.dispatcher.DispatcherRematcher",
+          "specifiers": [
+            "DispatcherRematcher"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.TopicQueue",
+          "specifiers": [
+            "TopicQueue"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.TopicQueueFactory",
+          "specifiers": [
+            "TopicQueueFactory"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.TopicQueueRegistrar",
+          "specifiers": [
+            "TopicQueueRegistrar"
+          ]
+        },
+        {
+          "source": "org.slf4j.Logger",
+          "specifiers": [
+            "Logger"
+          ]
+        },
+        {
+          "source": "org.slf4j.LoggerFactory",
+          "specifiers": [
+            "LoggerFactory"
+          ]
+        },
+        {
+          "source": "org.springframework.context.event.ContextClosedEvent",
+          "specifiers": [
+            "ContextClosedEvent"
+          ]
+        },
+        {
+          "source": "org.springframework.context.event.EventListener",
+          "specifiers": [
+            "EventListener"
+          ]
+        },
+        {
+          "source": "org.springframework.stereotype.Component",
+          "specifiers": [
+            "Component"
+          ]
+        }
+      ],
+      "exports": [
+        "SubscriptionContainer",
+        "register",
+        "rematchAll",
+        "trigger",
+        "close",
+        "SubscriptionContainer"
+      ],
+      "totalLines": 106,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/subscription/TopicSubscriptions.java": {
+      "filePath": "src/main/java/org/mmmq/broker/subscription/TopicSubscriptions.java",
+      "contentHash": "6eadaff9ef4bdea3fac3c01be90b8d9f3dcbe42f5f37e4ff624c28c635604b40",
+      "functions": [
+        {
+          "name": "TopicSubscriptions",
+          "params": [
+            "checkpointDirectory"
+          ],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "trigger",
+          "params": [],
+          "returnType": "void",
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "rematch",
+          "params": [
+            "topicQueue",
+            "matched"
+          ],
+          "returnType": "void",
+          "exported": false,
+          "lineCount": 42
+        },
+        {
+          "name": "containsSubscriptionFor",
+          "params": [
+            "consumerId"
+          ],
+          "returnType": "boolean",
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "close",
+          "params": [],
+          "returnType": "void",
+          "exported": false,
+          "lineCount": 4
+        }
+      ],
+      "classes": [
+        {
+          "name": "TopicSubscriptions",
+          "methods": [
+            "TopicSubscriptions",
+            "trigger",
+            "rematch",
+            "containsSubscriptionFor",
+            "close"
+          ],
+          "properties": [
+            "checkpointDirectory",
+            "subscriptions"
+          ],
+          "exported": false,
+          "lineCount": 66
+        }
+      ],
+      "imports": [
+        {
+          "source": "java.util.List",
+          "specifiers": [
+            "List"
+          ]
+        },
+        {
+          "source": "java.util.Map",
+          "specifiers": [
+            "Map"
+          ]
+        },
+        {
+          "source": "java.util.stream.Collectors",
+          "specifiers": [
+            "Collectors"
+          ]
+        },
+        {
+          "source": "java.util.stream.Stream",
+          "specifiers": [
+            "Stream"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.dispatcher.Dispatcher",
+          "specifiers": [
+            "Dispatcher"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.TopicQueue",
+          "specifiers": [
+            "TopicQueue"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.storage.CheckpointDirectory",
+          "specifiers": [
+            "CheckpointDirectory"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.identifier.ConsumerId",
+          "specifiers": [
+            "ConsumerId"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 96,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/Offset.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/Offset.java",
+      "contentHash": "2a54d1c2a0893e647a9990d37e570ba36daf262d9029e21d3b906a45e826ff29",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 11,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/storage/CheckpointDirectory.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/storage/CheckpointDirectory.java",
+      "contentHash": "7664b53669d22e9292161856f281f7af9b4abfa1bf49f5c4ce73e8ff4a1b064f",
+      "functions": [
+        {
+          "name": "CheckpointDirectory",
+          "params": [
+            "path"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "open",
+          "params": [
+            "base"
+          ],
+          "returnType": "CheckpointDirectory",
+          "exported": true,
+          "lineCount": 11
+        },
+        {
+          "name": "bootstrap",
+          "params": [],
+          "returnType": "void",
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "register",
+          "params": [
+            "name"
+          ],
+          "returnType": "CheckpointFile",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "get",
+          "params": [
+            "name"
+          ],
+          "returnType": "CheckpointFile",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "deregister",
+          "params": [
+            "name"
+          ],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 6
+        },
+        {
+          "name": "close",
+          "params": [],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 5
+        }
+      ],
+      "classes": [
+        {
+          "name": "CheckpointDirectory",
+          "methods": [
+            "CheckpointDirectory",
+            "open",
+            "bootstrap",
+            "register",
+            "get",
+            "deregister",
+            "close"
+          ],
+          "properties": [
+            "SUBDIRECTORY_NAME",
+            "path",
+            "checkpoints"
+          ],
+          "exported": true,
+          "lineCount": 50
+        }
+      ],
+      "imports": [
+        {
+          "source": "java.io.Closeable",
+          "specifiers": [
+            "Closeable"
+          ]
+        },
+        {
+          "source": "java.io.IOException",
+          "specifiers": [
+            "IOException"
+          ]
+        },
+        {
+          "source": "java.nio.file.Files",
+          "specifiers": [
+            "Files"
+          ]
+        },
+        {
+          "source": "java.nio.file.Path",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "java.util.Map",
+          "specifiers": [
+            "Map"
+          ]
+        },
+        {
+          "source": "java.util.concurrent.ConcurrentHashMap",
+          "specifiers": [
+            "ConcurrentHashMap"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.annotation.Nullable",
+          "specifiers": [
+            "Nullable"
+          ]
+        }
+      ],
+      "exports": [
+        "open",
+        "register",
+        "get",
+        "deregister",
+        "close",
+        "CheckpointDirectory"
+      ],
+      "totalLines": 61,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/storage/CheckpointFile.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/storage/CheckpointFile.java",
+      "contentHash": "3a92b39a1a3ccaf75a3efc94143d9c556e7c3f39ea1141ba204a573ca75da346",
+      "functions": [
+        {
+          "name": "CheckpointFile",
+          "params": [
+            "file",
+            "name",
+            "fileHandle"
+          ],
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "openAll",
+          "params": [
+            "base"
+          ],
+          "returnType": "List<CheckpointFile>",
+          "exported": false,
+          "lineCount": 13
+        },
+        {
+          "name": "open",
+          "params": [
+            "base",
+            "name"
+          ],
+          "returnType": "CheckpointFile",
+          "exported": false,
+          "lineCount": 18
+        },
+        {
+          "name": "getName",
+          "params": [],
+          "returnType": "String",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "read",
+          "params": [],
+          "returnType": "long",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "write",
+          "params": [
+            "offset"
+          ],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "delete",
+          "params": [],
+          "returnType": "void",
+          "exported": false,
+          "lineCount": 8
+        },
+        {
+          "name": "close",
+          "params": [],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "classes": [
+        {
+          "name": "CheckpointFile",
+          "methods": [
+            "CheckpointFile",
+            "openAll",
+            "open",
+            "getName",
+            "read",
+            "write",
+            "delete",
+            "close"
+          ],
+          "properties": [
+            "VALUE_BYTES",
+            "EXTENSION",
+            "file",
+            "name",
+            "fileHandle"
+          ],
+          "exported": true,
+          "lineCount": 91
+        }
+      ],
+      "imports": [
+        {
+          "source": "java.io.Closeable",
+          "specifiers": [
+            "Closeable"
+          ]
+        },
+        {
+          "source": "java.io.IOException",
+          "specifiers": [
+            "IOException"
+          ]
+        },
+        {
+          "source": "java.nio.ByteBuffer",
+          "specifiers": [
+            "ByteBuffer"
+          ]
+        },
+        {
+          "source": "java.nio.file.Files",
+          "specifiers": [
+            "Files"
+          ]
+        },
+        {
+          "source": "java.nio.file.Path",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "java.nio.file.StandardOpenOption",
+          "specifiers": [
+            "StandardOpenOption"
+          ]
+        },
+        {
+          "source": "java.util.List",
+          "specifiers": [
+            "List"
+          ]
+        },
+        {
+          "source": "java.util.stream.Stream",
+          "specifiers": [
+            "Stream"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.storage.FileHandle.FlushMode",
+          "specifiers": [
+            "FlushMode"
+          ]
+        }
+      ],
+      "exports": [
+        "getName",
+        "read",
+        "write",
+        "close",
+        "CheckpointFile"
+      ],
+      "totalLines": 104,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/storage/ChecksumMismatchException.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/storage/ChecksumMismatchException.java",
+      "contentHash": "c6cbf8a6974c67e12b17000e747bf93cbcaf8072f1b1e13cb933afd3644566dd",
+      "functions": [
+        {
+          "name": "ChecksumMismatchException",
+          "params": [
+            "message"
+          ],
+          "exported": false,
+          "lineCount": 3
+        }
+      ],
+      "classes": [
+        {
+          "name": "ChecksumMismatchException",
+          "methods": [
+            "ChecksumMismatchException"
+          ],
+          "properties": [],
+          "exported": false,
+          "lineCount": 6
+        }
+      ],
+      "imports": [],
+      "exports": [],
+      "totalLines": 8,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/storage/CorruptionException.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/storage/CorruptionException.java",
+      "contentHash": "7af1acdd5bb3f10cf561bdfa6f8bca8176ad95e31fa8acca2360d9c3d985c8a4",
+      "functions": [
+        {
+          "name": "CorruptionException",
+          "params": [
+            "message"
+          ],
+          "exported": true,
+          "lineCount": 3
+        }
+      ],
+      "classes": [
+        {
+          "name": "CorruptionException",
+          "methods": [
+            "CorruptionException"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 6
+        }
+      ],
+      "imports": [],
+      "exports": [
+        "CorruptionException",
+        "CorruptionException"
+      ],
+      "totalLines": 9,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/storage/FileHandle.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/storage/FileHandle.java",
+      "contentHash": "0b70ecbc6945f8c691cb3454a9db87dffdafb578c0a0de6aa91f063f2f829e71",
+      "functions": [
+        {
+          "name": "FileHandle",
+          "params": [
+            "channel"
+          ],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "open",
+          "params": [
+            "path"
+          ],
+          "returnType": "FileHandle",
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "appendFully",
+          "params": [
+            "buffer",
+            "flushMode"
+          ],
+          "returnType": "long",
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "writeFully",
+          "params": [
+            "address",
+            "buffer",
+            "flushMode"
+          ],
+          "returnType": "void",
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "readFully",
+          "params": [
+            "address",
+            "length"
+          ],
+          "returnType": "byte[]",
+          "exported": false,
+          "lineCount": 13
+        },
+        {
+          "name": "truncate",
+          "params": [
+            "newSize",
+            "flushMode"
+          ],
+          "returnType": "void",
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "size",
+          "params": [],
+          "returnType": "long",
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "close",
+          "params": [],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
+      "classes": [
+        {
+          "name": "FileHandle",
+          "methods": [
+            "FileHandle",
+            "open",
+            "appendFully",
+            "writeFully",
+            "readFully",
+            "truncate",
+            "size",
+            "close"
+          ],
+          "properties": [
+            "channel"
+          ],
+          "exported": false,
+          "lineCount": 71
+        }
+      ],
+      "imports": [
+        {
+          "source": "java.io.Closeable",
+          "specifiers": [
+            "Closeable"
+          ]
+        },
+        {
+          "source": "java.io.IOException",
+          "specifiers": [
+            "IOException"
+          ]
+        },
+        {
+          "source": "java.nio.ByteBuffer",
+          "specifiers": [
+            "ByteBuffer"
+          ]
+        },
+        {
+          "source": "java.nio.channels.FileChannel",
+          "specifiers": [
+            "FileChannel"
+          ]
+        },
+        {
+          "source": "java.nio.file.Path",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "java.nio.file.StandardOpenOption",
+          "specifiers": [
+            "StandardOpenOption"
+          ]
+        }
+      ],
+      "exports": [
+        "close"
+      ],
+      "totalLines": 81,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/storage/MessageSerializationException.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/storage/MessageSerializationException.java",
+      "contentHash": "9d935b7668a0942a54d2abbade2999bf0f0527a87eef80268209e8f1511c152a",
+      "functions": [
+        {
+          "name": "MessageSerializationException",
+          "params": [
+            "message",
+            "cause"
+          ],
+          "exported": false,
+          "lineCount": 3
+        }
+      ],
+      "classes": [
+        {
+          "name": "MessageSerializationException",
+          "methods": [
+            "MessageSerializationException"
+          ],
+          "properties": [],
+          "exported": false,
+          "lineCount": 6
+        }
+      ],
+      "imports": [],
+      "exports": [],
+      "totalLines": 8,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/storage/OffsetIndexFile.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/storage/OffsetIndexFile.java",
+      "contentHash": "3f0f80e2710d603615970499ebd8d4da482d0911d3b9a844d44c3da8258549ac",
+      "functions": [
+        {
+          "name": "OffsetIndexFile",
+          "params": [
+            "path",
+            "fileHandle",
+            "initialCount"
+          ],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "open",
+          "params": [
+            "base",
+            "startOffset"
+          ],
+          "returnType": "OffsetIndexFile",
+          "exported": false,
+          "lineCount": 16
+        },
+        {
+          "name": "append",
+          "params": [
+            "address"
+          ],
+          "returnType": "void",
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "readAt",
+          "params": [
+            "offset"
+          ],
+          "returnType": "long",
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "count",
+          "params": [],
+          "returnType": "long",
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "close",
+          "params": [],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "classes": [
+        {
+          "name": "OffsetIndexFile",
+          "methods": [
+            "OffsetIndexFile",
+            "open",
+            "append",
+            "readAt",
+            "count",
+            "close"
+          ],
+          "properties": [
+            "EXTENSION",
+            "ENTRY_BYTES",
+            "OFFSET_DIGITS",
+            "path",
+            "fileHandle",
+            "committedCount"
+          ],
+          "exported": false,
+          "lineCount": 65
+        }
+      ],
+      "imports": [
+        {
+          "source": "java.io.Closeable",
+          "specifiers": [
+            "Closeable"
+          ]
+        },
+        {
+          "source": "java.io.IOException",
+          "specifiers": [
+            "IOException"
+          ]
+        },
+        {
+          "source": "java.nio.ByteBuffer",
+          "specifiers": [
+            "ByteBuffer"
+          ]
+        },
+        {
+          "source": "java.nio.file.Path",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "java.nio.file.StandardOpenOption",
+          "specifiers": [
+            "StandardOpenOption"
+          ]
+        },
+        {
+          "source": "java.util.concurrent.atomic.AtomicLong",
+          "specifiers": [
+            "AtomicLong"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.storage.FileHandle.FlushMode",
+          "specifiers": [
+            "FlushMode"
+          ]
+        }
+      ],
+      "exports": [
+        "close"
+      ],
+      "totalLines": 76,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/storage/SegmentFile.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/storage/SegmentFile.java",
+      "contentHash": "db048b6291f02aa516092f66508fa9ee901257eb441cd251fa740a3d05f641ea",
+      "functions": [
+        {
+          "name": "SegmentFile",
+          "params": [
+            "path",
+            "startOffset",
+            "fileHandle",
+            "offsetIndexFile"
+          ],
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "openAll",
+          "params": [
+            "base"
+          ],
+          "returnType": "List<SegmentFile>",
+          "exported": false,
+          "lineCount": 16
+        },
+        {
+          "name": "open",
+          "params": [
+            "base",
+            "startOffset"
+          ],
+          "returnType": "SegmentFile",
+          "exported": false,
+          "lineCount": 17
+        },
+        {
+          "name": "recover",
+          "params": [],
+          "returnType": "void",
+          "exported": false,
+          "lineCount": 27
+        },
+        {
+          "name": "append",
+          "params": [
+            "message"
+          ],
+          "returnType": "void",
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "readAt",
+          "params": [
+            "offset"
+          ],
+          "returnType": "Message",
+          "exported": false,
+          "lineCount": 15
+        },
+        {
+          "name": "startOffset",
+          "params": [],
+          "returnType": "long",
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "count",
+          "params": [],
+          "returnType": "long",
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "reaches",
+          "params": [
+            "size"
+          ],
+          "returnType": "boolean",
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "close",
+          "params": [],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 9
+        }
+      ],
+      "classes": [
+        {
+          "name": "SegmentFile",
+          "methods": [
+            "SegmentFile",
+            "openAll",
+            "open",
+            "recover",
+            "append",
+            "readAt",
+            "startOffset",
+            "count",
+            "reaches",
+            "close"
+          ],
+          "properties": [
+            "EXTENSION",
+            "OFFSET_DIGITS",
+            "path",
+            "startOffset",
+            "fileHandle",
+            "offsetIndexFile"
+          ],
+          "exported": false,
+          "lineCount": 206
+        }
+      ],
+      "imports": [
+        {
+          "source": "com.fasterxml.jackson.core.JsonProcessingException",
+          "specifiers": [
+            "JsonProcessingException"
+          ]
+        },
+        {
+          "source": "com.fasterxml.jackson.databind.ObjectMapper",
+          "specifiers": [
+            "ObjectMapper"
+          ]
+        },
+        {
+          "source": "java.io.Closeable",
+          "specifiers": [
+            "Closeable"
+          ]
+        },
+        {
+          "source": "java.io.IOException",
+          "specifiers": [
+            "IOException"
+          ]
+        },
+        {
+          "source": "java.nio.ByteBuffer",
+          "specifiers": [
+            "ByteBuffer"
+          ]
+        },
+        {
+          "source": "java.nio.file.Files",
+          "specifiers": [
+            "Files"
+          ]
+        },
+        {
+          "source": "java.nio.file.Path",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "java.nio.file.StandardOpenOption",
+          "specifiers": [
+            "StandardOpenOption"
+          ]
+        },
+        {
+          "source": "java.util.List",
+          "specifiers": [
+            "List"
+          ]
+        },
+        {
+          "source": "java.util.stream.Stream",
+          "specifiers": [
+            "Stream"
+          ]
+        },
+        {
+          "source": "java.util.zip.CRC32C",
+          "specifiers": [
+            "CRC32C"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.storage.FileHandle.FlushMode",
+          "specifiers": [
+            "FlushMode"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.annotation.Nullable",
+          "specifiers": [
+            "Nullable"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.Message",
+          "specifiers": [
+            "Message"
+          ]
+        }
+      ],
+      "exports": [
+        "close"
+      ],
+      "totalLines": 224,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/storage/SegmentFileChain.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/storage/SegmentFileChain.java",
+      "contentHash": "e1109707687af8f94c11840155a89699a299312c504d423336eef268cc8a5508",
+      "functions": [
+        {
+          "name": "SegmentFileChain",
+          "params": [
+            "path",
+            "rotationThreshold"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "open",
+          "params": [
+            "base",
+            "rotationThreshold"
+          ],
+          "returnType": "SegmentFileChain",
+          "exported": true,
+          "lineCount": 5
+        },
+        {
+          "name": "bootstrap",
+          "params": [],
+          "returnType": "void",
+          "exported": false,
+          "lineCount": 7
+        },
+        {
+          "name": "append",
+          "params": [
+            "message"
+          ],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "tailOffset",
+          "params": [],
+          "returnType": "long",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "readAt",
+          "params": [
+            "absoluteOffset"
+          ],
+          "returnType": "Message",
+          "exported": true,
+          "lineCount": 9
+        },
+        {
+          "name": "close",
+          "params": [],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
+      "classes": [
+        {
+          "name": "SegmentFileChain",
+          "methods": [
+            "SegmentFileChain",
+            "open",
+            "bootstrap",
+            "append",
+            "tailOffset",
+            "readAt",
+            "close"
+          ],
+          "properties": [
+            "path",
+            "rotationThreshold",
+            "segmentsByStartOffset"
+          ],
+          "exported": true,
+          "lineCount": 55
+        }
+      ],
+      "imports": [
+        {
+          "source": "java.io.Closeable",
+          "specifiers": [
+            "Closeable"
+          ]
+        },
+        {
+          "source": "java.nio.file.Path",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "java.util.concurrent.ConcurrentSkipListMap",
+          "specifiers": [
+            "ConcurrentSkipListMap"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.annotation.Nullable",
+          "specifiers": [
+            "Nullable"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.Message",
+          "specifiers": [
+            "Message"
+          ]
+        }
+      ],
+      "exports": [
+        "open",
+        "append",
+        "tailOffset",
+        "readAt",
+        "close",
+        "SegmentFileChain"
+      ],
+      "totalLines": 64,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/storage/StorageException.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/storage/StorageException.java",
+      "contentHash": "f64fef518d1c2f05bf7b7827a03831a8705ad31cfca3b1083f6a6c6f93f54e9f",
+      "functions": [
+        {
+          "name": "StorageException",
+          "params": [
+            "message"
+          ],
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "StorageException",
+          "params": [
+            "message",
+            "cause"
+          ],
+          "exported": true,
+          "lineCount": 3
+        }
+      ],
+      "classes": [
+        {
+          "name": "StorageException",
+          "methods": [
+            "StorageException",
+            "StorageException"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 10
+        }
+      ],
+      "imports": [],
+      "exports": [
+        "StorageException",
+        "StorageException",
+        "StorageException"
+      ],
+      "totalLines": 13,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/TopicQueue.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/TopicQueue.java",
+      "contentHash": "7fc669b9461663a34c036517a9d0465292ba0871f5f8f768e016ff764eae2629",
+      "functions": [
+        {
+          "name": "TopicQueue",
+          "params": [
+            "topic",
+            "segmentFileChain"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "offer",
+          "params": [
+            "message"
+          ],
+          "returnType": "boolean",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "peek",
+          "params": [
+            "offset"
+          ],
+          "returnType": "Message",
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "tailOffset",
+          "params": [],
+          "returnType": "long",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "getTopic",
+          "params": [],
+          "returnType": "Topic",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "close",
+          "params": [],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
+      "classes": [
+        {
+          "name": "TopicQueue",
+          "methods": [
+            "TopicQueue",
+            "offer",
+            "peek",
+            "tailOffset",
+            "getTopic",
+            "close"
+          ],
+          "properties": [
+            "log",
+            "topic",
+            "segmentFileChain",
+            "writeLock"
+          ],
+          "exported": true,
+          "lineCount": 44
+        }
+      ],
+      "imports": [
+        {
+          "source": "java.io.Closeable",
+          "specifiers": [
+            "Closeable"
+          ]
+        },
+        {
+          "source": "java.util.concurrent.locks.ReentrantLock",
+          "specifiers": [
+            "ReentrantLock"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.storage.CorruptionException",
+          "specifiers": [
+            "CorruptionException"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.storage.SegmentFileChain",
+          "specifiers": [
+            "SegmentFileChain"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.storage.StorageException",
+          "specifiers": [
+            "StorageException"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.annotation.Nullable",
+          "specifiers": [
+            "Nullable"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.Message",
+          "specifiers": [
+            "Message"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.Topic",
+          "specifiers": [
+            "Topic"
+          ]
+        },
+        {
+          "source": "org.slf4j.Logger",
+          "specifiers": [
+            "Logger"
+          ]
+        },
+        {
+          "source": "org.slf4j.LoggerFactory",
+          "specifiers": [
+            "LoggerFactory"
+          ]
+        }
+      ],
+      "exports": [
+        "TopicQueue",
+        "offer",
+        "peek",
+        "tailOffset",
+        "getTopic",
+        "close",
+        "TopicQueue"
+      ],
+      "totalLines": 67,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/TopicQueueBootstrapper.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/TopicQueueBootstrapper.java",
+      "contentHash": "4dc57a26ad71056e38da11b6be6ff37e97a6ee7c32cabb98f550c96d232137ac",
+      "functions": [
+        {
+          "name": "TopicQueueBootstrapper",
+          "params": [
+            "properties",
+            "container"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "afterSingletonsInstantiated",
+          "params": [],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 13
+        }
+      ],
+      "classes": [
+        {
+          "name": "TopicQueueBootstrapper",
+          "methods": [
+            "TopicQueueBootstrapper",
+            "afterSingletonsInstantiated"
+          ],
+          "properties": [
+            "root",
+            "container"
+          ],
+          "exported": true,
+          "lineCount": 25
+        }
+      ],
+      "imports": [
+        {
+          "source": "java.io.IOException",
+          "specifiers": [
+            "IOException"
+          ]
+        },
+        {
+          "source": "java.nio.file.Files",
+          "specifiers": [
+            "Files"
+          ]
+        },
+        {
+          "source": "java.nio.file.Path",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "java.util.stream.Stream",
+          "specifiers": [
+            "Stream"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.persistence.PersistenceProperties",
+          "specifiers": [
+            "PersistenceProperties"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.storage.StorageException",
+          "specifiers": [
+            "StorageException"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.Topic",
+          "specifiers": [
+            "Topic"
+          ]
+        },
+        {
+          "source": "org.springframework.beans.factory.SmartInitializingSingleton",
+          "specifiers": [
+            "SmartInitializingSingleton"
+          ]
+        },
+        {
+          "source": "org.springframework.stereotype.Component",
+          "specifiers": [
+            "Component"
+          ]
+        }
+      ],
+      "exports": [
+        "TopicQueueBootstrapper",
+        "afterSingletonsInstantiated",
+        "TopicQueueBootstrapper"
+      ],
+      "totalLines": 38,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/TopicQueueContainer.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/TopicQueueContainer.java",
+      "contentHash": "218acf478436f58cd849845e75d8d0307a543492fd363092e9853b41c6ae931e",
+      "functions": [
+        {
+          "name": "TopicQueueContainer",
+          "params": [
+            "factory",
+            "registrar"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "getOrCreate",
+          "params": [
+            "topic"
+          ],
+          "returnType": "TopicQueue",
+          "exported": true,
+          "lineCount": 8
+        },
+        {
+          "name": "destroy",
+          "params": [],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 11
+        }
+      ],
+      "classes": [
+        {
+          "name": "TopicQueueContainer",
+          "methods": [
+            "TopicQueueContainer",
+            "getOrCreate",
+            "destroy"
+          ],
+          "properties": [
+            "log",
+            "factory",
+            "registrar",
+            "queues"
+          ],
+          "exported": true,
+          "lineCount": 35
+        }
+      ],
+      "imports": [
+        {
+          "source": "jakarta.annotation.PreDestroy",
+          "specifiers": [
+            "PreDestroy"
+          ]
+        },
+        {
+          "source": "java.util.concurrent.ConcurrentHashMap",
+          "specifiers": [
+            "ConcurrentHashMap"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.Topic",
+          "specifiers": [
+            "Topic"
+          ]
+        },
+        {
+          "source": "org.slf4j.Logger",
+          "specifiers": [
+            "Logger"
+          ]
+        },
+        {
+          "source": "org.slf4j.LoggerFactory",
+          "specifiers": [
+            "LoggerFactory"
+          ]
+        },
+        {
+          "source": "org.springframework.stereotype.Component",
+          "specifiers": [
+            "Component"
+          ]
+        }
+      ],
+      "exports": [
+        "TopicQueueContainer",
+        "getOrCreate",
+        "destroy",
+        "TopicQueueContainer"
+      ],
+      "totalLines": 53,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/TopicQueueFactory.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/TopicQueueFactory.java",
+      "contentHash": "fc17fd60ede6b72151a81afd254ff38e5e86b97af1ec5152b786708c505eb0f8",
+      "functions": [
+        {
+          "name": "TopicQueueFactory",
+          "params": [
+            "properties"
+          ],
+          "exported": true,
+          "lineCount": 4
+        },
+        {
+          "name": "create",
+          "params": [
+            "topic"
+          ],
+          "returnType": "TopicQueue",
+          "exported": true,
+          "lineCount": 10
+        },
+        {
+          "name": "openCheckpointDirectory",
+          "params": [
+            "topic"
+          ],
+          "returnType": "CheckpointDirectory",
+          "exported": true,
+          "lineCount": 3
+        },
+        {
+          "name": "topicDir",
+          "params": [
+            "topic"
+          ],
+          "returnType": "Path",
+          "exported": false,
+          "lineCount": 3
+        }
+      ],
+      "classes": [
+        {
+          "name": "TopicQueueFactory",
+          "methods": [
+            "TopicQueueFactory",
+            "create",
+            "openCheckpointDirectory",
+            "topicDir"
+          ],
+          "properties": [
+            "root",
+            "segmentMaxBytes"
+          ],
+          "exported": true,
+          "lineCount": 30
+        }
+      ],
+      "imports": [
+        {
+          "source": "java.io.IOException",
+          "specifiers": [
+            "IOException"
+          ]
+        },
+        {
+          "source": "java.nio.file.Files",
+          "specifiers": [
+            "Files"
+          ]
+        },
+        {
+          "source": "java.nio.file.Path",
+          "specifiers": [
+            "Path"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.persistence.PersistenceProperties",
+          "specifiers": [
+            "PersistenceProperties"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.storage.CheckpointDirectory",
+          "specifiers": [
+            "CheckpointDirectory"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.storage.SegmentFileChain",
+          "specifiers": [
+            "SegmentFileChain"
+          ]
+        },
+        {
+          "source": "org.mmmq.broker.topicqueue.storage.StorageException",
+          "specifiers": [
+            "StorageException"
+          ]
+        },
+        {
+          "source": "org.mmmq.core.message.Topic",
+          "specifiers": [
+            "Topic"
+          ]
+        },
+        {
+          "source": "org.springframework.stereotype.Component",
+          "specifiers": [
+            "Component"
+          ]
+        }
+      ],
+      "exports": [
+        "TopicQueueFactory",
+        "create",
+        "openCheckpointDirectory",
+        "TopicQueueFactory"
+      ],
+      "totalLines": 52,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/java/org/mmmq/broker/topicqueue/TopicQueueRegistrar.java": {
+      "filePath": "src/main/java/org/mmmq/broker/topicqueue/TopicQueueRegistrar.java",
+      "contentHash": "4e969c9d3092c166130152ddfc9af68c9d39dba82e7c06a71728224f07a26234",
+      "functions": [],
+      "classes": [
+        {
+          "name": "TopicQueueRegistrar",
+          "methods": [
+            "register"
+          ],
+          "properties": [],
+          "exported": true,
+          "lineCount": 4
+        }
+      ],
+      "imports": [],
+      "exports": [
+        "TopicQueueRegistrar"
+      ],
+      "totalLines": 16,
+      "hasStructuralAnalysis": true
+    },
+    "src/main/resources/application.properties": {
+      "filePath": "src/main/resources/application.properties",
+      "contentHash": "06df275a56233585aa45a05ca35a3f9fa6f73a748fdf2b4e16e98a9677e74034",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": false
+    },
+    "src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports": {
+      "filePath": "src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports",
+      "contentHash": "ce46a4685c9f48280b21b7a4c4c0ee0d788db0a85e9b33ee684e5473a661d55e",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 2,
+      "hasStructuralAnalysis": false
+    }
+  }
+}

@@ -4,9 +4,9 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.mmmq.core.annotation.Nullable;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.mmmq.core.annotation.Nullable;
 
 public class CheckpointDirectory implements Closeable {
 
@@ -43,6 +43,13 @@ public class CheckpointDirectory implements Closeable {
     @Nullable
     public CheckpointFile get(String name) {
         return checkpoints.get(name);
+    }
+
+    public void deregister(String name) {
+        CheckpointFile checkpointFile = checkpoints.remove(name);
+        if (checkpointFile != null) {
+            checkpointFile.delete();
+        }
     }
 
     @Override

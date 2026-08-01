@@ -34,11 +34,16 @@ public class SegmentFileChain implements Closeable {
     public void append(Message message) {
         SegmentFile tailSegmentFile = segmentsByStartOffset.lastEntry().getValue();
         if (tailSegmentFile.reaches(rotationThreshold)) {
-            long nextOffset = tailSegmentFile.startOffset() + tailSegmentFile.count();
+            long nextOffset = tailOffset();
             tailSegmentFile = SegmentFile.open(path, nextOffset);
             segmentsByStartOffset.put(nextOffset, tailSegmentFile);
         }
         tailSegmentFile.append(message);
+    }
+
+    public long tailOffset() {
+        SegmentFile tailSegmentFile = segmentsByStartOffset.lastEntry().getValue();
+        return tailSegmentFile.startOffset() + tailSegmentFile.count();
     }
 
     @Nullable

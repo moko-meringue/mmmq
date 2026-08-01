@@ -9,7 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.mmmq.broker.dispatcher.FrontDispatcher;
+import org.mmmq.broker.subscription.FrontDispatcher;
 import org.mmmq.core.message.Message;
 import org.mmmq.core.message.Topic;
 import org.springframework.beans.factory.annotation.Autowired;

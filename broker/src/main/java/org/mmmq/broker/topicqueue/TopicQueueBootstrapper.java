@@ -17,7 +17,7 @@ public class TopicQueueBootstrapper implements SmartInitializingSingleton {
     private final TopicQueueContainer container;
 
     public TopicQueueBootstrapper(PersistenceProperties properties, TopicQueueContainer container) {
-        root = properties.topicsDir();
+        root = properties.topicsDirPath();
         this.container = container;
     }
 

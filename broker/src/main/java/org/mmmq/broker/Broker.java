@@ -1,6 +1,6 @@
 package org.mmmq.broker;
 
-import org.mmmq.broker.dispatcher.FrontDispatcher;
+import org.mmmq.broker.subscription.FrontDispatcher;
 import org.mmmq.core.acknowledgement.Acknowledgement;
 import org.mmmq.core.acknowledgement.BrokerAcknowledgement;
 import org.mmmq.core.message.Message;

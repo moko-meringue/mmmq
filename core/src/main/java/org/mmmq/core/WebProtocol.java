@@ -17,7 +17,7 @@ public enum WebProtocol {
                 return protocol;
             }
         }
-        throw new IllegalArgumentException("Unknown scheme: " + scheme);
+        throw new IllegalArgumentException("scheme must be http or https, but was: " + scheme);
     }
 
     public String getScheme() {

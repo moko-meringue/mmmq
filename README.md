@@ -19,41 +19,42 @@
 Producer.produce(message)
   → HTTP POST /mmmq/messages → Broker
     → FrontDispatcher.dispatch(message)
-      → TopicQueueContainer.get(topic)  [없으면 생성 + TopicQueueInitializedEvent 발행]
+      → TopicQueueContainer.getOrCreate(topic)  [없으면 생성 + SubscriptionContainer.register(queue)]
       → TopicQueue.offer(message)
           → SegmentFileChain에 엔트리 append + fsync
           → 인덱스 파일에 주소 append + fsync  ← 메시지 commit point
-          → ACK/NACK을 Producer에게 응답
-          → MessageArrivedEvent 발행
-        → Dispatcher.onMessageArrived(event) [EventListener]
-            → WorkerPool에 drain 태스크 제출
-              → drain(): TopicQueue.peek(offset)으로 루프 소비
-                → Sender.send(message, maxNackRetry=3)
-                  → HTTP POST /mmmq/messages → Consumer
-                    → FrontHandler: BlockingQueue(1000) + ThreadPoolExecutor(2~5)
-                      → HandlerExecution(@MMMQListener 또는 MMMQListener<T>)
-                → 전송 완료 시: TopicQueue.commit(name, offset)으로 체크포인트 fsync
-                → NACK 소진 시: 경고 로깅 후 메시지 드랍
-                → 통신 실패 시: 지수 백오프(1s→60s) 무한 재시도
+      → ACK/NACK을 Producer에게 응답
+      → SubscriptionContainer.trigger(queue)
+        → 그 큐의 Subscription마다 자기 워커에 drain 태스크 제출
+          → drain(): TopicQueue.peek(offset)으로 루프 소비
+            → Dispatcher.send(message)
+              → HTTP POST /mmmq/messages [헤더 mmmq-consumer-id] → Consumer
+                → HandlerExecutionContainer.find(consumerId) → HandlerExecution.execute
+                → 톰캣 요청 스레드에서 동기 실행, 같은 응답으로 ACK/NACK
+            → 전송 완료 시: 체크포인트에 다음 오프셋 fsync
+            → NACK 소진 시: 경고 로깅 후 메시지 드랍
+            → 통신 실패 시: 지수 백오프(1s→60s) 무한 재시도
 ```
+
+이벤트 버스를 쓰지 않습니다. 각 단계는 직접 메서드 호출이며, `SubscriptionContainer`가 어떤 구독이 그 큐에 붙어 있는지 아는 유일한 지점입니다.
 
 ## 부팅 시 복원 흐름
 
 ```
+DispatcherContainer 생성자
+  → dispatchers.json 읽기 → Dispatcher 생성
+  → SubscriptionContainer.rematchAll(전체 Dispatcher)   ← 매칭 대상 목록을 넘겨 둔다
+
 TopicQueueBootstrapper [SmartInitializingSingleton]
-  → {rootDir} 하위 토픽 디렉토리 스캔
-  → 각 토픽에 대해 TopicQueueContainer.register(topic)
+  → {rootDir}/topics 하위 토픽 디렉토리 스캔
+  → 각 토픽에 대해 TopicQueueContainer.getOrCreate(topic)
       → TopicQueueFactory.create(topic)
           → SegmentFileChain.open: 세그먼트별 SegmentFile.recover()
               → 인덱스에 commit되지 않은 partial write 영역 truncate
-          → CheckpointDirectory.open: Dispatcher별 체크포인트 파일 로드
-      → TopicQueueInitializedEvent 발행
-        → 패턴이 일치하는 Dispatcher가 자동 subscribe
-            → 체크포인트 파일에서 다음 소비 오프셋 로드
-
-ApplicationReadyEvent
-  → 모든 Dispatcher가 자기 subscriptions를 WorkerPool에 submit
-  → drain 시작
+      → SubscriptionContainer.register(queue)
+          → 패턴이 일치하는 Dispatcher마다 Subscription 생성
+              → 체크포인트가 있으면 그 오프셋에서 이어서
+              → 없으면 로그 tail에서 시작 (기존 백로그를 재생하지 않음)
 ```
 
 ---
@@ -61,11 +62,25 @@ ApplicationReadyEvent
 # 📦 모듈 구조
 
 ```
-core/       # 공유 타입: Message, Topic, TopicPattern, Acknowledgement
+core/       # 공유 타입: Message, Topic, TopicPattern, Acknowledgement, ConsumerId, Host
 producer/   # Producer 빈 + Gateway (RestClient → POST /mmmq/messages → Broker)
-consumer/   # Consumer REST 엔드포인트 + FrontHandler + HandlerExecution
-broker/     # Broker REST 엔드포인트 + FrontDispatcher + Dispatcher + 영속화 저장소
+consumer/   # Consumer REST 엔드포인트 + HandlerExecutionContainer + HandlerExecution
+broker/     # Broker REST 엔드포인트 + 구독 + Dispatcher + 영속화 저장소
 ```
+
+`broker` 내부는 책임에 따라 세 갈래로 나뉩니다.
+
+```
+org.mmmq.broker
+├── dispatcher/     "누구에게 보내는가" — Dispatcher(consumerId·host·pattern)와 그 CRUD
+│   ├── api/        HTTP 계층 (DispatcherController)
+│   └── storage/    dispatchers.json 입출력
+├── subscription/   "어디까지 읽었는가" — Subscription·TopicSubscriptions·SubscriptionContainer
+└── topicqueue/     "무엇이 쌓였는가" — append-only 로그와 세그먼트 파일
+    └── storage/
+```
+
+의존은 한 방향으로만 흐릅니다: `subscription → dispatcher`, `subscription → topicqueue`. 반대 방향이 필요한 두 지점(`topicqueue`가 새 큐를 알릴 때, `dispatcher`가 구성 변경을 알릴 때)은 각 패키지가 소유한 인터페이스(`TopicQueueRegistrar`, `DispatcherRematcher`)를 `SubscriptionContainer`가 구현하는 방식으로 뒤집습니다.
 
 **모듈 의존 관계:** `producer → core`, `consumer → core`, `broker → core`
 
@@ -133,36 +148,38 @@ Producer producer = new Producer(brokerHost, 5);
 
 ```
 FrontDispatcher.dispatch(message)
-  1. TopicQueueContainer.get(topic)으로 해당 토픽의 큐 조회/생성
+  1. TopicQueueContainer.getOrCreate(topic)으로 해당 토픽의 큐 조회/생성
   2. TopicQueue.offer(message) 호출
-  3. offer 결과를 Acknowledgement(ACK/NACK)로 반환
-  4. ACK인 경우 MessageArrivedEvent 발행
+  3. 실패하면 즉시 NACK 반환
+  4. SubscriptionContainer.trigger(queue)로 도착을 알리고 ACK 반환
 ```
 
-신규 토픽이 등장하면 `TopicQueueContainer.get`이 `computeIfAbsent`로 새 큐를 생성하고 `TopicQueueInitializedEvent`를 발행하여, 패턴이 일치하는 모든 `Dispatcher`가 자동으로 구독합니다.
+신규 토픽이 등장하면 `getOrCreate`가 `computeIfAbsent`로 새 큐를 만들면서 `TopicQueueRegistrar.register(queue)`를 호출하고, 그 구현인 `SubscriptionContainer`가 패턴이 일치하는 `Dispatcher`마다 구독을 엽니다.
+
+`FrontDispatcher`가 `subscription` 패키지에 있는 이유는 `SubscriptionContainer`를 참조해야 하기 때문입니다. `dispatcher`에 두면 `dispatcher → subscription` 의존이 생겨 순환이 됩니다. 옮긴 대가로 `Dispatcher`를 아예 알 필요가 없어졌습니다 — 어떤 Dispatcher가 매칭되는지는 `SubscriptionContainer`만 압니다.
 
 ---
 
 ### TopicQueue
 
-토픽 단위의 메시지 큐입니다. 메시지를 디스크에 영속화하고, Dispatcher별 오프셋 체크포인트를 관리합니다.
+토픽 단위의 append-only 로그입니다. **누가 어디까지 읽었는지는 모릅니다** — 그 상태는 `subscription` 패키지가 갖습니다.
 
 ```
-TopicQueue.subscribe(consumerId)             // 체크포인트에서 다음 소비 오프셋 로드 (없으면 로그 tail로 초기화)
 TopicQueue.offer(message) → boolean          // 디스크 append + fsync. 실패 시 false
 TopicQueue.peek(offset) → Message            // 인덱스를 이용한 random access read
-TopicQueue.commit(consumerId, offset)        // 다음 소비 오프셋을 체크포인트에 fsync
-TopicQueue.close()                           // 보유 자원(SegmentFileChain, CheckpointDirectory) 해제
+TopicQueue.tailOffset() → long               // 로그의 끝. 새 구독이 시작할 위치
+TopicQueue.close()                           // SegmentFileChain 해제
 ```
 
 `offer`는 `ReentrantLock`으로 단일 writer를 보장합니다. 다수의 Producer가 동시에 호출해도 같은 토픽의 segment append + 인덱스 update가 atomic 단위로 직렬화됩니다. `peek`은 lock-free이며, 인덱스에 commit되지 않은 in-flight 엔트리를 보지 않습니다.
 
 | 클래스 | 설명 |
 |--------|------|
-| `TopicQueue` | 토픽 단위 큐. `subscribe` / `offer` / `peek` / `commit` API 제공. `Closeable` |
-| `TopicQueueContainer` | `ConcurrentHashMap<Topic, TopicQueue>` 보관. 신규 큐 생성 시 `TopicQueueInitializedEvent` 발행 |
-| `TopicQueueFactory` | 토픽 디렉토리·세그먼트·체크포인트를 조립하여 `TopicQueue` 인스턴스를 만드는 팩토리 |
-| `TopicQueueBootstrapper` | 부팅 시 `{rootDir}` 하위 디렉토리를 스캔하여 보존된 토픽 큐를 복원 (`SmartInitializingSingleton`) |
+| `TopicQueue` | 토픽 단위 로그. `offer` / `peek` / `tailOffset` 제공. `Closeable` |
+| `TopicQueueContainer` | `ConcurrentHashMap<Topic, TopicQueue>` 보관. 신규 큐 생성 시 `TopicQueueRegistrar.register` 호출 |
+| `TopicQueueRegistrar` | 새 큐를 구독자와 이어 주는 통로. `topicqueue`가 소유하고 `SubscriptionContainer`가 구현 |
+| `TopicQueueFactory` | 토픽 디렉토리 레이아웃의 유일한 소유자. `TopicQueue`를 만들고, 그 토픽의 `CheckpointDirectory`도 연다 |
+| `TopicQueueBootstrapper` | 부팅 시 `{rootDir}/topics` 하위 디렉토리를 스캔하여 보존된 토픽 큐를 복원 (`SmartInitializingSingleton`) |
 | `Offset` | 메시지의 절대 위치를 나타내는 불변 값 객체. `next()`로 다음 위치 생성 |
 
 ---
@@ -228,56 +245,81 @@ TopicQueue.close()                           // 보유 자원(SegmentFileChain, 
 
 ### Dispatcher
 
-Consumer에게 메시지를 실제로 전달하는 핵심 컴포넌트입니다. 하나의 `Dispatcher`는 하나 이상의 `TopicPattern`을 가지며, 매칭되는 모든 `TopicQueue`를 구독합니다.
-
-#### 구독 등록 (이벤트 기반)
+하나의 `consumerId` 앞으로 메시지를 보내는 **송신 단위**입니다. `(consumerId, host, pattern)` 값과 "그 대상으로 메시지 하나를 보내는 법"만 압니다.
 
 ```
-TopicQueueInitializedEvent 수신
-  → 패턴 매칭 확인
-  → topicQueue.subscribe(name)로 체크포인트에서 다음 소비 오프셋 로드
-  → subscriptions 맵에 (TopicQueue → Offset) 저장
+Dispatcher.consumerId() → ConsumerId          // 이 Dispatcher의 식별자
+Dispatcher.canDispatch(topic) → boolean       // 자기 패턴이 이 토픽과 맞는가
+Dispatcher.send(message)                      // 재시도·백오프를 포함한 전송 한 건
 ```
 
-신규 토픽 등장 시점(런타임 또는 부팅 복원)에 자동으로 구독이 이루어집니다. 외부에서 `subscribe`를 직접 호출할 필요가 없습니다.
+**어떤 큐를 구독하는지, 어디까지 읽었는지는 모릅니다.** 그 상태는 `Subscription`이 갖습니다. 그래서 워커도 오프셋도 들고 있지 않고, 여러 큐에 걸쳐 공유해도 안전합니다.
 
-#### 이벤트 기반 소비 (drain-loop 패턴)
+`consumerId`는 체크포인트 파일명의 일부로 쓰이므로 `[A-Za-z0-9._-]+` 패턴으로 검증됩니다. 위반 시 `IllegalArgumentException`으로 등록 자체를 거부합니다.
+
+| 클래스 | 설명 |
+|--------|------|
+| `Dispatcher` | 송신 단위. 1 consumerId = 1 Dispatcher |
+| `DispatcherContainer` | 모든 Dispatcher의 소유자. `dispatchers.json` 읽기·쓰기와 런타임 CRUD. 뮤테이션은 단일 `ReentrantLock`으로 직렬화 |
+| `DispatcherRematcher` | Dispatcher 구성이 바뀔 때 구독을 다시 맞추는 통로. `dispatcher`가 소유하고 `SubscriptionContainer`가 구현 |
+| `DispatcherSnapshot` | 컨테이너가 외부에 내주는 읽기 모델. 컴포넌트가 전부 도메인 값 타입이라 HTTP·파일 스키마와 섞이지 않는다 |
+| `Sender` | `RestClient`로 Consumer에 POST. 헤더 `mmmq-consumer-id`를 실어 보낸다 |
+
+---
+
+### 구독 (subscription)
+
+"어떤 Dispatcher가 어떤 큐를 어디까지 읽었는가"를 전담합니다. 이 상태는 원래 `TopicQueue`·`Dispatcher`·`DispatcherContainer` 세 곳에 흩어져 있었고, 한 개념의 상태가 셋으로 쪼개진 탓에 일관성이 코드가 아니라 규약으로 유지됐습니다.
+
+| 클래스 | 설명 |
+|--------|------|
+| `Subscription` | (TopicQueue 하나, Dispatcher 하나) 짝. 오프셋·체크포인트 파일·워커 스레드 하나를 소유 |
+| `TopicSubscriptions` | 토픽 하나의 `CheckpointDirectory` + 그 큐의 `Subscription` 목록. 둘이 따로 놀지 않게 묶는다 |
+| `SubscriptionContainer` | 모든 구독의 소유자. `TopicQueueRegistrar`·`DispatcherRematcher` 구현 |
+
+#### drain 루프
 
 ```
-MessageArrivedEvent 수신
-  → 해당 TopicQueue가 subscriptions에 있는지 확인
-  → WorkerPool.submit(drain 태스크)
-      → 이미 실행 중이면 ArrayBlockingQueue(1)에 대기
-      → 큐도 가득 차면 DiscardPolicy로 무시 (drain 루프가 미소비 메시지 모두 처리)
+Subscription.trigger()
+  → 자기 워커에 drain 제출 (이미 실행 중이면 ArrayBlockingQueue(1)에 대기,
+                            큐도 차 있으면 DiscardPolicy로 무시)
 
-drain(topicQueue):
-  Offset offset = subscriptions.get(topicQueue);
+drain():
   while (true) {
       Message message = topicQueue.peek(offset);
       if (message == null) return;
-      deliver(message);
-      offset = topicQueue.commit(name, offset);
-      subscriptions.put(topicQueue, offset);
+      dispatcher.send(message);
+      offset = offset.next();
+      checkpointFile.write(offset.value());   // fsync
   }
 ```
 
-**drain-loop의 안전성:** 제출이 DiscardPolicy로 무시되더라도 메시지는 디스크에 영속화되어 있습니다. 실행 중인 drain 태스크가 루프를 돌며 모든 미소비 메시지를 처리합니다.
+**제출이 무시돼도 안전한 이유:** 메시지는 이미 디스크에 있고, 실행 중인 drain 루프가 미소비 메시지를 끝까지 훑습니다.
 
-**손상 엔트리 격리:** drain 루프는 `CorruptionException`을 catch하여 해당 오프셋을 로깅 후 skip하고, 다음 오프셋으로 진행합니다. 손상된 엔트리 한 건이 토픽 전체의 진행을 막지 않습니다.
+**손상 엔트리 격리:** `CorruptionException`을 잡아 해당 오프셋을 로깅 후 건너뛰고 다음으로 진행합니다. 손상된 한 건이 토픽 전체를 막지 않습니다.
 
-#### WorkerPool (Dispatcher 내부)
+#### 워커
 
-토픽별 worker thread pool을 관리하는 nested class입니다.
+구독마다 `ThreadPoolExecutor(coreSize=0, maxSize=1, keepAlive=60s, ArrayBlockingQueue(1), DiscardPolicy)` 하나입니다.
 
-- `pool`: `ConcurrentHashMap<TopicQueue, ExecutorService>`. 토픽이 처음 등장할 때 worker 생성.
-- 각 worker: `ThreadPoolExecutor(coreSize=0, maxSize=1, keepAlive=60s, queue=ArrayBlockingQueue(1), DiscardPolicy)`
-  - `coreSize=0`: 유휴 60초 후 스레드 자동 종료 → 트래픽 없을 때 리소스 절약
-  - `maxSize=1`: 토픽별 메시지 순서 보장
-  - `ArrayBlockingQueue(1)` + `DiscardPolicy`: 중복 신호 무시
+- `coreSize=0`: 유휴 60초 후 스레드 자동 종료 → 트래픽 없을 때 리소스 절약
+- `maxSize=1`: 구독별 메시지 순서 보장
+- `ArrayBlockingQueue(1)` + `DiscardPolicy`: 중복 신호 무시
 
-#### Dispatcher 이름 검증
+느리거나 실패하는 Consumer 하나는 자기 구독의 워커만 막습니다.
 
-Dispatcher 이름은 체크포인트 파일명의 일부로 사용되므로 `[A-Za-z0-9._-]+` 패턴으로 검증됩니다. 패턴 위반 시 `IllegalArgumentException`으로 빈 등록 자체를 거부합니다.
+#### 재매칭
+
+Dispatcher가 추가·수정·삭제되면 `DispatcherContainer`가 같은 락 안에서 `rematchAll(전체 Dispatcher)`을 호출하고, 각 토픽의 구독이 네 갈래로 갈립니다.
+
+| 경우 | 처리 |
+|------|------|
+| 같은 Dispatcher 인스턴스 | 손대지 않음 |
+| 같은 consumerId, 다른 인스턴스 (수정) | 워커만 종료하고 새 구독. **체크포인트를 지우지 않아** 밀린 메시지를 이어받는다 |
+| 더 이상 매칭되지 않음 (삭제·패턴 축소) | 워커 종료 + 체크포인트 삭제 |
+| 처음 보는 consumerId | 새 구독. 체크포인트가 없으면 로그 tail에서 시작 |
+
+삭제된 구독은 목록에서 빠지므로 이후 `trigger()`가 **도달할 수 없습니다.** 죽은 Dispatcher가 메시지를 다시 보내는 경로가 구조적으로 없습니다.
 
 #### 재시도 전략 (2계층)
 
@@ -292,14 +334,20 @@ Dispatcher 이름은 체크포인트 파일명의 일부로 사용되므로 `[A-
 
 ```
 Consumer (POST /mmmq/messages)
-  → FrontHandler.handle(message)       // 내부 BlockingQueue(1000)에 추가
-    → Worker 스레드: 큐에서 꺼내
-      → HandlerExecutions.getExecutions(message) [토픽 기반 캐싱]
-        → ThreadPoolExecutor(2~5)에 제출
-          → HandlerExecution.execute(message)
+  → 헤더 mmmq-consumer-id 읽기            // 없거나 형식이 틀리면 NACK
+    → HandlerExecutionContainer.find(consumerId)
+      → 없으면 NACK
+      → HandlerExecution.execute(message)  // 톰캣 요청 스레드에서 동기 실행
+        → 예외 없이 끝나면 ACK, 던지면 NACK
 ```
 
+큐도 워커 풀도 없습니다. 같은 HTTP 응답으로 ACK/NACK을 돌려주므로, 처리 결과가 Broker에 그대로 전달됩니다.
+
+**토픽 패턴 매칭은 Consumer 쪽에 없습니다.** 어떤 메시지가 어디로 갈지는 Broker의 `Dispatcher`가 정하고, Consumer는 헤더의 `consumerId`만 보고 핸들러를 찾습니다.
+
 ### 핸들러 등록 방식
+
+두 방식 모두 `[A-Za-z0-9._-]+`를 만족하는 **명시적 id**를 요구하며, 이 값이 Broker의 `dispatchers.json`에 적힌 `consumerId`와 일치해야 합니다. 시작 시점에 id가 중복되면 `IllegalStateException`으로 빈 초기화가 실패합니다.
 
 #### 어노테이션 방식 (`@MMMQListener`)
 
@@ -307,14 +355,14 @@ Consumer (POST /mmmq/messages)
 @Service
 public class OrderService {
 
-    @MMMQListener("order.*")        // pattern 생략 시 "**" (모든 토픽)
+    @MMMQListener(id = "order-created")
     public void handle(Order order) {
         // ...
     }
 }
 ```
 
-내부적으로 `MethodExecution`이 리플렉션으로 메서드를 호출합니다. 파라미터 타입으로 메시지 콘텐츠를 JSON 역직렬화합니다.
+`MethodExecution`이 리플렉션으로 메서드를 호출합니다. 파라미터 타입으로 메시지 콘텐츠를 JSON 역직렬화합니다.
 
 #### 인터페이스 방식 (`MMMQListener<T>`)
 
@@ -323,8 +371,8 @@ public class OrderService {
 public class OrderService implements MMMQListener<Order> {
 
     @Override
-    public TopicPattern listens() {
-        return new TopicPattern("order.*");
+    public String id() {
+        return "order-created";
     }
 
     @Override
@@ -338,8 +386,8 @@ public class OrderService implements MMMQListener<Order> {
 
 | 클래스 | 설명 |
 |--------|------|
-| `FrontHandler` | 수신 메시지를 내부 큐에 쌓고 ThreadPoolExecutor로 처리 |
-| `HandlerExecutions` | 핸들러 레지스트리 + 토픽별 캐시 |
+| `Consumer` | `POST /mmmq/messages` 수신. 헤더의 consumerId로 핸들러를 찾아 동기 실행 |
+| `HandlerExecutionContainer` | id → `HandlerExecution` 레지스트리. 등록 시 중복 id 거부 |
 | `MethodExecution` | `@MMMQListener` 어노테이션 메서드 실행 |
 | `InterfaceExecution` | `MMMQListener<T>` 인터페이스 구현체 실행 |
 
@@ -400,9 +448,9 @@ public class ProducerConfig {
 @Service
 public class OrderService {
 
-    @MMMQListener("order.*")
+    @MMMQListener(id = "order-created")
     public void handleOrder(Order order) {
-        // order.* 패턴의 메시지 처리
+        // dispatchers.json의 consumerId "order-created"가 보낸 메시지 처리
     }
 }
 ```
@@ -412,16 +460,18 @@ public class OrderService {
 public class PaymentService implements MMMQListener<Payment> {
 
     @Override
-    public TopicPattern listens() {
-        return new TopicPattern("payment.*");
+    public String id() {
+        return "payment-success";
     }
 
     @Override
     public void handle(Payment payment) {
-        // payment.* 패턴의 메시지 처리
+        // dispatchers.json의 consumerId "payment-success"가 보낸 메시지 처리
     }
 }
 ```
+
+어떤 토픽이 이 핸들러로 오는지는 Consumer가 아니라 Broker의 `dispatchers.json`이 `pattern`으로 정합니다.
 
 ### Broker 설정
 

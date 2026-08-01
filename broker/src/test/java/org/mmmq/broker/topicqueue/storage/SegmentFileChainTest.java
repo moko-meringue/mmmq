@@ -21,7 +21,7 @@ class SegmentFileChainTest {
     private static final long DEFAULT_MAX_BYTES = 64L * 1024 * 1024;
 
     @Test
-    @DisplayName("빈 디렉토리에서 첫 segment 가 startOffset=0 으로 생성된다")
+    @DisplayName("빈 디렉터리에서 첫 segment 가 startOffset=0 으로 생성된다")
     void createsFirstSegmentAtZero(@TempDir Path tempDir) {
         try (SegmentFileChain directory = SegmentFileChain.open(tempDir, DEFAULT_MAX_BYTES)) {
             assertThat(directory.readAt(0L)).isNull();
@@ -39,6 +39,7 @@ class SegmentFileChainTest {
             assertThat(directory.readAt(0L)).isEqualTo(message);
             assertThat(directory.readAt(1L)).isEqualTo(message);
             assertThat(directory.readAt(2L)).isNull();
+            assertThat(tempDir.resolve("0000000000000000001.mmm")).exists();
         }
     }
 
@@ -97,7 +98,7 @@ class SegmentFileChainTest {
     }
 
     @Test
-    @DisplayName("여러 segment가 존재하는 디렉토리는 모든 segment를 로드한다")
+    @DisplayName("여러 segment가 존재하는 디렉터리는 모든 segment를 로드한다")
     void loadsAllSegments(@TempDir Path tempDir) {
         try (SegmentFileChain directory = SegmentFileChain.open(tempDir, 1L)) {
             directory.append(new Message(new Topic("topic"), Map.of("seq", 1)));
@@ -111,6 +112,18 @@ class SegmentFileChainTest {
             assertThat(first).isNotNull();
             assertThat(last).isNotNull();
             assertThat(reopened.readAt(3L)).isNull();
+        }
+    }
+
+    @Test
+    @DisplayName("segment가 rotate돼도 tailOffset은 전체 개수를 반영한다")
+    void tailOffsetSpansRotatedSegments(@TempDir Path tempDir) {
+        try (SegmentFileChain chain = SegmentFileChain.open(tempDir, 1L)) {
+            chain.append(new Message(new Topic("topic"), Map.of("seq", 1)));
+            chain.append(new Message(new Topic("topic"), Map.of("seq", 2)));
+            chain.append(new Message(new Topic("topic"), Map.of("seq", 3)));
+
+            assertThat(chain.tailOffset()).isEqualTo(3L);
         }
     }
 }
