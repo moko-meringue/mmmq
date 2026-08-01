@@ -95,14 +95,14 @@
                     </details>
                 </div>
                 <p class="landing-hero__sub">
-                    mmmq는 core · producer · broker · consumer 네 모듈로 구성된 메시지 브로커입니다.
+                    mmmq는 core, producer, broker, consumer 네 모듈로 구성된 메시지 브로커입니다.
                     producer가 보낸 메시지는 broker에 영속화된 뒤 consumer에게 전달되며, 각 모듈은 독립된 Spring Boot 애플리케이션에 라이브러리로 추가해 사용합니다.
                 </p>
             </section>
 
             <section id="modules">
                 <h2>모듈</h2>
-                <p>각 모듈은 Spring Boot 애플리케이션에 의존성으로 추가하는 라이브러리입니다. core는 공통 타입을 제공하며, producer · broker · consumer는 각각의
+                <p>각 모듈은 Spring Boot 애플리케이션에 의존성으로 추가하는 라이브러리입니다. core는 공통 타입을 제공하며, producer, broker, consumer는 각각의
                     애플리케이션에 따로 추가해 사용합니다.</p>
 
                 <div class="feature-grid">
@@ -135,8 +135,7 @@
                         <div class="feature-card__title">broker</div>
                         <hr class="feature-card__divider"/>
                         <div class="feature-card__desc">
-                            메시지를 디스크에 보관하고 consumer에게 전송하는 모듈입니다. 토픽 패턴이 매칭되는 <code>Dispatcher</code>마다 독립된 송신 경로를
-                            만듭니다.
+                            메시지를 디스크에 보관하고 consumer에게 전송하는 모듈입니다.
                         </div>
                     </a>
 
@@ -163,15 +162,15 @@
                         <button class="code-block__copy" type="button">복사</button>
                     </div>
                     <pre style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">┌────────────┐                              ┌────────────┐                              ┌────────────┐
-│  producer  │ ───────────────────────────▶ │   broker   │ ───────────────────────────▶ │  consumer  │
-└────────────┘ ◀─────────────────────────── └────────────┘ ◀─────────────────────────── └────────────┘</pre>
+│  producer  │ ◀──────────────────────────▶ │   broker   │ ◀──────────────────────────▶ │  consumer  │
+└────────────┘                              └────────────┘                              └────────────┘</pre>
                 </div>
 
-                <p><strong>producer</strong> — <code>Message</code>를 broker로 보내고, broker의 ACK/NACK 응답만 확인합니다. consumer가 실제로 처리를 마쳤는지는 기다리지 않습니다.</p>
+                <p><strong>producer</strong>: <code>Message</code>를 broker로 보내고, broker의 ACK/NACK 응답만 확인합니다. consumer가 실제로 처리를 마쳤는지는 기다리지 않습니다.</p>
 
-                <p><strong>broker</strong> — 수신한 메시지를 디스크에 기록해 응답한 뒤, 토픽 패턴이 일치하는 모든 <code>Dispatcher</code>를 통해 각자 독립적으로 consumer에게 전송합니다.</p>
+                <p><strong>broker</strong>: 수신한 메시지를 디스크에 기록해 응답한 뒤, 토픽 패턴이 일치하는 모든 <code>Dispatcher</code>를 통해 각자 독립적으로 consumer에게 전송합니다.</p>
 
-                <p><strong>consumer</strong> — 요청 헤더의 <code>mmmq-consumer-id</code>로 등록된 핸들러를 찾아 동기적으로 실행하고, 성공하면 ACK, 실패하면 NACK으로 응답합니다. NACK을 보내거나 응답하지 않으면, 해당 <code>Dispatcher</code>가 재시도합니다 — 다른 <code>Dispatcher</code>나 다른 consumer의 소비에는 영향을 주지 않습니다.</p>
+                <p><strong>consumer</strong>: 등록된 핸들러를 찾아 동기적으로 실행하고, 성공하면 ACK, 실패하면 NACK으로 응답합니다. NACK을 보내거나 응답하지 않으면, 해당 <code>Dispatcher</code>가 재시도합니다.</p>
             </section>
         </main>
 

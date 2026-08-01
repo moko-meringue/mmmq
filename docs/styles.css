@@ -1647,6 +1647,7 @@ code {
     align-items: center;
     gap: var(--s-3);
     padding: 8px 12px;
+    line-height: 1;
     border-radius: 4px;
     font-family: var(--font-mono);
     font-size: 15px;
