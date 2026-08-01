@@ -90,7 +90,7 @@ URL 문자열을 해석해 `Host`를 만든다. "무엇이 유효한 host URL인
 
 **검증 절의 순서가 성능이 아니라 정확성을 좌우한다.** `blank` 검사가 `URI.create`보다 앞서야 하고(`URI.create(null)`은 NPE), scheme·host 검사가 path 검사보다 앞서야 한다 — opaque URI(`consumer-host:8080`)는 `getHost()`와 `getPath()`가 **둘 다 `null`**이라 순서가 뒤집히면 400이어야 할 입력이 NPE로 500이 된다.
 
-`Host` 생성자의 빈 주소·포트 범위 검사는 그대로 남는다. `from`은 그 생성자를 부르므로 검증이 우회되지 않고, `Host`는 core의 공개 타입이라 라이브러리 사용자가 3인자 생성자로 직접 만드는 경로가 계속 살아 있다.
+빈 주소·포트 범위 검사는 compact constructor에 남는다. `from`은 canonical 생성자를 부르므로 검증이 우회되지 않고, `Host`는 core의 공개 타입이라 라이브러리 사용자가 3인자 생성자로 직접 만드는 경로가 계속 살아 있다.
 
 **`TopicPattern`** (`org.mmmq.core.message`)
 
@@ -187,7 +187,9 @@ PUT 본문 전용. `record DispatcherRoute(String host, String pattern)`.
 
 **`Host`** (core)
 
-`address` 필드 타입을 `InetAddress`에서 `String`으로 바꿔 `InetAddress.getByName()` 즉시 해석을 없애고 원본 주소 문자열을 보존한다. `toUri()`가 그 문자열을 그대로 쓰므로 이름 해석은 `Sender`의 `RestClient`가 요청 시점에 한다.
+`(WebProtocol protocol, String address, int port)` record다. `address`가 `InetAddress`가 아닌 이유는 `InetAddress.getByName()` 즉시 해석을 없애고 원본 주소 문자열을 보존하기 위해서다 — `toUri()`가 그 문자열을 그대로 쓰므로 이름 해석은 `Sender`의 `RestClient`가 요청 시점에 한다.
+
+**record인 이유는 동등성이다.** class였을 때는 `equals`가 없어 값이 같은 두 `Host`가 서로 달랐고, `Host`가 `DispatcherContainer.add`·`modify`의 공개 시그니처에 들어간 뒤로는 테스트가 실인자로 스텁할 수 없었다(컴파일은 되고 런타임에 조용히 매칭 실패해 `argThat` 우회가 생겼다). 저장소의 값 타입은 전부 record라 자동 equals로 단정하는 것이 지배적 방식이고, `Host`만 예외였다. record로 바꾸면서 컴포넌트 접근자 셋이 공개되지만 — `Host`의 역할이 데이터 컨테이너라는 판단에서 그 노출은 누설이 아니라 계약이다. 실제로 쓰는 코드는 아직 0건이고 `toUri()`가 유일한 사용 경로다.
 
 이유는 두 가지다.
 
@@ -198,7 +200,7 @@ PUT 본문 전용. `record DispatcherRoute(String host, String pattern)`.
 
 필드는 `private final`로 바꾼다. 클래스 밖에서 읽는 코드가 없다.
 
-URL 형식 검증은 `Host.from`이 맡는다. 다만 `Host`는 core의 공개 타입이라 라이브러리 사용자가 3인자 생성자로 직접 생성하므로, 생성자의 빈 주소와 포트 범위(1~65535) 확인은 인라인으로 남긴다.
+URL 형식 검증은 `Host.from`이 맡는다. 다만 `Host`는 core의 공개 타입이라 라이브러리 사용자가 3인자 생성자로 직접 생성하므로, compact constructor의 빈 주소와 포트 범위(1~65535) 확인은 인라인으로 남긴다.
 
 **`BrokerConfiguration`**
 

@@ -85,7 +85,7 @@ broker/     # Broker REST 엔드포인트 + FrontDispatcher + Dispatcher + 영�
 | `Acknowledgement` | ACK / NACK 응답 열거형 |
 | `BrokerAcknowledgement` | Broker → Producer 응답 레코드 |
 | `ConsumerAcknowledgement` | Consumer → Broker 응답 레코드 |
-| `Host` | `WebProtocol + InetAddress + port` 조합의 네트워크 엔드포인트 |
+| `Host` | `WebProtocol + address + port` 조합의 네트워크 엔드포인트 record. `from(String url)`로 URL을 해석하고 `toUri()`로 되돌린다 |
 
 **TopicPattern 매칭 예시**
 
