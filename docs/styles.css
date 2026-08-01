@@ -1637,7 +1637,7 @@ code {
     right: 0;
 }
 
-.version-dropdown__menu li {
+.version-dropdown .version-dropdown__menu li {
     margin: 0;
     padding: 0;
 }
@@ -1646,8 +1646,7 @@ code {
     display: flex;
     align-items: center;
     gap: var(--s-3);
-    padding: 8px 12px 8px;
-    line-height: 1;
+    padding: 8px 12px;
     border-radius: 4px;
     font-family: var(--font-mono);
     font-size: 15px;
