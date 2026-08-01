@@ -2042,3 +2042,48 @@ public record DispatcherSnapshot(
 - 딸린 정리: 변수·필드 `dispatcherFile` → `dispatchersFile`(타입명 camelCase 관용), `DispatchersFileTest`의 지역변수 `definitions` → `entries`(이제 `definitions`는 API 타입을 뜻한다), 테스트 메서드 `resolvesDispatchersFile`·`resolvesTopicsDir` → `…Path`.
 
 **125 케이스 green.**
+
+---
+
+## 후속 5: `destroyed` 플래그 제거
+
+사용자가 `Dispatcher.destroyed`를 문제 삼았다 — **"다른 개발자가 `destroyed`의 존재를 모르면 코드 실수가 발생 가능하다."** 상태 패턴을 쓰자는 제안이 함께 왔다.
+
+### 상태 패턴을 안 쓴 이유
+
+가드가 필요한 메서드가 **`dispatch` 하나뿐**이라 인터페이스 + 구현 둘을 만들 값이 없다. 그리고 더 중요하게, **상태 패턴은 사용자가 지적한 문제를 해결하지 못하고 자리만 옮긴다** — 플래그 검사를 잊는 대신 상태 객체로 위임하는 걸 잊게 된다. 암묵적 문맥이 "이 필드를 봐야 한다"에서 "이 메서드는 상태를 거쳐야 한다"로 바뀔 뿐이다.
+
+### 대신 한 것 — 상태를 형식화하지 말고 없앤다
+
+문제의 뿌리는 `shutdownAll()`이 `pool.clear()`까지 한 것이었다. 맵을 비우니 이후 `computeIfAbsent`가 살아 있는 새 워커를 만들었고, 그걸 막으려고 플래그가 필요해졌다.
+
+- `subscribe`가 구독과 동시에 워커를 만든다(`WorkerPool.open`, `computeIfAbsent`라 멱등 — `rematchAll`이 뮤테이션마다 다시 부른다).
+- `shutdownAll()`은 `shutdownNow()`만 하고 **맵을 비우지 않는다.**
+- `WorkerPool.submit`이 `computeIfAbsent` → **`get`**. 워커를 만드는 길이 `open` 하나뿐이어야 한다.
+- `volatile boolean destroyed`와 그 가드 삭제.
+
+**"종료됐다"가 우리가 발명한 필드가 아니라 `ExecutorService` 자신의 생명주기가 된다.** 잊을 플래그가 없다.
+
+### 설계를 떠받친 실측
+
+종료된 `ThreadPoolExecutor`(`DiscardPolicy`)에 `submit`하면 — **예외를 던지지 않고 작업이 실행되지 않는다**(`counter=0`). `execute`도 같다.
+
+주의할 부수 사실: 그때 돌려주는 `Future`는 **영원히 완료되지 않는다**(`isDone=false`, `isCancelled=false`, `get()`은 타임아웃). 지금 코드는 `Future`를 버리므로 무해하지만 나중에 그것으로 대기하면 영구 블록된다.
+
+### 뮤테이션으로 확인한 안전선
+
+| 뮤턴트 | 결과 |
+|---|---|
+| `shutdownAll`에서 `shutdownNow()` 제거 | KILL — 새 케이스 단독 |
+| `pool.clear()` 재도입 | **KILL — `pool.get`이 `null`이라 NPE로 즉시 터진다** |
+| `subscribe`에서 `open` 제거 | KILL 5건 |
+
+두 번째가 `get`으로 바꾼 덕에 생긴 이득이다. `computeIfAbsent`였다면 `clear()` 회귀가 **조용히 통과하면서 backlog를 다시 보냈을** 바로 그 시나리오다.
+
+### 테스트
+
+`ignoresDispatchAfterDestroy` → **`shutsDownWorkersOnDestroy`**, DisplayName은 "destroy하면 구독한 큐의 워커가 종료된다". 단정은 `pool.get(queue).isShutdown()`으로, **우리가 만든 규칙이 아니라 JDK 계약**을 붙든다. `dispatch` 호출은 남겼다 — 그게 있어야 `clear()` 회귀가 잡힌다.
+
+`ponytail`이 Task 7에서 `clear()` 제거를 검토했다가 접은 근거("구독은 했지만 `dispatch`가 간 적 없는 토픽은 풀에 항목이 없다")는 `subscribe`에서 미리 만드는 것으로 닫혔다 — 그때 기각한 안과 다른 안이다.
+
+**125 케이스 green.**

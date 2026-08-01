@@ -269,9 +269,15 @@ DELETE /mmmq/dispatchers/{consumerId}  204 / 400 / 404
 
 수정과 삭제 모두 옛 Dispatcher의 `destroy()`를 `rematchAll()` **앞**에 둔다. 인터럽트를 먼저 던져야 낙오한 워커가 체크포인트 삭제 뒤에 `commit`을 부를 확률이 줄어든다.
 
-버려진 Dispatcher에 늦은 `dispatch`가 들어오는 창이 있다 — 메시지 스레드가 `getSubscribers(queue)`의 리스트를 잡은 뒤 `rematchAll`이 그 리스트를 교체하는 경우다. `WorkerPool`의 `DiscardPolicy`는 이걸 막지 못한다. `shutdownAll()`이 `pool.clear()`까지 하므로 뒤이은 `submit`의 `computeIfAbsent`가 **인터럽트되지 않은 새 executor**를 만들고, 버려진 Dispatcher의 `subscriptions` 맵에 큐가 그대로 남아 있어 기존 가드도 통과한다. 그러면 `drain`의 `while (true)`가 로그 끝까지 돌아 삭제된 소비자나 옛 host로 꼬리 전체가 간다.
+버려진 Dispatcher에 늦은 `dispatch`가 들어오는 창이 있다 — 메시지 스레드가 `getSubscribers(queue)`의 리스트를 잡은 뒤 `rematchAll`이 그 리스트를 교체하는 경우다. 막지 못하면 `drain`의 `while (true)`가 로그 끝까지 돌아 삭제된 소비자나 옛 host로 꼬리 전체가 간다.
 
-그래서 `Dispatcher`에 `volatile boolean destroyed`를 두고 `destroy()`가 그것을 먼저 세운 뒤 `dispatch`의 가드에서 확인한다. `dispatch`가 `submit`의 유일한 경로라 워커 자체가 생기지 않고, 그래서 `drain` 루프에는 체크가 필요 없다.
+**막는 방법은 플래그가 아니라 워커의 생명주기다.** `Dispatcher.subscribe`가 구독과 동시에 그 큐의 워커를 만들어 두고(`WorkerPool.open`, `computeIfAbsent`라 멱등), `destroy()`의 `shutdownAll()`은 `shutdownNow()`만 하고 **맵을 비우지 않는다.** 그러면 늦은 `dispatch`가 와도 `submit`이 이미 종료된 그 워커를 찾고, 종료된 `ThreadPoolExecutor`는 `RejectedExecutionHandler`로 넘겨 `DiscardPolicy`가 조용히 버린다(실측: 예외를 던지지 않고 작업이 실행되지 않는다).
+
+즉 "종료됐다"는 상태를 `Dispatcher`가 따로 표시하지 않는다 — `ExecutorService` 자신이 들고 있다. 새 메서드를 더하는 사람이 확인하기를 잊을 플래그가 없다는 것이 이 선택의 요점이다.
+
+`WorkerPool.submit`이 `computeIfAbsent`가 아니라 `get`인 것도 그래서다. 워커를 만드는 길이 `open` 하나뿐이어야 하고, 누가 `pool.clear()`를 되살리면 `get`이 `null`을 돌려줘 즉시 터진다 — `computeIfAbsent`였다면 살아 있는 새 워커를 만들어 조용히 backlog를 다시 보냈을 자리다.
+
+주의: 종료된 executor에 `submit`이 돌려주는 `Future`는 **영원히 완료되지 않는다**(`isDone=false`, `get()`은 타임아웃). 지금 코드는 `Future`를 버리므로 무해하지만, 나중에 그것으로 대기하면 영구 블록된다.
 
 낙오한 워커가 삭제된 체크포인트에 `commit`을 부르면 `checkpointDirectory.get`이 `null`이라 `IllegalStateException`이 나고 `drain` 루프가 로그를 남기며 끝난다. 어차피 멈춰야 할 루프라 결과는 맞고, `commit`은 `register`가 아니라 `get`을 쓰므로 지워진 파일이 되살아나지도 않는다.
 
@@ -314,7 +320,7 @@ broker는 `@SpringBootConfiguration`이 없어서 `@WebMvcTest`를 쓸 수 없�
 - 호스트만 바꾼 수정에서 오프셋 값 승계: 체크포인트 파일이 남았는지만 본다. 파일이 남아 있으면 값을 바꾸는 경로가 `commit`뿐이고, 기존 체크포인트를 tail로 덮어쓰지 않는다는 것은 `TopicQueueTest`가 본다.
 - 형식 검증 실패 시 파일 무변경: `add`가 파일에 쓰는 값이 생성된 `Dispatcher`에서 복원한 정의라, `file.write`가 구조적으로 `definition.toDispatcher()`보다 앞설 수 없다. "거절 시 파일이 바뀌지 않는다"는 성질은 중복 `consumerId` 케이스가 붙든다.
 - 동시성: 뮤테이션 락은 한 줄이고, 스레드를 여러 쌍 띄워 확인할 수 있는 것은 특정 인터리빙 한 번뿐이다. 뮤테이션이 만드는 최종 상태는 컨테이너 케이스들이 이미 본다.
-- 수정·삭제 시 옛 워커의 실제 종료: 인스턴스를 팩토리가 만들어 스파이를 끼울 수 없고, `ThreadPoolExecutor`의 종료 여부를 밖에서 관찰할 통로도 없다. 대신 `destroyed` 플래그가 늦은 `dispatch`를 막는지는 `DispatcherTest`가 워커 풀이 비어 있는지로 결정적으로 관찰한다.
+- 수정·삭제 시 옛 워커의 실제 종료: `DispatcherTest`가 `destroy()` 뒤 그 큐의 워커가 `isShutdown()`인지로 결정적으로 관찰한다. 우리가 만든 플래그가 아니라 JDK 계약을 붙드는 단정이고, "종료된 executor는 이후 작업을 실행하지 않는다"는 실측이 그 단정과 실제 성질을 잇는다.
 - 성공 케이스의 `verify(container).add(...)`·`verify(container).modify(...)`: 스텁을 실인자로 주면 컨트롤러가 다른 값을 넘기는 순간 목이 `null`을 돌려주고 `jsonPath`가 깨지므로 같은 것을 두 번 단정하는 셈이다. 반환값이 없는 DELETE만 `verify`로 확인한다.
 - `BrokerTest`에 새 엔드포인트 추가: standalone MockMvc가 `@RequestMapping` 경로와 `@RestController` 본문 직렬화를 이미 보고, `BrokerTest`는 tempDir root-dir로 새 컨테이너·파일 부팅 경로를 이미 지난다. 컴포넌트 스캔이 이 패키지를 놓치면 같은 패키지의 `FrontDispatcher`가 없어 기존 케이스가 먼저 깨진다.
 - DELETE의 404: `@ExceptionHandler`는 컨트롤러 단위라 어느 엔드포인트로 들어와도 같은 코드를 지난다. PUT에서 한 번만 확인한다.
@@ -328,7 +334,7 @@ broker는 `@SpringBootConfiguration`이 없어서 `@WebMvcTest`를 쓸 수 없�
 - `TopicQueueBootstrapperTest`: 2개가 같은 이유로 깨지지만, 둘 다 `getOrCreate`의 지연 생성 때문에 `TopicQueueBootstrapper`를 관찰하지 못하고 있어 고치는 대신 다르게 손본다. `restoresAllTopicsOnBoot`는 구독·`peek`을 걷어내고 목 `DispatcherContainer.register`가 받은 큐의 토픽을 단정해 처음으로 복원을 관찰한다. `resumesFromLastCommittedOffset`은 삭제한다 — 커밋 위치 재개는 `TopicQueueTest.resumesFromCommittedOffsetAfterRestart`가, `<root>/topics/<topic>` 경로 조합은 `DispatcherContainerTest`의 체크포인트 경로 단정이 본다
 - `HostTest`: "잘못된 호스트명이면 예외" 케이스는 성립하지 않으므로 제거. 빈 주소·포트 범위 케이스로 대체
 - `SenderTest`·`GatewayTest`: 양쪽 다 `host.toUri()`를 쓰고 있어 그대로 통과
-- `DispatcherTest`: 영향 없다(여섯 곳 모두 `subscribe`가 `offer`보다 앞이다). `destroyed` 플래그를 지키는 케이스 하나가 추가된다
+- `DispatcherTest`: 영향 없다(여섯 곳 모두 `subscribe`가 `offer`보다 앞이다). `destroy()`가 워커를 종료시키는지 보는 케이스 하나가 추가된다
 - `docs/index.html`: `dispatchers.json` 예시가 배열이 아니라 단일 객체라, host 줄만 고치면 여전히 `DispatcherDefinition[]` 역직렬화에 실패한다. 배열로 감싸는 것까지 함께 한다
 - `DispatcherTest`·`FrontDispatcherTest`: `Dispatcher` 생성자가 그대로라 영향 없음
 
