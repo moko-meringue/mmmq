@@ -133,7 +133,11 @@ PUT    /mmmq/dispatchers/{consumerId}  200 / 400 / 404
 DELETE /mmmq/dispatchers/{consumerId}  204 / 400 / 404
 ```
 
-PUT takes only `host` and `pattern` in the body — `consumerId` is the identifier, not a mutable field. Mutations are serialized by a single `ReentrantLock` inside `DispatcherContainer`; the message hot path (`getSubscribers`) stays lock-free.
+PUT takes only `host` and `pattern` in the body — `consumerId` is the identifier, not a mutable field.
+
+`DispatcherController` maps failures itself rather than letting them escape: `IllegalArgumentException` and `HttpMessageNotReadableException` → 400, `DuplicateConsumerIdException` → 409, `DispatcherNotFoundException` → 404, and a catch-all `RuntimeException` → 500 with a fixed body (the real cause goes to the log — an unexpected exception's message can carry server paths). The catch-all is deliberately `RuntimeException`, not `Exception`: `HttpMediaTypeNotSupportedException` extends `ServletException` (checked), so an `Exception` handler would swallow it and turn a correct 415 into a 500 — measured, not assumed.
+
+The guarantee this buys is bounded: **failures raised once a handler method has been entered are answered by the Broker.** 405 and 415 are thrown during handler mapping and argument resolution, before any `@ExceptionHandler` in this controller can see them, so those still reach the host application's `/error`. Closing that would require `ResponseEntityExceptionHandler`, which is `@ControllerAdvice`-based and would swallow the host's own controllers — the reason `@ControllerAdvice` and `@ResponseStatus` are banned here in the first place. Mutations are serialized by a single `ReentrantLock` inside `DispatcherContainer`; the message hot path (`getSubscribers`) stays lock-free.
 
 A new subscription starts at the log **tail**, so attaching a consumer at runtime does not replay the existing backlog. When a subscription ends — dispatcher deleted, or pattern narrowed so a topic drops out — its `<consumerId>.checkpoint` is deleted too.
 
@@ -144,7 +148,7 @@ org.mmmq.broker.dispatcher
 ├── Dispatcher · DispatcherContainer · FrontDispatcher   domain
 ├── DispatcherSnapshot                                   domain read model
 ├── api/       DispatcherController · DispatcherDefinition · DispatcherRoute
-├── storage/   DispatcherFile · DispatcherEntry
+├── storage/   DispatchersFile · DispatcherEntry
 ├── exception/ DispatcherNotFoundException · DuplicateConsumerIdException
 └── sender/    Sender
 ```

@@ -2012,3 +2012,33 @@ public record DispatcherSnapshot(
 그리고 이전 라운드의 "쌍둥이 record" 우려도 해소됐다. `DispatcherSnapshot`(도메인 값)과 `DispatcherEntry`(문자열)는 층위가 달라 한쪽만 고치면 컴파일이 깨진다.
 
 **124 케이스 green.**
+
+---
+
+## 후속 4: 기본 예외 핸들러와 이름 정리
+
+### 기본 예외 핸들러
+
+사용자가 `DispatcherController`에 기본 핸들러가 없다고 지적했다. **`@ResponseStatus`를 금지한 논리의 마지막 구멍이었다** — 그걸 막은 이유가 "`sendError`가 본문을 호스트 앱의 `/error`로 넘긴다"였는데, 처리되지 않은 예외가 정확히 그 경로를 타고 있었다.
+
+**타입은 `RuntimeException`이다. `Exception`이 아니다.** 실측으로 갈렸다.
+
+| 요청 | 핸들러 없음 | `Exception.class` | `RuntimeException.class` |
+|---|---|---|---|
+| 415 (`text/plain`) | 415 | **500 (삼킴)** | 415 유지 |
+| 405 (`PATCH`) | 405 | 405 | 405 |
+| 400 (깨진 JSON) | 400 | 400 | 400 |
+
+`javap`으로 계층이 설명됐다 — `HttpMediaTypeNotSupportedException`은 `ServletException`(checked) 계열이라 `RuntimeException`에 안 걸리고, `HttpMessageNotReadableException`은 `NestedRuntimeException` → `RuntimeException`이라 이미 명시 처리 중이다. **405가 `Exception.class`에서도 살아남은 것은 계층이 아니라 발생 시점 때문**이다(핸들러 매핑 단계라 `@ExceptionHandler`가 보지 못한다). 즉 405가 안전한 건 우연이고 415가 진짜 회귀였다.
+
+**본문에 `getMessage()`를 넣지 않는다.** 기존 셋은 호출자에게 보여줄 검증 메시지지만 예상 못 한 예외는 내부를 흘린다 — `DispatchersFile`의 `"Failed to write dispatcher file: /var/mmmq/dispatchers.json"`이 그대로 나가면 서버 경로가 노출된다. 상세는 `log.error`로만 남기고 본문은 고정 문자열이다.
+
+**남는 한계를 기록한다.** 405·415는 핸들러 진입 전에 던져지므로 여전히 호스트 앱의 `/error`로 간다(`errorMessage`가 설정된 것이 증거). 즉 "이 API의 실패 응답이 브로커 안에서 끝난다"는 **핸들러 진입 이후의 예외에 대해서만** 참이다. 완전히 닫으려면 `ResponseEntityExceptionHandler` 상속이 필요한데 그건 `@ControllerAdvice` 기반이라 호스트 앱의 다른 컨트롤러까지 삼킨다 — 애초에 그걸 금지한 이유와 정면으로 얽히므로 남긴다. 두 경우 다 클라이언트가 경로나 Content-Type을 틀린 것이고 본문에 민감한 내용이 없다.
+
+### 이름 정리
+
+- **`DispatcherFile` → `DispatchersFile`.** `File` 접미사는 "`Path` 하나를 감싼다"는 약속이고 앞의 명사는 그 파일이 담는 것을 가리킨다 — `CheckpointFile`은 체크포인트 하나, `SegmentFile`은 세그먼트 하나인데 `dispatchers.json`은 여럿이다. 이 개념의 다른 표기(`dispatchers.json`·`DISPATCHERS_FILE_NAME`)가 이미 전부 복수였고 클래스명만 단수였다. `Dispatcher`·`DispatcherEntry`와 접두사가 겹치던 것도 해소된다.
+- **`dispatchersFile()` → `dispatchersFilePath()`, `topicsDir()` → `topicsDirPath()`.** 반환이 `Path`인데 이름이 `DispatchersFile` 타입과 헷갈렸다. `Path` 반환 메서드가 이 둘뿐이라 전례가 없어 새로 정한 것이다.
+- 딸린 정리: 변수·필드 `dispatcherFile` → `dispatchersFile`(타입명 camelCase 관용), `DispatchersFileTest`의 지역변수 `definitions` → `entries`(이제 `definitions`는 API 타입을 뜻한다), 테스트 메서드 `resolvesDispatchersFile`·`resolvesTopicsDir` → `…Path`.
+
+**125 케이스 green.**

@@ -46,7 +46,7 @@ org.mmmq.broker.dispatcher
 ├── Dispatcher · DispatcherContainer · FrontDispatcher   도메인
 ├── DispatcherSnapshot                                   도메인 읽기 모델
 ├── api/       DispatcherController · DispatcherDefinition · DispatcherRoute
-├── storage/   DispatcherFile · DispatcherEntry
+├── storage/   DispatchersFile · DispatcherEntry
 ├── exception/ DispatcherNotFoundException · DuplicateConsumerIdException
 └── sender/    Sender
 ```
@@ -101,9 +101,11 @@ URL 문자열을 해석해 `Host`를 만든다. "무엇이 유효한 host URL인
 
 compact constructor에서 빈 값을 거절한다. 이전에는 broker의 팩토리가 대신 지켜 줬는데, 그러면 `TopicPattern`을 직접 만드는 다른 경로가 방어를 못 받는다. `ConsumerId`가 정규식으로 자기를 지키는 것과 같은 모양이다.
 
-**`DispatcherFile`** (`org.mmmq.broker.dispatcher`, `@Component`)
+**`DispatchersFile`** (`org.mmmq.broker.dispatcher`, `@Component`)
 
-`dispatchers.json` 읽기와 원자적 쓰기를 맡는다. `PersistenceProperties`를 주입받아 경로를 정한다.
+`dispatchers.json` 읽기와 원자적 쓰기를 맡는다. `PersistenceProperties.dispatchersFilePath()`를 주입받아 경로를 정한다.
+
+이름이 복수인 이유는 이 저장소의 `File` 접미사가 "`Path` 하나를 감싼다"는 약속이고 앞의 명사는 **그 파일이 담는 것**을 가리키기 때문이다 — `CheckpointFile`은 체크포인트 하나, `SegmentFile`은 세그먼트 하나인데 `dispatchers.json`은 여럿을 담는다. `PersistenceProperties`의 메서드 이름에 `Path`를 드러낸 것도 같은 이유다 — `dispatchersFile()`이면 `DispatchersFile` 타입과 헷갈린다.
 
 - `read()`: 파일이 없으면 `[]`로 만들고 빈 목록을 돌려준다(현행 `DispatcherBeanRegistrar` 동작을 옮긴 것).
 - `write(definitions)`: 같은 디렉터리의 `dispatchers.json.tmp`에 전체를 쓰고 `ATOMIC_MOVE`로 교체한다.
@@ -149,7 +151,7 @@ PUT 본문 전용. `record DispatcherRoute(String host, String pattern)`.
 
 **`DispatcherContainer`**
 
-`DispatcherFile` 하나를 주입받고, `Map<ConsumerId, Dispatcher> dispatchers`·`Map<TopicQueue, List<Dispatcher>> subscriptions`·`ReentrantLock mutationLock`을 필드로 든다.
+`DispatchersFile` 하나를 주입받고, `Map<ConsumerId, Dispatcher> dispatchers`·`Map<TopicQueue, List<Dispatcher>> subscriptions`·`ReentrantLock mutationLock`을 필드로 든다.
 
 - 생성자에서 `file.read()`로 Dispatcher를 만들어 채운다. 중복 `consumerId`, 미지원 스킴, 깨진 JSON은 여기서 터져 컨텍스트 기동을 막는다(현행 fail-fast 유지).
 - `dispatchers`는 `LinkedHashMap`. 락으로 보호되고, 파일에 쓸 때 순서가 안정적이다.
@@ -213,7 +215,7 @@ URL 형식 검증은 `Host.from`이 맡는다. 다만 `Host`는 core의 공개 �
 
 **`PersistenceProperties`**
 
-`bind(Environment)` 정적 메서드 제거. `ImportBeanDefinitionRegistrar`가 `@ConfigurationProperties` 바인딩보다 먼저 도는 탓에 필요했던 우회였다. 이제 `DispatcherFile`이 빈으로 주입받는다.
+`bind(Environment)` 정적 메서드 제거. `ImportBeanDefinitionRegistrar`가 `@ConfigurationProperties` 바인딩보다 먼저 도는 탓에 필요했던 우회였다. 이제 `DispatchersFile`이 빈으로 주입받는다.
 
 ### 삭제
 
@@ -307,7 +309,7 @@ broker는 `@SpringBootConfiguration`이 없어서 `@WebMvcTest`를 쓸 수 없�
 **두지 않는 케이스와 이유**
 
 - 쓰기 후 `.tmp`가 남지 않는다: `Files.move`의 `ATOMIC_MOVE` 계약이고, 이동이 실패하면 쓰기 자체가 예외로 끝난다.
-- 컨테이너 부트스트랩의 파일 없음·깨진 JSON·미지원 스킴·잘못된 `consumerId`: 앞의 둘은 `DispatcherFileTest`가, 뒤의 둘은 `HostTest`·`DispatcherDefinitionTest`가 이미 같은 코드를 본다. 생성자는 그 둘을 잇는 7줄이라 컨테이너 수준에서는 와이어링(순서)과 유일한 분기(중복 `consumerId`)만 확인한다.
+- 컨테이너 부트스트랩의 파일 없음·깨진 JSON·미지원 스킴·잘못된 `consumerId`: 앞의 둘은 `DispatchersFileTest`가, 뒤의 둘은 `HostTest`·`DispatcherDefinitionTest`가 이미 같은 코드를 본다. 생성자는 그 둘을 잇는 7줄이라 컨테이너 수준에서는 와이어링(순서)과 유일한 분기(중복 `consumerId`)만 확인한다.
 - `DispatcherDefinition.from`의 단독 왕복: 세 필드를 그대로 옮기는 매핑이라 분기가 없고, 컨테이너의 추가 케이스가 파일 내용을 완전한 정의로 단정해 `toDispatcher` → `from` → Jackson 왕복을 통째로 지난다. 호스트 이름이 IP로 바뀌지 않는다는 회귀는 `HostTest`가 `toUri()`로 잡는다.
 - 호스트만 바꾼 수정에서 오프셋 값 승계: 체크포인트 파일이 남았는지만 본다. 파일이 남아 있으면 값을 바꾸는 경로가 `commit`뿐이고, 기존 체크포인트를 tail로 덮어쓰지 않는다는 것은 `TopicQueueTest`가 본다.
 - 형식 검증 실패 시 파일 무변경: `add`가 파일에 쓰는 값이 생성된 `Dispatcher`에서 복원한 정의라, `file.write`가 구조적으로 `definition.toDispatcher()`보다 앞설 수 없다. "거절 시 파일이 바뀌지 않는다"는 성질은 중복 `consumerId` 케이스가 붙든다.
