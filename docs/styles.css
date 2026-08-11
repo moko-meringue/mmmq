@@ -1637,7 +1637,7 @@ code {
     right: 0;
 }
 
-.version-dropdown__menu li {
+.version-dropdown .version-dropdown__menu li {
     margin: 0;
     padding: 0;
 }
@@ -1681,13 +1681,6 @@ code {
 /* trigger 폭이 latest 버전과 일관되도록 placeholder. 시각적으로는 보이지 않음 */
 .version-dropdown__badge--placeholder {
     visibility: hidden;
-}
-
-/* release.html: 버전 셀(버전 + latest 배지) 가로 정렬 */
-.release-version-cell {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--s-3);
 }
 
 /* =========================================================
