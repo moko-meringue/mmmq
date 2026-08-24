@@ -19,7 +19,7 @@
         <nav class="nav">
             <a class="nav__brand" href="../../index.html">
           <span class="nav__brand-mark">
-            <img src="../../icon.svg" alt="mmmq"/>
+            <img alt="mmmq" src="../../icon.svg"/>
           </span>
             </a>
             <ul class="nav__menu">
@@ -41,35 +41,35 @@
             <div class="sidenav">
                 <div class="sidenav__group">
                     <a class="sidenav__head" href="index.html">
-                        <img src="../../icons/overview.svg" alt="overview"/>
+                        <img alt="overview" src="../../icons/overview.svg"/>
                         <span class="sidenav__head-name">개요</span>
                     </a>
                 </div>
 
                 <div class="sidenav__group">
                     <a class="sidenav__head" href="core.html">
-                        <img src="../../icons/core.svg" alt="core"/>
+                        <img alt="core" src="../../icons/core.svg"/>
                         <span class="sidenav__head-name">core</span>
                     </a>
                 </div>
 
                 <div class="sidenav__group">
                     <div class="sidenav__head sidenav__head--active">
-                        <img src="../../icons/producer.svg" alt="producer"/>
+                        <img alt="producer" src="../../icons/producer.svg"/>
                         <span class="sidenav__head-name">producer</span>
                     </div>
                 </div>
 
                 <div class="sidenav__group">
                     <a class="sidenav__head" href="broker.html">
-                        <img src="../../icons/broker.svg" alt="broker"/>
+                        <img alt="broker" src="../../icons/broker.svg"/>
                         <span class="sidenav__head-name">broker</span>
                     </a>
                 </div>
 
                 <div class="sidenav__group">
                     <a class="sidenav__head" href="consumer.html">
-                        <img src="../../icons/consumer.svg" alt="consumer"/>
+                        <img alt="consumer" src="../../icons/consumer.svg"/>
                         <span class="sidenav__head-name">consumer</span>
                     </a>
                 </div>
@@ -80,7 +80,7 @@
         <main class="docs-content">
             <div class="module-hero">
                 <div class="module-hero__icon">
-                    <img src="../../icons/producer.svg" alt="producer"/>
+                    <img alt="producer" src="../../icons/producer.svg"/>
                 </div>
                 <div>
                     <h1 class="module-hero__title">Producer</h1>
@@ -268,6 +268,17 @@
                     <li>네트워크 예외가 발생하면 <code>ProduceException</code>이 발생합니다.</li>
                 </ol>
 
+                <div class="callout callout--warn">
+                    <div class="callout__bar"></div>
+                    <div>
+                        <div class="callout__label">주의</div>
+                        <div class="callout__body">
+                            <code>Producer</code>는 단일 스레드로 동작하며, MMMQ는 <strong>같은 토픽 안에서만</strong> 메시지 순서를 보장합니다. <br>
+                            따라서 같은 토픽으로 메시지를 발행할 때는 여러 스레드에서 <code>produce(Message)</code>를 호출하면 순서를 보장할 수 없게 됩니다.
+                        </div>
+                    </div>
+                </div>
+
                 <p><strong>전송 포맷</strong></p>
                 <p>broker로 보내는 요청과 받는 응답은 모두 JSON입니다.</p>
 
@@ -350,7 +361,7 @@
             <div class="footer__top">
                 <div class="footer__brand">
                     <span class="nav__brand-mark">
-                        <img src="../../icon.svg" alt="mmmq"/>
+                        <img alt="mmmq" src="../../icon.svg"/>
                     </span>
                 </div>
                 <ul class="footer__nav">
