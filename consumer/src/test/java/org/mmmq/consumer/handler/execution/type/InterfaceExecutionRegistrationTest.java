@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.mmmq.consumer.handler.execution.HandlerExecution;
 import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
 import org.mmmq.core.identifier.ConsumerId;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
@@ -46,10 +47,10 @@ class InterfaceExecutionRegistrationTest {
 
         @Bean
         InterfaceExecutionRegistration interfaceExecutionRegistration(
-                HandlerExecutionContainer handlerExecutionContainer,
-                ObjectMapper objectMapper
+                ObjectProvider<HandlerExecutionContainer> handlerExecutionContainerProvider,
+                ObjectProvider<ObjectMapper> objectMapperProvider
         ) {
-            return new InterfaceExecutionRegistration(handlerExecutionContainer, objectMapper);
+            return new InterfaceExecutionRegistration(handlerExecutionContainerProvider, objectMapperProvider);
         }
 
         @Bean
