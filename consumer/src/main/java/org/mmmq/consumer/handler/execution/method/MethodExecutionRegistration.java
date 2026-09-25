@@ -1,68 +1,70 @@
 package org.mmmq.consumer.handler.execution.method;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import org.mmmq.consumer.exception.HandlerExecutionRegistrationException;
 import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
 import org.mmmq.core.identifier.ConsumerId;
-import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.SmartInitializingSingleton;
-import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
-import java.lang.reflect.Method;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-
 @Component
-public class MethodExecutionRegistration implements BeanPostProcessor, SmartInitializingSingleton {
+public class MethodExecutionRegistration implements SmartInitializingSingleton {
 
-    private final List<Candidate> candidates = new CopyOnWriteArrayList<>();
-    private final ObjectProvider<HandlerExecutionContainer> handlerExecutionContainerProvider;
-    private final ObjectProvider<ObjectMapper> objectMapperProvider;
+    private final ApplicationContext applicationContext;
+    private final HandlerExecutionContainer handlerExecutionContainer;
+    private final ObjectMapper objectMapper;
 
     public MethodExecutionRegistration(
-            ObjectProvider<HandlerExecutionContainer> handlerExecutionContainerProvider,
-            ObjectProvider<ObjectMapper> objectMapperProvider
+            ApplicationContext applicationContext,
+            HandlerExecutionContainer handlerExecutionContainer,
+            ObjectMapper objectMapper
     ) {
-        this.handlerExecutionContainerProvider = handlerExecutionContainerProvider;
-        this.objectMapperProvider = objectMapperProvider;
-    }
-
-    @Override
-    public Object postProcessAfterInitialization(Object bean, String beanName) {
-        for (Method method : bean.getClass().getDeclaredMethods()) {
-            MMMQListener annotation = method.getAnnotation(MMMQListener.class);
-            if (annotation != null) {
-                candidates.add(new Candidate(bean, method, annotation.id()));
-            }
-        }
-        return bean;
+        this.applicationContext = applicationContext;
+        this.handlerExecutionContainer = handlerExecutionContainer;
+        this.objectMapper = objectMapper;
     }
 
     @Override
     public void afterSingletonsInstantiated() {
-        HandlerExecutionContainer handlerExecutionContainer = handlerExecutionContainerProvider.getObject();
-        ObjectMapper objectMapper = objectMapperProvider.getObject();
-        candidates.forEach(candidate -> candidate.register(handlerExecutionContainer, objectMapper));
-        candidates.clear();
+        try {
+            Arrays.stream(applicationContext.getBeanNamesForType(Object.class, false, false))
+                    .map(applicationContext::getBean)
+                    .forEach(this::registerMethodExecutions);
+        } catch (Exception exception) {
+            throw new HandlerExecutionRegistrationException("Failed to register MethodExecutions", exception);
+        }
     }
 
-    private record Candidate(
-            Object bean,
-            Method method,
-            String id
-    ) {
-
-        private void register(HandlerExecutionContainer handlerExecutionContainer, ObjectMapper objectMapper) {
-            try {
-                handlerExecutionContainer.add(new MethodExecution(new ConsumerId(id), bean, method, objectMapper));
-            } catch (Exception e) {
-                throw new HandlerExecutionRegistrationException(
-                        "Failed to register MethodExecution on " + bean.getClass().getCanonicalName()
-                                + "#" + method.getName(),
-                        e
-                );
-            }
+    private void registerMethodExecutions(Object bean) {
+        try {
+            Arrays.stream(AopUtils.getTargetClass(bean).getDeclaredMethods())
+                    // 제네릭 타입 소거나 공변 반환 타입으로 인해 생성된 Bridge 메서드는 제외하고 실제 메서드만 등록되도록 필터링한다.
+                    // JDK7u80 이후 javac는 Bridge 메서에도 원본 메서드의 어노테이션을 붙이기 때문에 핸들러 중복 등록을 방지하기 위함.
+                    .filter(method -> !method.isBridge())
+                    .filter(method -> !Modifier.isPrivate(method.getModifiers()) && !Modifier.isFinal(
+                            method.getModifiers()))
+                    .filter(method -> method.isAnnotationPresent(MMMQListener.class))
+                    .map(method -> createMethodExecution(bean, method))
+                    .forEach(handlerExecutionContainer::add);
+        } catch (Exception exception) {
+            throw new HandlerExecutionRegistrationException(
+                    "Failed to register MethodExecutions for bean: " + bean.getClass().getCanonicalName(),
+                    exception
+            );
         }
+    }
+
+    private MethodExecution createMethodExecution(Object bean, Method method) {
+        return new MethodExecution(
+                new ConsumerId(method.getAnnotation(MMMQListener.class).id()),
+                bean,
+                method,
+                objectMapper
+        );
     }
 }
