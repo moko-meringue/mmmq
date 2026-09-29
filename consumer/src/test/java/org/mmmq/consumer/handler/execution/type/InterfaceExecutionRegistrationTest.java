@@ -8,6 +8,7 @@ import org.mmmq.consumer.handler.execution.HandlerExecutionContainer;
 import org.mmmq.core.identifier.ConsumerId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -46,10 +47,11 @@ class InterfaceExecutionRegistrationTest {
 
         @Bean
         InterfaceExecutionRegistration interfaceExecutionRegistration(
+                ApplicationContext applicationContext,
                 HandlerExecutionContainer handlerExecutionContainer,
                 ObjectMapper objectMapper
         ) {
-            return new InterfaceExecutionRegistration(handlerExecutionContainer, objectMapper);
+            return new InterfaceExecutionRegistration(applicationContext, handlerExecutionContainer, objectMapper);
         }
 
         @Bean
